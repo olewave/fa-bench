@@ -4,7 +4,7 @@
 stabilises its timestamps. It exposes `model.align(audio, text, language=...)`
 — audio **plus the reference transcript** — so FA-Bench drives it as a
 **track-1 forced aligner**: the worker never calls `transcribe()`, and its
-numbers are timing error only, comparable with MFA and olign.
+numbers are timing error only, comparable with MFA and Olign.
 
 - **Modes:** A (reference transcript). **Granularity:** word only — no phone
   tier, so it is absent from the phone tables by construction, like WhisperX

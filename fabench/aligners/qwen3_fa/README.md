@@ -4,7 +4,7 @@
 — an LLM-based forced aligner: audio plus the reference transcript in, word
 times out. **Not** Qwen3-ASR, a different model that decodes its own
 transcript; this one is given the words, so it belongs in track 1 beside MFA
-and olign rather than with the timestamped ASRs.
+and Olign rather than with the timestamped ASRs.
 
 - **Modes:** A (text-driven). **Granularity:** word only — no phone tier, so
   it is absent from the phone tables by construction, exactly like WhisperX.
@@ -44,7 +44,7 @@ ordering resolves. The adapter therefore runs it in its own interpreter via
   model's actual output; inventing a duration would fabricate a boundary it
   never produced. The per-utterance count is recorded in `meta`.
 - **Coarse by design.** It emits on a 40 ms grid — 4× coarser than MFA's or
-  olign's 10 ms — which is the dominant term in its word-boundary error, not
+  Olign's 10 ms — which is the dominant term in its word-boundary error, not
   an edge-placement defect.
 - Results are only emitted when the batch worker finishes, so a timeout kills
   the whole cell rather than truncating it. Hence the large `timeout_s`.

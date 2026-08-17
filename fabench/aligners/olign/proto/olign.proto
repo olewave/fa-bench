@@ -2,7 +2,7 @@
 // service's own proto definition, trimmed to only the request/response
 // envelope FA-Bench's client needs. FA-Bench talks REST by default; this
 // exists only for the legacy gRPC door.
-// Package/service names match what deployed olign servers actually answer
+// Package/service names match what deployed Olign servers actually answer
 // to (`olewave.olign.OlewaveSpeech/StreamingInference`, confirmed
 // empirically); JSON payload contents are documented separately, not here.
 //

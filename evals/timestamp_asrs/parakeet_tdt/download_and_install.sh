@@ -22,8 +22,8 @@
 #   https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
 #
 # TDT = Token-and-Duration Transducer: it predicts token DURATIONS, so word
-# timestamps are intrinsic rather than bolted on. Already the ASR in olign's
-# long-form pipeline, which makes it the operationally relevant row.
+# timestamps are intrinsic rather than bolted on. A production-grade ASR rather
+# than a research checkpoint, which makes it an operationally relevant row.
 #
 # Lives in timestamp_asrs: audio only, own transcript.
 # Own venv (nemo pins heavily) + own interpreter at run time. cu128 for the 12.9

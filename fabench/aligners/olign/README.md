@@ -1,11 +1,11 @@
-# olign aligner
+# Olign aligner
 
 > **Olign 1.0 is in beta, and access is by request.** The hosted endpoint at
 > `api.olewave.com` is not open: you need credentials from Olewave before this
 > adapter can reach it. Ask at <info@olewave.com>. Everything else in FA-Bench
 > runs without it — Olign is one row in the tables, not a dependency.
 
-Adapter for **olign**, a proprietary commercial service, exposed to FA-Bench as
+Adapter for **Olign**, a proprietary commercial service, exposed to FA-Bench as
 a forced aligner. It emits word + phone intervals, with a per-phone score used
 as a confidence proxy. It is **not** one of the MFA-2026 paper baselines, so it
 scores only under `scoring.protocol: fabench`.
@@ -18,7 +18,7 @@ scores only under `scoring.protocol: fabench`.
 
 ## Requirements
 
-A running olign server reachable on your network. Two transports:
+A running Olign server reachable on your network. Two transports:
 
 | Transport | Needs | Notes |
 |---|---|---|

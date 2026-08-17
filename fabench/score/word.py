@@ -69,7 +69,7 @@ def word_boundary_error(
     attention deciding which to read and learned nothing from the answer.
     The phone tier's speaker-macro average went the same way and for the same
     reason: measured across the published cells it reordered nothing except four
-    olign ablations sitting 0.04 ms apart, at a cost of 0.078-0.815 ms against
+    near-identical variants sitting 0.04 ms apart, at a cost of 0.078-0.815 ms against
     the plain mean. Balanced averaging is a real technique; two columns that
     agree are not.
     """
