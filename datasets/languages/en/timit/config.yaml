@@ -1,0 +1,33 @@
+# TIMIT — canonical dataset config, the analogue of evals/<kind>/<tool>/
+# config.yaml for aligners. load_config() merges this file in as the DEFAULTS
+# for datasets.gold.timit; a run config's entry overrides it per key, so runs
+# carry only run-scoped choices (enabled, subset, root). Split membership
+# lives beside this file in split/<subset>.list.
+
+enabled: false
+
+# Root containing TRAIN/ and TEST/ (standard NIST layout), e.g.
+# /data/speech/TIMIT. Licensed (LDC93S1): staged by the user, never fetched —
+# ingest fails loud with acquisition instructions when unset. evals runs inject
+# it from FABENCH_TIMIT_ROOT.
+root: null
+
+# Which split to ingest. Membership comes from split/<subset>.list. EVERY
+# subset excludes the 2 SA sentences, which TIMIT states must not be used for
+# training or test. "core_test" = TIMIT's own 192-utt/24-spk set, the fast
+# default.
+subset: core_test        # core_test | dev | train
+
+# Buckeye-style annotation: fold each stop closure+burst into one
+# [closure.start, burst.end] stop and relabel orphan (unreleased) closures to
+# their stop, so TIMIT carries no closure phones (silence-manner phones drop
+# 22.2% -> 9.7%, matching Buckeye's phone-level convention). Every aligner's
+# phone MAE falls ~3 ms, but the ranking is unchanged. Default false =
+# standard TIMIT (closures -> silence). See summary/.
+merge_closures: false    # false | true (Buckeye-style)
+
+# How a staged copy is recognised, for `fabench init`: relative globs, any
+# match identifies the root. Covers the layouts fabench/dataprep already
+# accepts (NIST TRAIN/TEST at the root, nested under TIMIT/, or lowercase).
+# Not read by the pipeline itself — ingest validates by parsing.
+root_markers: ["TRAIN", "TEST", "TIMIT/TRAIN", "train", "data/TRAIN"]

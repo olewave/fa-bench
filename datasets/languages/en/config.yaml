@@ -1,0 +1,24 @@
+# English gold corpora — the language-level dataset config: which corpora the
+# benchmark evaluates by default, and on which subset. load_config() merges
+# this under `datasets.gold`, OVER each corpus's own
+# datasets/en/<corpus>/config.yaml and UNDER the run config, which always wins
+# (that is how evals/gen_config.py pins one corpus per cell).
+#
+# Gold corpora are USER-STAGED and restricted: FA-Bench never downloads them.
+# Point `root` at your licensed copy via FABENCH_<CORPUS>_ROOT in the gitignored
+# .fabench.env -- what `fabench init` writes, and why no root appears in this
+# tracked file. With no root set, ingest fails loud with acquisition
+# instructions rather than fetching anything.
+#
+# Machine-aligned corpora are INVALID as gold, and that guard is BUILT IN
+# (fabench/config.py::EXCLUDED_AS_GOLD_DEFAULT, sanity gate #7) so no config
+# copy can drop it. An optional `datasets.excluded_as_gold:` list EXTENDS the
+# built-in ban; it can never shrink it.
+#
+# Staging, splits, and the licensing rules: datasets/README.md.
+# Noise sources are NOT datasets in this sense — their defaults live with the
+# code that consumes them, in fabench/noise/config.yaml.
+
+gold:
+  timit:   { enabled: true, subset: core_test }
+  buckeye: { enabled: true, subset: dev }

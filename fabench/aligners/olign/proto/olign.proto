@@ -1,0 +1,39 @@
+// Vendored verbatim (message/field names and numbers) from the olign
+// service's own proto definition, trimmed to only the request/response
+// envelope FA-Bench's client needs. FA-Bench talks REST by default; this
+// exists only for the legacy gRPC door.
+// Package/service names match what deployed olign servers actually answer
+// to (`olewave.olign.OlewaveSpeech/StreamingInference`, confirmed
+// empirically); JSON payload contents are documented separately, not here.
+//
+// Regenerate with:
+//   uv run python -m grpc_tools.protoc -I fabench/aligners/olign/proto \
+//     --python_out=fabench/aligners/olign/proto \
+//     --grpc_python_out=fabench/aligners/olign/proto \
+//     fabench/aligners/olign/proto/olign.proto
+// grpc_tools.protoc always emits a flat top-level `import olign_pb2` in
+// olign_pb2_grpc.py; since this is imported as a real subpackage, hand-patch
+// that one line back to `from . import olign_pb2 as olign__pb2` after every
+// regen (see the NOTE left in olign_pb2_grpc.py itself).
+syntax = "proto3";
+
+package olewave.olign;
+
+message JsonConfig {
+  string config = 1;
+}
+
+message StreamingInferenceRequest {
+  oneof streaming_request {
+    JsonConfig json_config = 1;
+    bytes audio_content = 2;
+  }
+}
+
+message StreamingInferenceResponse {
+  string json_output = 1;
+}
+
+service OlewaveSpeech {
+  rpc StreamingInference(stream StreamingInferenceRequest) returns (stream StreamingInferenceResponse);
+}

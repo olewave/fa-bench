@@ -1,0 +1,29 @@
+# stable-ts -- Whisper with stabilised timestamps, driven as a FORCED ALIGNER
+# via model.align(audio, reference_text). https://github.com/jianfch/stable-ts
+#
+# Track 1: it is handed the reference transcript, so its numbers are timing
+# error only and are comparable with MFA/olign -- unlike CrisperWhisper, which
+# decodes its own words. The worker deliberately never calls transcribe().
+#
+# WORD TIER ONLY. No phones, so it is absent from the phone tables by
+# construction, like WhisperX and Qwen3.
+#
+# Read its boundary F1 with the same caveat as WhisperX: it is a Whisper
+# derivative scored at FA-Bench's 20 ms tolerance, while Whisper-family work
+# typically evaluates with far wider collars.
+name: stable_ts
+adapter: stable_ts
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: evals/aligners/stable_ts/venv          # repo-relative; built by download_and_install.sh
+  worker: evals/aligners/stable_ts/worker.py
+  model: base
+  # Batch worker: the parent reads stdout only after the process exits, so a
+  # timeout does not truncate a run, it destroys it. See the crisperwhisper
+  # note in subprocess_aligner.py -- two 4 h runs were thrown away that way.
+  timeout_s: null
+  env:
+    HF_HOME: /ndata/hf

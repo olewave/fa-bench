@@ -1,0 +1,43 @@
+N: [en, n, nx]
+NG: [eng, ng]
+M: [em, m]
+L: [el, l]
+AA: [aa, aan, ao, aon]
+AE: [ae, aen]
+AH: [ah, ahn]
+AO: [aa, aan, ao, aon]
+AW: [aw, awn]
+AY: [ay, ayn]
+EH: [eh, ehn]
+ER: [er, ern, r]
+EY: [ey, eyn]
+IH: [ih, ihn]
+IY: [iy, iyn, ih, ihn]
+OW: [ow, own]
+OY: [oy, oyn]
+UH: [uh, uhn]
+UW: [uw, uwn, uh, uhn]
+B: b
+P: p
+T: [t, tq, dx]
+D: [d, dx]
+TH: th
+DH: dh
+F: f
+V: v
+K: k
+G: g
+Z: z
+ZH: zh
+SH: sh
+S: s
+R: [er, ern, r]
+Y: y
+CH: ch
+JH: jh
+HH: hh
+W: w
+spn: spn
+"[SIL]": sil
+"sil [SIL]": sil
+"[SIL] sil": sil

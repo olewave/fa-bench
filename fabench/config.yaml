@@ -1,0 +1,55 @@
+# FA-Bench — the benchmark-level defaults, living beside fabench/config.py,
+# which consumes all of them: the frozen scope contract, the benchmark-wide
+# seed, and the output paths. load_config() merges each section per key, a
+# run config winning, so every run carries the declaration of what the
+# benchmark covers without restating it — including a run with no config
+# file at all.
+#
+# Overriding a scope key in a run config is SCOPE DRIFT: channel is a hard
+# error away from additive_noise_only (zero-offset gold transfer is the whole
+# basis of the noise axis), language warns (and selects the normalization
+# package: fabench/normalize/<lang>/). The rest are the benchmark's published
+# claims — registers covered, gold reused as-is (never new annotation, never
+# machine-aligned), human ceiling cited from literature rather than measured.
+
+# Benchmark generation. Identifies the scope contract and default protocol a
+# result was produced under; `fabench config` prints it and generated cell
+# configs inherit it. A run config may override it to label a variant.
+version: v1
+
+scope:
+  language: english              # JA/KO/tonal/code-switch are deferred
+  register: [read, spontaneous]  # TIMIT read + Buckeye spontaneous
+  channel: additive_noise_only   # reverb/codec/far-field/overlap deferred
+  gold_policy: reuse_existing    # no new annotation in v1
+  human_ceiling: cited_only      # ~10-20 ms literature band, NOT measured
+
+# Determinism (Plan gate #6). The benchmark-wide seed: the fallback for any
+# stochastic step without a seed of its own. Today its one consumer is the
+# bootstrap CI resampling (score/runner.py -> aggregate). Subsystem seeds live
+# with their subsystem instead — the noise split and mix seeds are in
+# fabench/noise/config.yaml. Unlike `scope`, this IS a legitimate per-run
+# override: change it in a run config to resample under a different draw.
+seeds:
+  global: 20240607
+
+# Where large/ephemeral outputs go. `work_dir` holds mixes and intermediate
+# audio — point it at fast scratch on a real run. A relative value resolves
+# against the repo root, so a config generated outside the tree still lands its
+# artifacts in the right place.
+#
+# results_dir is `summary/local`, NOT `results`, so YOUR run and the PUBLISHED
+# numbers are different trees:
+#
+#   summary/          published — tracked, what a reader sees on GitHub
+#   summary/local/    yours     — gitignored, identical shape below it
+#
+# With one shared directory, `fabench run` on a fresh clone overwrote 40
+# tracked files and left `git status` full of modified leaderboards, so the
+# published tables could be lost to a routine run and a partial sweep looked
+# like an edit. Writing outside your own tier is now a deliberate act:
+# `FABENCH_RESULTS_DIR=summary`, or paths.results_dir in a run config —
+# and the published tree is records/, written only by evals/publish_records.py.
+paths:
+  work_dir: data/work
+  results_dir: summary/local

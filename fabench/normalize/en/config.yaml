@@ -1,0 +1,12 @@
+# English phone-set normalization — canonical config, living beside the
+# inventory and mapping tables it parameterizes (canonical.py, maps.py).
+# load_config() merges this under `normalize:` for runs whose scope.language
+# is english; a run config overrides per key.
+
+# The shared inventory every source maps into (see canonical.py: TIMIT-39,
+# Lee & Hon 1989 folding, General American).
+canonical: timit39
+
+# Normalization gate (Plan S2 acceptance): more than 1% unmapped labels in
+# any corpus/aligner alphabet fails `fabench normalize-check`.
+max_unmapped_rate: 0.01

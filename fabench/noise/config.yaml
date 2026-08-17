@@ -1,0 +1,34 @@
+# Noise defaults — canonical config, living beside the code that consumes it.
+# load_config() merges every section into any run config (per key; the run
+# config wins):
+#
+#   sources:    -> datasets.noise   (musan.py::ensure_musan, provider.py)
+#   conditions: -> conditions       (the noise condition matrix, Plan 3.3)
+#   seeds:      -> seeds            (this subsystem's stochastic steps)
+#
+# Synthetic white/pink noise needs no source config: it is generated on the
+# fly for whatever conditions.noise_types requests.
+
+# Determinism (Plan gate #6): both seeds belong to this subsystem, so they
+# live with it. `seeds.global` stays in the run config — it is the run's own
+# determinism identity, not a noise setting.
+seeds:
+  noise_split: 1317              # which MUSAN files land in the held-out eval pool
+  mix: 8675309                   # per-item noise offset/selection
+
+sources:
+  musan:
+    enabled: true
+    root: null                     # if pre-staged; else fetched to cache_dir
+    cache_dir: data/musan          # ~11 GB once fetched; point at big storage
+    url: https://www.openslr.org/resources/17/musan.tar.gz
+    babble_min_sources: 6          # sum >=6 speech clips => babble
+
+# Condition matrix: clean + noise_types x snr_db. The SNR band and noise-type
+# set are the frozen v0 scope (fabench.config warns on drift). A run config
+# overrides per key -- e.g. a clean-only cell sets noise_types: [] and
+# snr_db: [] (what evals/gen_config.py emits).
+conditions:
+  noise_types: [white, pink, musan_ambient, babble]
+  snr_db: [20, 15, 10]             # plus implicit "clean"
+  include_clean: true

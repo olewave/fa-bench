@@ -1,0 +1,17 @@
+# olign -- proprietary, and access is by request from Olewave
+# (info@olewave.com). Point base_url at the olign server you were given; nothing
+# here reaches out to Olewave on its own.
+name: olign
+adapter: olign
+enabled: true
+modes: [A]
+granularity: [word, phone]
+emits_confidence: true
+params:
+  transport: rest
+  # The FULL assess endpoint, not just the host: the adapter POSTs to
+  # "{base_url}?{query}" directly, so a bare host 404s.
+  base_url: http://127.0.0.1:8096/v1/assess
+  accent: 2                 # 1 = UK, 2 = US
+  timeout_s: 60
+  concurrency: 8            # olign is a batch aligner; ~1 stream/core

@@ -1,0 +1,49 @@
+# GitHub Actions — the merge gate for FA-Bench (mirror of .gitlab-ci.yml).
+#
+# To make these BLOCK merges, protect the default branch and mark the jobs as
+# required status checks (Settings > Branches > protection rules). Same gates,
+# same image as the GitLab pipeline; the tools/kaldi submodule is deliberately
+# NOT checked out (huge, and no gate needs it).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_ROOT_USER_ACTION: "ignore"
+
+jobs:
+  # The gate: the full pytest suite. Optional-dependency / staged-data /
+  # external tests self-skip, so this is green on a clean runner with no GPU,
+  # aligner models, corpora, or micromamba env.
+  test:
+    runs-on: ubuntu-latest
+    container: python:3.12
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -e ".[test]"
+      - run: python -m pytest -q
+
+  # End-to-end gate: the synthetic-oracle selftest builds known-answer
+  # gold/hyp pairs and drives every metric family through the real pipeline.
+  selftest:
+    runs-on: ubuntu-latest
+    container: python:3.12
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -e .
+      - run: python -m fabench selftest
+
+  # Style check — advisory (does not block merges).
+  lint:
+    runs-on: ubuntu-latest
+    container: python:3.12
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install ruff
+      - run: ruff check .

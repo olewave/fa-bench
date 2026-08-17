@@ -1,0 +1,26 @@
+# CrisperWhisper in FORCED-ALIGNMENT mode -- audio + reference transcript.
+# Interspeech 2024, arXiv:2408.16589 | github.com/nyrahealth/CrisperWhisper
+#
+# Uses the package's native forced_align(): it IS given the reference words, so
+# unlike the `crisperwhisper` entry it is directly comparable to MFA, olign and
+# qwen3_fa. Shares one venv with that entry -- same package, no conflict to
+# isolate.
+#
+# Word-level only; absent from phone tables by construction.
+# Runs in its own interpreter (see fabench/timestamp_asrs/subprocess_asr.py).
+name: crisperwhisper_fa
+adapter: crisperwhisper_fa
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: ../../timestamp_asrs/crisperwhisper/venv
+  model: nyrahealth/CrisperWhisper
+  # 14400 (4 h) was NOT enough for Buckeye and cost every record.
+  # Measured 5.9 s/item on TIMIT full_test (1344 items, 7632-8180 s), so
+  # buckeye_dev at 4456 items needs ~7.3 h and buckeye_test ~7.4 h. Both
+  # timed out at 4 h with 0 records -- the worker is BATCH, so the parent
+  # only reads stdout after the process exits and a timeout discards all
+  # completed work rather than keeping a partial result.
+  timeout_s: null           # NO timeout -- see subprocess_aligner.load()
