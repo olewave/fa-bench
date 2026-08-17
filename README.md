@@ -10,6 +10,14 @@
 
 # FA-Bench: A Benchmark for Evaluating Phone- and Word-Level Timestamp Accuracy in Forced Aligners (v1)
 
+<p align="center">
+  <b>⭐ Click the star at the top right to save this tool to your speech toolbox, now!</b><br>
+  <b>⭐ 点击右上角的星标，立即把这个工具收藏进你的语音工具箱！</b><br>
+  <b>⭐ 點擊右上角的星標，立即把這個工具收藏進你的語音工具箱！</b><br>
+  <b>⭐ 오른쪽 상단의 별을 클릭해 이 도구를 나의 음성 툴박스에 지금 바로 저장하세요!</b><br>
+  <b>⭐ 右上のスターをクリックして、このツールをあなたの音声ツールボックスに今すぐ保存しましょう！</b>
+</p>
+
 A deterministic, config-driven benchmark measuring how **forced aligners**
 perform and degrade under **additive noise**, scored against human linguists'
 hand-labeled ground truth phone- and word-level boundaries. English so far, on
@@ -42,10 +50,16 @@ too. Everything is seeded, flag-gated, and reproducible from a single command.
 [Methodology](records/aligners/en/202608/README.md)
 
 
-**License:** [PolyForm Noncommercial 1.0.0](LICENSE) — free for any
-noncommercial purpose (research, teaching, personal study, public-interest and
-government work). **Commercial use requires a licence from Olewave, LLC.**
-© 2026 Olewave, LLC · **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md)
+> **License — [PolyForm Noncommercial 1.0.0](LICENSE)**
+>
+> | | |
+> |---|---|
+> | ✅ **Free** | Research, teaching, personal study, and work by charitable, educational, public-safety, environmental and government organisations. |
+> | 💼 **Commercial use** | Requires a separate licence — <info@olewave.com>. |
+>
+> © 2026 Olewave, LLC · Contributions are welcome under
+> [`CONTRIBUTING.md`](CONTRIBUTING.md) · Vendored third-party code keeps its own
+> licence.
 
 ---
 
@@ -203,10 +217,11 @@ both corpora, all four splits, clean and the four degradations.
 Olewave (<info@olewave.com>); every other system installs from its own recipe
 and needs nothing from us.
 
-Not every system reaches every tier — several emit words but no phones, and the
-tables show an em dash rather than a number wherever that is so. Per-system
-notes are in each tool's README under `fabench/aligners/`; the numbers and
-their caveats are in
+Not every system reaches every tier. **CrisperWhisper, Parakeet-TDT, Qwen3,
+stable-ts and WhisperX emit words but no phones**, so they appear only in the
+word tables; the tables show an em dash rather than a number wherever that is
+so. Every other system is scored on both tiers. Per-system notes are in each
+tool's README under `fabench/aligners/`; the numbers and their caveats are in
 [`records/`](records/aligners/en/202608/timit/README.md).
 
 Reproduce with `.venv/bin/python -m pytest -q` and `fabench gates`. The only

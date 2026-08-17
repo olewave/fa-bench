@@ -315,7 +315,7 @@ class Olign(AlignerAdapter):
         AlignerOutput}`` with failed items omitted (the adapter contract) so one
         item's failure never aborts the batch; a summary count is logged.
 
-        Keep ``concurrency`` at or below what the olign deployment can serve
+        Keep ``concurrency`` at or below what the Olign deployment can serve
         (docs: ~1 concurrent stream/core). Only the REST transport is
         concurrency-hardened -- gRPC shares a single stub, so leave concurrency
         at 1 for ``transport: grpc``.

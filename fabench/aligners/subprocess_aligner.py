@@ -154,9 +154,9 @@ class SubprocessAligner(AlignerAdapter):
             cmd = [str(self.python), str(self.worker), str(jobs), self.model]
             cmd += self._extra_argv()
             # `params.env` lets a tool set/unset environment for its subprocess.
-            # NeMo (parakeet) needs LD_LIBRARY_PATH UNSET -- olign's own
-            # pipeline runs it as `env -u LD_LIBRARY_PATH ...` -- and an
-            # HF_HOME it can write to. A value of null unsets the variable.
+            # NeMo (parakeet) needs LD_LIBRARY_PATH UNSET -- it is run as
+            # `env -u LD_LIBRARY_PATH ...` -- and an HF_HOME it can write
+            # to. A value of null unsets the variable.
             import os as _os
 
             env = dict(_os.environ)

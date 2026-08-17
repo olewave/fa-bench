@@ -9,7 +9,7 @@ Its rows therefore mix recognition error with timing error — a misrecognised
 word leaves the matched path and depresses recall instead of worsening MAE. Read
 boundary F1 (label-agnostic) as the primary metric here and MAE as secondary,
 the inverse of the aligner tables, and do not rank it head-to-head against MFA,
-olign, or Qwen3-FA.
+Olign, or Qwen3-FA.
 
 The same model also runs in **track 1** as
 [`crisperwhisper_fa`](../../aligners/crisperwhisper_fa/README.md), driven

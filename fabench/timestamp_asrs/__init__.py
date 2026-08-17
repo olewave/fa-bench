@@ -31,7 +31,7 @@ Expected first inhabitants:
                      aligner. This is where it belongs.
     parakeet_tdt     timestamped ASR; TDT predicts token durations, so it is
                      both a transcript source and a timestamped row. Already
-                     the ASR in olign's long-form pipeline.
+                     a production-grade ASR rather than a research checkpoint.
     whisper_v3_large transcript source for the forced aligners.
     qwen3_asr        transcript source (Qwen3-ASR-1.7B). NOTE: the separate
                      Qwen3-ForcedAligner-0.6B is a forced ALIGNER and belongs in

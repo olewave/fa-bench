@@ -66,11 +66,11 @@ END = "<!-- END GENERATED: {} -->"
 #: read as a held-out result -- the one case here where the number does not mean
 #: what the column header says.
 #:
-#: olign carried a marker while its row was described as trained on these
-#: corpora's train splits. It is not overlap: the splits it is scored on are
-#: speaker-disjoint from anything it saw, which is the same standard every other
-#: row meets. Flagging it alongside MAPS put two different situations under one
-#: symbol.
+#: Only MAPS. Training on a corpus and being scored on a speaker-disjoint split
+#: of it is the standard every other row here meets, and is not overlap; putting
+#: that under the same symbol as train==test collapsed two different situations
+#: into one glyph. The overlap section of the methodology page is where the
+#: finer distinction belongs, not a warning marker.
 FLAGGED = {"maps": "⚠"}
 
 #: What each flag means, appended under any generated table that carries it.
@@ -129,40 +129,6 @@ SUPPRESS_PUBLIC = _SuppressSet()
 #: dev -- it just belongs where ablations live.
 SUPPRESS_CONCISE = {"mfa2"}
 
-#: Systems whose PHONE tier is withheld while their word tier still publishes.
-#:
-#: torchaudio_fa aligns its phone tier against wav2vec2-lv-60-espeak-cv-ft,
-#: whose vocabulary is eSpeak IPA, while FA-Bench hands it the reference
-#: sequence in ARPABET. The worker keeps only labels present in the model
-#: vocabulary, so every ARPABET vowel is filtered out before alignment and what
-#: survives is the accidental spelling overlap -- 17 consonants. Measured on
-#: TIMIT dev it aligns 15.0 phones per utterance against a 38.3 gold and 32-35
-#: for every other phone-tier system: 39% of the reference against their 84-91%.
-#:
-#: That is not a coarser inventory, it is the reference with the vowels deleted,
-#: and consonant boundaries are acoustically sharper -- so the number flatters
-#: it and is not comparable. Withheld until the ARPABET -> eSpeak mapping
-#: exists. gate#10 fails any cell that reaches this state again.
-#: Systems whose PHONE tier is withheld while their word tier still publishes.
-#:
-#: torchaudio_fa is handed the GOLD PHONE SEQUENCE. runner.py passes
-#: `phone_seq = [p.label for p in gold.phones]` to every adapter, and its mode-B
-#: worker aligns exactly those labels -- the only aligner here that does.
-#: Charsiu, MFA, MAPS, BFA and Olign derive their own phone sequence from the
-#: transcript by lexicon or G2P, so they can and do get phones wrong.
-#:
-#: The consequence is visible in the edit columns: torchaudio scores S=0.0 and
-#: I=0.0 on Buckeye against S=14-17 and I=9-17 for everyone else, because it
-#: structurally cannot substitute or insert -- it emits the labels it was given,
-#: exactly len(phone_seq) of them. Its D=1.3 is only the silence and closures
-#: that have no acoustic target. A PER of 1.3% beside everyone else's 25-35%
-#: reads as a decisive win and is nothing of the kind.
-#:
-#: Two different tasks: place boundaries given the true phone sequence, versus
-#: predict the phones and place them. MAE is affected too, since knowing the
-#: sequence removes an error source before timing is measured. Withheld until
-#: the adapter derives its own phones. The word tier is a separate code path and
-#: is unaffected.
 #: Intentionally empty. TorchAudio sat here while it was aligning against the
 #: reference phone sequence, which made its S and I columns 0.0 by construction.
 #: It now derives its own sequence by eSpeak G2P from the transcript, so the tier
@@ -544,8 +510,8 @@ def _rows_of(bysub: dict[str, list[dict]], sub: str) -> list[dict]:
 
 # NO per-column bolding, in either view. Marking the winner is a leaderboard
 # rendered as typography: a reader sees who "won" before reading a number, and
-# the mark implies a real difference where there may be none -- olign and olign
-# (noise-trained) differ by 0.1 ms on clean, inside run-to-run variation, yet
+# the mark implies a real difference where there may be none -- two variants of
+# one system have differed by 0.1 ms on clean, inside run-to-run variation, yet
 # only one would carry it. The lowest number in a column is still visible to
 # anyone reading the column.
 
@@ -781,7 +747,7 @@ TRACK2 = _track2()
 #: disagreed about a ranking -- under 1% apart on every published cell -- so it
 #: cost a reader a decision and returned nothing. Utterance- and speaker-balanced
 #: averaging is gone from the phone tier too, on the same evidence: it reordered
-#: nothing but four olign ablations 0.04 ms apart.
+#: nothing but a handful of near-identical variants 0.04 ms apart.
 WORD_CONCISE = [("MAE (ms)", lambda r: r.get("wbe")),
                 ("Pre", lambda r: r.get("wbnd_p")),
                 ("Rec", lambda r: r.get("wbnd_r")),

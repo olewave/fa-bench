@@ -41,9 +41,8 @@ CFGS="$HERE/configs"; mkdir -p "$CFGS"
 # Systems held back from the PUBLIC leaderboards. Read from
 # update_public_tables.py rather than restated here: the curated pages and these
 # tables must suppress the SAME set, and two lists would drift the moment one is
-# edited. Today it is olign's ablation sweep -- the variant names alone disclose
-# a proprietary system's tunable axes, and the scores beside them say which
-# setting won.
+# edited. What sits here is internal variants that are scored for our own
+# comparison but are not part of the published benchmark.
 read -r SUPPRESS_PREFIX SUPPRESS_KEEP <<EOF2
 $("$PY" - <<'PYEOF'
 import importlib.util, pathlib

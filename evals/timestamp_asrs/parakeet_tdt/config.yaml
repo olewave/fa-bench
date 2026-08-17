@@ -2,9 +2,9 @@
 # https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
 #
 # TDT = Token-and-Duration Transducer: it predicts token DURATIONS, so word
-# timestamps are intrinsic to decoding rather than estimated afterwards. This is
-# also the ASR in olign's long-form pipeline, which makes it the operationally
-# relevant row.
+# timestamps are intrinsic to decoding rather than estimated afterwards. It is a
+# production-grade ASR rather than a research checkpoint, which makes it an
+# operationally relevant row.
 #
 # It IGNORES the reference transcript and decodes its own. Its rows therefore
 # mix recognition error with timing error: misrecognised words leave the matched
@@ -32,7 +32,7 @@ params:
   worker: worker.py
   model: nvidia/parakeet-tdt-0.6b-v3
   timeout_s: 14400
-  # NeMo breaks if LD_LIBRARY_PATH leaks in from the caller; olign runs it as
+  # NeMo breaks if LD_LIBRARY_PATH leaks in from the caller, so it is run as
   # `env -u LD_LIBRARY_PATH`. HF_HOME must be writable for model caching.
   env:
     LD_LIBRARY_PATH: null

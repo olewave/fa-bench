@@ -22,9 +22,9 @@
 https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
 
 TDT = Token-and-Duration Transducer: it predicts token DURATIONS, so timestamps
-fall out of decoding rather than being estimated afterwards. This is also the
-ASR in olign's long-form pipeline, which makes it the operationally relevant
-row here.
+fall out of decoding rather than being estimated afterwards. It is a
+production-grade ASR rather than a research checkpoint, which makes it an
+operationally relevant row here.
 
 NOT a forced aligner — it ignores the reference transcript. See
 fabench/timestamp_asrs/subprocess_asr.py.

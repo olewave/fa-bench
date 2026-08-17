@@ -339,7 +339,7 @@ def segment_track_paper(
 # canonical form, and 17.0% of gold phones are never scored as a result
 # (13.8% on TIMIT). The discarded set is the flaps, deletions, devoicings and
 # assimilations -- exactly where an aligner is forced to place a phone the
-# audio does not contain. See olign md/Findings.md.
+# audio does not contain.
 #
 # Capturing both fields lets a report say how much of a result rests on
 # canonically-pronounced words, and lets a run stratify or filter on it.

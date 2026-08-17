@@ -142,7 +142,7 @@ Ways forward, best first:
 
 1. **Train on FA-Bench's train splits** — the ask at the top of this page.
    Speaker-disjoint from everything it is scored on, so the number is genuinely
-   held-out and ranks beside every other row. This is the footing olign is on.
+   held-out and ranks beside every other row. This is the footing Olign is on.
    It did not exist as an option when the paragraph above was written, which
    assumed full-corpus gold, where any Buckeye finetune leaks.
 2. **LibriSpeech-only checkpoint** — also leakage-free and closest to the
