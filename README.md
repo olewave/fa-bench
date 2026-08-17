@@ -196,7 +196,8 @@ on TIMIT and paper-segmented Buckeye, scored under **clean and the four
 degradations** above.
 
 The roster is listed at the top. Track 1 is given the transcript; track 2
-decodes its own words, and is still filling up.
+decodes its own words. Every system is scored on every cell of this snapshot —
+both corpora, all four splits, clean and the four degradations.
 
 **Olign is in beta and access is by request** — it needs credentials from
 Olewave (<info@olewave.com>); every other system installs from its own recipe

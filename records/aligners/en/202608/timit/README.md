@@ -82,10 +82,10 @@ is here for exactly that reason: without it a poor MAE cannot be attributed
 between recognition and alignment. Compare these against each other, not
 against a track-1 aligner that was handed the words.
 
-**This track is still filling up.** It currently holds the two systems whose
-recipes are installed; more timestamped ASRs are being added, and each will
-appear here once it has run every cell. A system missing from this table has
-not been judged and found wanting — it has not been run yet. The
+**Both systems here have run every cell** of this snapshot. The track holds the
+two whose recipes are installed; more timestamped ASRs may appear in a later
+snapshot, each once it has run every cell. A system missing from this table has
+not been judged and found wanting — it has not been run. The
 [coverage table](../README.md#which-subset-the-numbers-cover) on the
 methodology page always names exactly who was scored.
 
