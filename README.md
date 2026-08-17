@@ -10,12 +10,12 @@
 
 # FA-Bench: A Benchmark for Evaluating Phone- and Word-Level Timestamp Accuracy in Forced Aligners (v1)
 
-<p align="center">
-  <b> Click ⭐ at the top right to save FA-Bench into your speech toolbox — save it now! ↗️</b><br>
-  <b> 点击右上角⭐，将FA-Bench收藏进您的语音工具箱，现在就收藏！ ↗️</b><br>
-  <b> 點擊右上角⭐，將FA-Bench收藏進您的語音工具箱，現在就收藏！ ↗️</b><br>
-  <b> 右上の⭐をクリックして、FA-Bench を音声ツールボックスに保存しましょう。今すぐ！ ↗️</b><br>
-  <b> 오른쪽 상단의 ⭐를 클릭해 FA-Bench를 음성 툴박스에 저장하세요. 지금 바로! ↗️</b>
+<p align="right">
+  <b> Click ⭐ at the top right to save FA-Bench into your speech toolbox - save it now! ↗️</b><br>
+  <b> 点击右上角⭐，将FA-Bench收藏进您的语音工具箱，现在就收藏! ↗️</b><br>
+  <b> 오른쪽 상단의 ⭐를 클릭해 FA-Bench를 음성 툴박스에 저장하세요. 지금 바로! ↗️</b><br>
+  <b> 右上の⭐をクリックして、FA-Bench を音声ツールボックスに保存しましょう。今すぐ！↗️</b><br>
+  <b dir="rtl"> انقر على ⭐ في أعلى اليمين لحفظ FA-Bench في صندوق أدوات الكلام لديك - احفظه الآن! ↗️</b>
 </p>
 
 A deterministic, config-driven benchmark measuring how **forced aligners**
