@@ -986,13 +986,18 @@ def completion_note(corpus: str) -> str:
             "not the same subset as everyone else's:\n\n" + "\n".join(lines))
 
 
-def coverage_table(data: dict) -> str:
+def coverage_table(data: dict, asr: dict | None = None) -> str:
     """Who was scored where.
 
     Collapses to a single sentence when every split has the same systems, which
     is the usual case and made four identical eleven-name rows. It expands back
     to the table the moment they diverge -- the whole point of this block is to
     show a gap, so the concise form may never be able to hide one.
+
+    `data` is the ALIGNER track only. Track 2 is passed separately and named in
+    its own sentence: without that, the count here read as the whole roster and
+    silently disagreed with the twelve the front page advertises, because a
+    track-2-only system like Parakeet-TDT never appears in `data` at all.
     """
     per_split = {}
     for corpus in sorted(data):
@@ -1008,9 +1013,10 @@ def coverage_table(data: dict) -> str:
     if len(sets) == 1:
         names = next(iter(sets))
         splits = ", ".join(sub_disp(s, c) for c, s in per_split)
-        return (f"All **{len(names)}** systems are scored on all "
-                f"**{len(per_split)}** splits ({splits}):\n\n"
-                f"{', '.join(names)}.")
+        out = (f"All **{len(names)}** aligner-track systems are scored on all "
+               f"**{len(per_split)}** splits ({splits}):\n\n"
+               f"{', '.join(names)}.")
+        return out + _track2_sentence(asr)
 
     # Diverged: name the splits, and say what each is missing against the union.
     union = sorted({n for v in sets for n in v}, key=str.lower)
@@ -1019,7 +1025,23 @@ def coverage_table(data: dict) -> str:
         gap = [n for n in union if n not in names]
         L.append(f"| {sub_disp(sub, corpus)} | {len(names)} | "
                  f"{', '.join(gap) if gap else '—'} |")
-    return "\n".join(L)
+    return "\n".join(L) + _track2_sentence(asr)
+
+
+def _track2_sentence(asr: dict | None) -> str:
+    """Name the track-2 roster, so the aligner count above cannot be misread as
+    the whole benchmark. Silent when track 2 has nothing scored yet."""
+    if not asr:
+        return ""
+    names = sorted({disp(r["aligner"])
+                    for corpus in asr for sub in subsets_of(asr[corpus])
+                    for r in asr[corpus][sub]} - {disp(x) for x in SUPPRESS_PUBLIC},
+                   key=str.lower)
+    if not names:
+        return ""
+    return ("\n\nScored separately in **track 2** — timestamped ASRs, which decode "
+            "their own words rather than being given the transcript, so the two "
+            "tracks never share a leaderboard: " + ", ".join(names) + ".")
 
 
 def noise_table(clean: dict, noisy: dict, key: str = "mae",
@@ -1582,7 +1604,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     blocks = {
-        "coverage": coverage_table(data),
+        "coverage": coverage_table(data, asr),
         # The phone tier's remaining families, each nested under the five
         # conditions like MAE and detection already are. Nothing on this page
         # is clean-only any more: every phone number reads across clean and the

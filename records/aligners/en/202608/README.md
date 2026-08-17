@@ -1,6 +1,6 @@
 # Results
 
-**August 2026** — 11 systems, TIMIT and Buckeye, phone and word tiers, clean
+**August 2026** — 12 systems, TIMIT and Buckeye, phone and word tiers, clean
 plus four degradations. The numbers sit with their corpus below; this page is
 how they were made and how to read them.
 
@@ -45,11 +45,11 @@ misrecognised word leaves the matched path entirely.
 
 Membership is inferred from where each recipe lives (`evals/timestamp_asrs/`)
 rather than declared, so a tool cannot be filed as one thing and installed as
-another — and the roster is not written down here, because **track 2 is still
-filling up**. More timestamped ASRs are being added, each appearing once it has
-run every cell. The coverage table below names exactly who was scored for this
-snapshot; a system absent from it has not been run, which is a different
-statement from having done badly.
+another. Track 2 carries two systems in this snapshot — CrisperWhisper and
+Parakeet-TDT — and both are scored on every cell; more may join in a later one.
+The coverage block below names exactly who was scored, on both tracks: a system
+absent from it has not been run, which is a different statement from having done
+badly.
 
 The pair of CrisperWhisper rows -- track 2 and track 1 -- is the
 **same model** either way — one decoding, one given the reference — so the gap
@@ -196,9 +196,11 @@ impulse responses and adds nothing.
 previous version of this page.
 
 <!-- BEGIN GENERATED: coverage -->
-All **11** systems are scored on all **4** splits (Buckeye Dev, Buckeye Test, TIMIT Dev, TIMIT Core-test):
+All **11** aligner-track systems are scored on all **4** splits (Buckeye Dev, Buckeye Test, TIMIT Dev, TIMIT Core-test):
 
 BFA, Charsiu, CrisperWhisper, MAPS, MFA 2.0, MFA 3.4, Olign 1.0, Qwen3, stable-ts, TorchAudio, WhisperX.
+
+Scored separately in **track 2** — timestamped ASRs, which decode their own words rather than being given the transcript, so the two tracks never share a leaderboard: CrisperWhisper, Parakeet-TDT.
 <!-- END GENERATED: coverage -->
 
 Two changes make the old numbers incomparable rather than merely superseded:
