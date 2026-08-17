@@ -38,7 +38,7 @@ too. Everything is seeded, flag-gated, and reproducible from a single command.
 [CrisperWhisper-FA](https://github.com/nyrahealth/CrisperWhisper) ·
 [MAPS](https://github.com/MasonPhonLab/MAPS) ·
 [Montreal-Forced-Aligner (MFA)](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner) ·
-[Olign](https://www.olewave.com) ·
+[Olign](https://olewave.com/en/olign-olewaves-lancet-accurate-speech-to-text-forced-alignment-service/) ·
 [Parakeet-TDT](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) ·
 [Qwen3-ForcedAligner](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B) ·
 [stable-ts](https://github.com/jianfch/stable-ts) ·
