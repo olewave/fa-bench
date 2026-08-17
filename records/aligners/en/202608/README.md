@@ -93,28 +93,49 @@ clean, before folding.
 | MAPS | `arpabet` | `ARPABET_TO_39` | 65 |
 | MFA 2.0 · MFA 3.4 | `mfa` | `ARPABET_TO_39` | 68 |
 | Olign | `arpabet` | `ARPABET_TO_39` | 39 |
-| TorchAudio | `ipa` | `IPA_TO_39` | 38 |
+| TorchAudio | `ipa` | `IPA_TO_39` | 59 |
 
 The other six scored systems emit words only and never enter a phone table:
 CrisperWhisper, CrisperWhisper-FA, Parakeet-TDT, Qwen3, stable-ts and WhisperX.
 
-**A note on how TorchAudio reaches that inventory.** Its phone tier is aligned
-by `wav2vec2-lv-60-espeak-cv-ft`, whose vocabulary is 392 eSpeak IPA symbols,
-while the reference sequence arrives as raw corpus labels — TIMIT-61 for TIMIT
-(`h#`, `ix`, `ax`, `axr`, `dcl` …). The two alphabets are bridged by a table
-composed from this benchmark's own `TIMIT61_TO_39` and `ARPABET_TO_39` folds
-plus a TIMIT-39 → eSpeak correspondence, so the aligner's targets and the
-scorer's folding cannot disagree: every eSpeak target was checked present in the
-model vocabulary, and every one folds back through `IPA_TO_39` to the phone it
-came from.
+**A note on where TorchAudio's phones come from.** Its phone tier is aligned by
+`wav2vec2-lv-60-espeak-cv-ft`, whose vocabulary is 392 eSpeak IPA symbols, and
+the sequence it aligns is one **it derives itself from the transcript** with
+eSpeak G2P — the same phonemizer that model was trained against. That is the
+same contract as every other aligner here: words in, phones worked out, phone
+boundaries out.
 
-Coverage of the reference is **78% on TIMIT and 100% on Buckeye**. The TIMIT
-shortfall is not loss: 19% of TIMIT-61 labels are silence and stop closures
-(`h#`, `tcl`, `kcl`, `dcl`, `pcl`, `bcl`, `gcl`, `epi`), which have no acoustic
-target and are correctly given none — so 78% is **96% of what is alignable**.
-Buckeye carries no such markers, hence 100%. `gate#10` fails any phone tier
-covering less than 65% of the reference, and the worker itself refuses to align
-a sequence it can map less than 65% of, naming the labels it could not.
+It is worth saying plainly because an earlier revision of this benchmark got it
+wrong. TorchAudio was the only system passed the reference phone sequence as its
+alignment target, which meant it could not substitute or insert a phone — its
+`S` and `I` columns were 0.0 by construction rather than by merit, and its tier
+was withheld from publication once that was found. Deriving the sequence from
+the transcript is what makes the row comparable. The effect is confined to which
+phones are proposed, not where they land: boundary MAE moved 31.2 → 32.0 ms on
+TIMIT dev clean, while PER went 20.0 → 33.9 %.
+
+Two properties were checked before the numbers were trusted: every token eSpeak
+emits is present in the model vocabulary (100 % over 400 transcripts from both
+corpora — stress marks are suppressed, since eSpeak's stressed forms `ˈiː`,
+`ˈaɪ`, `ˈoʊ` are absent from that vocabulary), and every one folds through
+`IPA_TO_39` into TIMIT-39 (0 unmapped of 16,176 tokens). Its sequence is
+naturally shorter than the reference — a median 0.83 of the gold phone count on
+TIMIT — because eSpeak emits no closures or silences where the corpus marks
+`h#`, `dcl`, `gcl`. Those show up honestly as deletions.
+
+The two corpora pull the count in opposite directions, and both are honest.
+TIMIT gold is TIMIT-61, of which 19% is silence and stop closures (`h#`, `tcl`,
+`kcl`, `dcl`, `pcl`, `bcl`, `gcl`, `epi`) that have no acoustic target and are
+correctly proposed by nobody — so a G2P sequence runs a median **0.83** of the
+gold count there. Buckeye marks no closures but transcribes spontaneous speech
+*as reduced*, while eSpeak proposes the canonical form, so the same system runs
+**1.04** of gold. The first shows up as deletions, the second as insertions and
+substitutions; neither is the aligner mis-timing anything.
+
+Two guards sit under this. `gate#10` fails any published phone tier covering
+less than 65% of the reference, and the worker refuses an utterance whose G2P it
+can map to under 95% of the model vocabulary, naming the tokens it could not —
+a safety net rather than a routine path, since measured coverage is 100%.
 
 ### Sub% / Del% / Ins% / PER% — why a phone left the matched path
 
@@ -132,6 +153,18 @@ matched% + Sub% + Del% = 100%      (to rounding)
 `Ins%` has no gold counterpart — it is normalised by the gold count, per the
 PER/WER convention — so it sits **outside** that identity, and
 `PER% ≠ 100 − matched%` by exactly `Ins%`. `PER% = Sub% + Del% + Ins%`.
+
+**Why most systems repeat the same S/D/I in all five conditions.** In the
+Details tables these columns are usually flat across clean and the four
+degradations, and that is correct rather than a copied cell. A forced aligner
+that emits exactly the phone sequence it derived from the transcript makes no
+label decision the audio can influence — noise moves *where* the boundaries
+land, not *which* phones were proposed. So its edit columns are a property of
+its lexicon or G2P against the corpus's transcription conventions, and its
+degradation shows up in MAE, F1 and the threshold accuracies instead. MFA is the
+exception, and instructively so: it carries pronunciation variants and chooses
+between them acoustically, which is why its `S` drifts (14.0 → 14.4 on Buckeye
+dev) as conditions worsen.
 
 ## Noise robustness
 
@@ -200,13 +233,12 @@ with `evals/gen_provenance.py`.
 | MAPS | (git) | `bf797f434b83` | 2026-02-23 |
 | MFA 2.0 | 2.0.6 | — | 2022-08-08 |
 | MFA 3.4 | 3.4.1 | — | 2026-07-11 |
-| Olign | v1.0.0 | — | 2026-08-17 (Beta) |
+| Olign | v1.0.0 | — | undisclosed |
 | Parakeet-TDT | 2.7.3 | — | 2026-04-23 |
 | Qwen3 | 0.0.6 | — | 2026-01-30 |
 | stable-ts | (git) | `e312072cc024` | — |
 | TorchAudio | 2.8.0 | — | 2025-08-06 |
 | WhisperX | 3.8.6 | — | 2026-05-25 |
-
 <!-- END GENERATED: provenance -->
 
 ### Training data and overlap

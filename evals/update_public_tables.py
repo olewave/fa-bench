@@ -71,7 +71,7 @@ END = "<!-- END GENERATED: {} -->"
 #: speaker-disjoint from anything it saw, which is the same standard every other
 #: row meets. Flagging it alongside MAPS put two different situations under one
 #: symbol.
-FLAGGED = {"maps": "⚠", "torchaudio_fa": "†"}
+FLAGGED = {"maps": "⚠"}
 
 #: What each flag means, appended under any generated table that carries it.
 #: The marker used to be explained only on the methodology page, so a reader on
@@ -79,12 +79,6 @@ FLAGGED = {"maps": "⚠", "torchaudio_fa": "†"}
 #: what it warned about. Emitted with the table rather than written into the
 #: page, so the note cannot outlive -- or go missing from -- the flag itself.
 FLAG_NOTE = {
-    "†": "† **TorchAudio's phone tier is withheld.** It is the only system handed "
-         "the reference phone sequence rather than deriving its own, so it cannot "
-         "substitute or insert a phone and its edit columns are not comparable "
-         "with the rest — see "
-         "[how each system's phones reach TIMIT-39](../README.md#how-each-systems-phones-reach-timit-39). "
-         "Its word tier is unaffected.",
     "⚠": "⚠ **MAPS** was trained on TIMIT and Buckeye, so it is scored on its "
          "own training data. Its row is not a held-out result — see "
          "[training data and overlap](../README.md#training-data-and-overlap).",
@@ -169,7 +163,12 @@ SUPPRESS_CONCISE = {"mfa2"}
 #: sequence removes an error source before timing is measured. Withheld until
 #: the adapter derives its own phones. The word tier is a separate code path and
 #: is unaffected.
-SUPPRESS_PHONE_TIER = {"torchaudio_fa"}
+#: Intentionally empty. TorchAudio sat here while it was aligning against the
+#: reference phone sequence, which made its S and I columns 0.0 by construction.
+#: It now derives its own sequence by eSpeak G2P from the transcript, so the tier
+#: is comparable and published. The mechanism stays for the next system that
+#: needs it.
+SUPPRESS_PHONE_TIER: set[str] = set()
 
 #: The fields a phone table reads. Blanking these at load is what withholds one
 #: TIER without touching the row's word columns -- every phone builder already
