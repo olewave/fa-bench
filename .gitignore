@@ -168,3 +168,5 @@ evals/aligners/olign/exps/
 # and the tables in summary/. Covers the whole tree, including the analysis
 # scripts that moved into fabench/analyze/.
 /research/
+# Local working notes, never published
+ATTN_Claude.txt
