@@ -1,0 +1,32 @@
+# evals/ — which systems the benchmark compares, by default.
+#
+# The counterpart to datasets/languages/<lang>/config.yaml: that file says which CORPORA
+# a default run covers, this one says which SYSTEMS. Each name resolves to
+# evals/<kind>/<tool>/config.yaml, which holds that tool's own definition
+# (version pin, params, adapter); nothing about a tool is restated here.
+#
+# WHY A DEFAULT LIST EXISTS. `fabench run` with no --config has to mean
+# something, and "compare nothing" is not it. Composing the list here keeps the
+# same rule every other subsystem follows -- the tree owns its defaults, a run
+# config states only what it CHANGES -- so a run config that names `aligners:`
+# replaces this list outright.
+#
+# WHAT IS ON BY DEFAULT. Only what a plain `uv pip install -e .` can actually
+# run: torchaudio_fa needs nothing beyond torch, which is already the core
+# install. Every other tool needs its own environment built first --
+#
+#     evals/aligners/mfa/download_and_install.sh
+#
+# -- so enabling one here by default would make the out-of-the-box command fail
+# with a missing-tool error on a machine that never asked for that tool. Enable
+# them as you install them, either here or in a run config.
+
+aligners:
+  - { name: torchaudio_fa, enabled: true }
+
+  # Installed separately; flip to true once download_and_install.sh has run.
+  - { name: mfa,           enabled: false }   # Montreal Forced Aligner (micromamba env)
+  - { name: charsiu,       enabled: false }   # frame-classification, own venv
+  - { name: bfa,           enabled: false }   # Bayesian FA, own venv
+  - { name: whisperx,      enabled: false }   # wav2vec2 alignment head, own venv
+  - { name: olign,         enabled: false }   # server-backed, needs a running endpoint

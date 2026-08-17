@@ -1,0 +1,36 @@
+# torchaudio forced alignment -- wav2vec2 CTC, the reference implementation.
+#
+# A real forced aligner: given the transcript, it runs CTC forced alignment with
+# a torchaudio bundle. Useful as the "plain wav2vec2 CTC" baseline against which
+# WhisperX (same family, different wrapper) and Charsiu can be read.
+#
+# PRIVATE venv, built by download_and_install.sh. It was the last tool importing
+# torch in-process, so the shared .venv carried a ~3 GB CUDA build for one
+# consumer and this tool's numbers moved with whatever that env resolved to.
+#
+# Emits BOTH word and phone tiers, so unlike WhisperX it appears in the phone
+# tables too.
+name: torchaudio_fa
+adapter: torchaudio_fa
+enabled: true
+# Mode A gives WORDS; the phone tier only exists in Mode B, where the gold
+# phone SEQUENCE is supplied and the aligner just places its boundaries.
+#
+# READ THE MODE-B ROW AS A DIFFERENT TASK. Every other phone row here is Mode A,
+# where the system derives phones from its own lexicon and can therefore
+# substitute or delete them. Mode B removes that entirely -- it is the cleanest
+# possible boundary measurement and is NOT comparable to a Mode A phone MAE.
+modes: [A, B]
+granularity: [word, phone]
+emits_confidence: true     # CTC frame posteriors
+params:
+  venv: venv
+  model: WAV2VEC2_ASR_BASE_960H
+  # PHONE tier requires a phoneme CTC model. Without `phoneme_model` the
+  # adapter raises ModeUnsupported for phones and the tool is word-only --
+  # which is why its first sweep produced phone=0/5 despite declaring
+  # granularity [word, phone]. espeak models emit IPA, which FA-Bench already
+  # maps through IPA_TO_39 (the same path BFA uses).
+  phoneme_model: facebook/wav2vec2-lv-60-espeak-cv-ft
+  phoneme_source: ipa
+  device: cuda

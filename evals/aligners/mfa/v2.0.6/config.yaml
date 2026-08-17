@@ -1,0 +1,37 @@
+# MFA 2.0.6 -- the pre-PostgreSQL 2.x line, entered alongside MFA 3.4 so the
+# 2.x-vs-3.x difference is measured rather than assumed.
+#
+# `name` is mfa2 (not mfa) so both versions can be scored into the same cell
+# without colliding: the hypothesis file is <name>__<corpus>.jsonl, and two
+# entries named `mfa` would overwrite each other.
+#
+# `version: "2.0"` selects the conda env through the adapter's version_envs
+# map. The default map only knows 3.4->mfa and 3.0->mfa30, so 2.0->mfa20 is
+# supplied here, along with the mamba_root holding that env -- 2.0.6 pins
+# python 3.9 and cannot live in the 3.4 root.
+#
+# CAVEAT for reading the numbers: this row uses the v2.0.0 english_us_arpa
+# acoustic model and dictionary, while the mfa (3.4) row uses v3.0.0. MFA ties
+# model format to the major version and its model server now serves only v3 by
+# that name, so the v2 files are fetched from the mfa-models GitHub release.
+# A gap between the two rows is therefore code AND model, not code alone.
+name: mfa2
+adapter: mfa
+enabled: true
+modes: [A]
+granularity: [word, phone]
+emits_confidence: false           # log-likelihood -> rank only, not per-boundary
+params:
+  version: "2.0"
+  version_envs:
+    "2.0": mfa20
+  mamba_root: repo/mamba
+  # MFA resolves `english_us_arpa` by NAME out of a PER-USER model store
+  # (~/Documents/MFA by default) that is NOT per conda env. Without this,
+  # 2.0.6 picks up whatever MFA 3.4 downloaded last -- observed: it loaded the
+  # v3 model, produced an empty word-boundary file, and returned 0 records
+  # WITHOUT reporting a model mismatch. This root holds the v2.0.0 models.
+  mfa_root: repo/mfa_root
+  dictionary: english_us_arpa
+  acoustic_model: english_us_arpa
+  # unadapted -- the published baseline uses no speaker adaptation

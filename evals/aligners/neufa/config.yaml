@@ -1,0 +1,45 @@
+# NeuFA -- Neural Network Based End-to-End Forced Alignment.
+# Li et al., ICASSP 2022 | github.com/thuhcsi/NeuFA
+#
+# A bidirectional attention model that aligns text and speech jointly, rather
+# than decoding a per-frame path. Text-driven (Mode A only): it runs its own
+# sequitur G2P over the transcript.
+#
+# NOT INSTALLED HERE, and disabled by default. NeuFA ships no released
+# checkpoint -- so unlike every other recipe, download_and_install.sh cannot
+# finish the job on its own. It builds the environment and clones the repo; you
+# supply neufa.pt and point params.model_path at it.
+#
+# CONTRIBUTIONS WELCOME, and this is the one aligner where a contributor can add
+# a whole row rather than a fix. Train on the corpora this benchmark already
+# defines splits for:
+#
+#     datasets/languages/en/timit/split/train.list      3,696 utts / 462 spk
+#     datasets/languages/en/buckeye/split/train.list   13,473 utts /  24 spk
+#
+# Those are the TRAIN splits, held out of every scored cell precisely so a
+# system may be trained on them without contaminating its own evaluation --
+# which is what the gold-prep recipe already does. Train there, drop the
+# checkpoint at repo/neufa.pt, flip `enabled` here, and NeuFA joins the
+# leaderboard on the same footing as everything else.
+#
+# One caveat to state in the PR: a system trained on these corpora is not
+# comparable to the pretrained ones without saying so. summary/README.md marks
+# MAPS (train = test) for exactly this,
+# and a NeuFA row would carry the same note.
+#
+# PRIVATE venv, like every other tool. The adapter used to put the NeuFA
+# checkout on FA-Bench's own sys.path and import its `inference` module
+# in-process -- it even had to check the import had not been shadowed -- while
+# taking torch from the shared .venv.
+name: neufa
+adapter: neufa
+enabled: false
+modes: [A]
+granularity: [word, phone]
+emits_confidence: false
+params:
+  venv: venv
+  repo_path: repo
+  # Supply this yourself: there is no published checkpoint.
+  model_path: repo/neufa.pt

@@ -1,0 +1,74 @@
+{
+ "bfa": {
+  "commit": null,
+  "display": "BFA",
+  "released": "2026-06-05",
+  "version": "1.1.5"
+ },
+ "charsiu": {
+  "commit": "13a69f2a22ca0c0962b75cc693399b0ae23a12c9",
+  "display": "Charsiu",
+  "released": "2022-09-18",
+  "version": "(git)"
+ },
+ "crisperwhisper_fa": {
+  "commit": null,
+  "display": "CrisperWhisper-FA",
+  "released": "2026-08-06",
+  "version": "2.0.2"
+ },
+ "maps": {
+  "commit": "bf797f434b83dcb49dac64d575211c4af1253e81",
+  "display": "MAPS",
+  "released": "2026-02-23",
+  "version": "(git)"
+ },
+ "mfa": {
+  "commit": null,
+  "display": "MFA 3.4",
+  "released": "2026-07-11",
+  "version": "3.4.1"
+ },
+ "mfa2": {
+  "commit": null,
+  "display": "MFA 2.0",
+  "released": "2022-08-08",
+  "version": "2.0.6"
+ },
+ "olign": {
+  "commit": "\u2014",
+  "display": "Olign",
+  "released": "undisclosed",
+  "version": "v1.0.0"
+ },
+ "parakeet_tdt": {
+  "commit": null,
+  "display": "Parakeet-TDT",
+  "released": "2026-04-23",
+  "version": "2.7.3"
+ },
+ "qwen3_fa": {
+  "commit": null,
+  "display": "Qwen3",
+  "released": "2026-01-30",
+  "version": "0.0.6"
+ },
+ "stable_ts": {
+  "commit": "e312072cc024ae9fceb25b057d7d18524873a02b",
+  "display": "stable-ts",
+  "released": null,
+  "version": "(git)"
+ },
+ "torchaudio_fa": {
+  "commit": null,
+  "display": "TorchAudio",
+  "released": "2025-08-06",
+  "version": "2.8.0"
+ },
+ "whisperx": {
+  "commit": null,
+  "display": "WhisperX",
+  "released": "2026-05-25",
+  "version": "3.8.6"
+ }
+}

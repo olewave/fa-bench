@@ -1,0 +1,20 @@
+# whisperx -- WORD-LEVEL ONLY. It emits no phone boundaries, so it appears in
+# the word tables and is absent from every phone table by construction, not by
+# omission.
+#
+# Installed in its OWN venv (evals/whisperx/venv), not the shared .venv: whisperx
+# pins transformers and torch, and putting it in the shared environment moved
+# transformers 5.14.1 -> 4.57.6 for Charsiu and BFA too. The adapter appends
+# this venv's site-packages to sys.path, so whisperx resolves here while torch
+# resolves to the shared env -- which requires BOTH be pinned to the same torch
+# (2.8.0+cu128, the build that matches this box's 12.9 driver).
+name: whisperx
+adapter: whisperx
+enabled: true
+modes: [A]                 # from text; no gold-phone mode
+granularity: [word]
+emits_confidence: true
+params:
+  venv: venv
+  model: WAV2VEC2_ASR_BASE_960H
+  device: cuda

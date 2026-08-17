@@ -1,0 +1,125 @@
+[project]
+name = "fabench"
+dynamic = ["version"]
+description = "English forced-alignment benchmark (v1): paired additive-noise degradation over TIMIT + Buckeye gold."
+requires-python = ">=3.10"
+license = "PolyForm-Noncommercial-1.0.0"
+authors = [{ name = "Olewave, LLC" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+# Core deps (aligner-specific extras installed on demand — see fabench/aligners/*).
+dependencies = [
+    "numpy",
+    "scipy",
+    "soundfile",
+    "pandas",
+    "pyarrow",        # parquet leaderboard/per-type outputs (pandas .to_parquet)
+    "pyyaml",
+    "praatio",
+    "tqdm",
+    "requests",
+    "grpcio>=1.82.1",
+    "grpcio-tools>=1.82.1",
+]
+
+[project.optional-dependencies]
+# NO torch extra. Every aligner now runs in its own interpreter, so nothing
+# FA-Bench imports needs torch, torchaudio, transformers or phonemizer -- each
+# tool's download_and_install.sh installs its own, pinned. This extra existed
+# for the adapters that used to import torch in-process (torchaudio_fa, then
+# bfa/neufa/whisperx); all of them moved out.
+#
+# The whisperx extra went with them: it installed whisperx HERE, which is what
+# dragged transformers and torch to its own pins under Charsiu and BFA. It now
+# lives in evals/aligners/whisperx/venv, built by that tool's own recipe.
+test = ["pytest"]
+# The ONE genuine exception to "no aligner dependency lives here". The MAPS
+# adapter builds a pronunciation dictionary from the corpus vocabulary before
+# MAPS runs, and does it IN THIS PROCESS -- MAPS itself never sees g2p_en, so
+# it is absent from the tool's requirements.txt and cannot be installed by its
+# recipe. It was therefore installed by hand once and declared nowhere: when
+# something later pruned it, `fabench run` reported "MAPS needs g2p_en",
+# exited 0, and left the previous hypotheses in place. Two published Buckeye
+# noise cells silently carried the CLEAN alignment as a result. Declared here
+# so a fresh clone gets it and a prune cannot take it back.
+maps = ["g2p-en"]
+
+[project.scripts]
+fabench = "fabench.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "fabench.__version__"}
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["fabench*"]
+# Tests live beside the code they cover (fabench/<module>/test/), which is
+# good for finding them and wrong for shipping them: exclude from wheels.
+exclude = ["fabench*.test", "fabench*.test.*"]
+
+# The noise recipe is shell + a vendored kaldi tree, and setuptools ships
+# NEITHER by default -- only .py inside a package. A wheel built without this
+# reported `.sh shipped: 0`: `pip install fabench` got utt2dur.py and
+# materialise.py but not the make_noisy.sh that calls them, and got the
+# vendored kaldi's .py while dropping its make_musan.sh. A half-installed
+# recipe that fails at run time, not install time.
+#
+# kaldi/steps/data has no __init__.py so its .py are DATA, not modules;
+# kaldi/steps/libs does have one and is found as a package, but its non-.py
+# files still need listing here.
+[tool.setuptools.package-data]
+# Ship in-package YAML (fabench/{noise,score}/config.yaml, normalize/en/
+# config.yaml, the vendored mfa_paper mapping files) with wheels, not just
+# editable installs.
+fabench = ["**/*.yaml"]
+"fabench.dataprep.noisemix" = [
+    "*.sh",
+    "kaldi/PROVENANCE.md",
+    "kaldi/steps/data/*.py",
+    "kaldi/steps/data/*.sh",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["fabench"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+# Vendored third-party trees. Linting them reported 11,423 findings against code
+# we are not allowed to modify -- Kaldi is Apache-2.0, the MFA paper's files are
+# MIT -- which buried the 256 findings in our own code and made `ruff check .`
+# useless as a signal. Each tool's `repo/` is its upstream checkout.
+extend-exclude = [
+    "tools/",
+    "fabench/dataprep/noisemix/kaldi/",
+    "fabench/score/mfa_paper/vendor/",
+    "evals/*/*/repo/",
+    "evals/*/*/venv/",
+    "**/*_pb2.py",
+    "**/*_pb2_grpc.py",
+]
+
+[tool.ruff.lint]
+# Two rules are switched off with reasons rather than annotated 30 times.
+ignore = [
+    # BLE001 blind-except (26 sites). Every adapter, processor and worker
+    # catches broadly on purpose: one tool's failure must not abort a sweep of
+    # eleven systems across twenty cells. The catches log to stderr and carry on.
+    #
+    # This is NOT cover for the known defect that `fabench run` exits 0 when a
+    # whole aligner fails (aligners/runner.py, the batch handler). That is an
+    # exit-code bug to fix in the runner, not something a linter can see.
+    "BLE001",
+    # B023 loop-variable capture (4 sites, all in update_public_tables). Each
+    # closure is built and consumed inside the same iteration, so late binding
+    # never occurs; ruff cannot prove it. Verified by reading all four.
+    "B023",
+]

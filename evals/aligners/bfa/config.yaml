@@ -1,0 +1,14 @@
+# BFA -- Bournemouth Forced Aligner (CUPE + CTC). Models auto-download from HF.
+name: bfa
+adapter: bfa
+enabled: true
+modes: [A]
+granularity: [phone]
+params:
+  # Its own interpreter. repo/env is the environment
+  # download_and_install.sh already builds -- bfa plus torch -- so the
+  # worker runs there instead of importing torch from the shared .venv.
+  venv: repo/env
+  preset: en-us
+  python: repo/env/bin/python
+  device: cuda

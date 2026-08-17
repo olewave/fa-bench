@@ -1,0 +1,55 @@
+# GitLab CI — the merge gate for FA-Bench.
+#
+# Runs the test suite on every merge request and on the default branch. To make
+# it BLOCK merges (only code that passes can be merged), a maintainer must enable
+#   Settings > Merge requests > "Pipelines must succeed"
+# in the GitLab project (a project setting, not something the repo can enforce).
+# A CI runner must be available to the project for pipelines to execute.
+
+default:
+  image: python:3.12
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_ROOT_USER_ACTION: "ignore"
+
+# Create ONE pipeline per change: a merge-request pipeline when an MR is open,
+# otherwise a branch pipeline only on the default branch (avoids duplicates).
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+stages:
+  - test
+
+# The gate: the full pytest suite. Optional-dependency / staged-data / external
+# tests self-skip (importorskip + skipif), so this is green on a clean runner
+# with no GPU, aligner models, corpora, or micromamba env.
+test:
+  stage: test
+  before_script:
+    - python -m pip install -e ".[test]"
+  script:
+    - python -m pytest -q
+
+# End-to-end gate: the synthetic-oracle selftest builds known-answer gold/hyp
+# pairs and drives every metric family through the real pipeline. Needs no
+# corpora, models, or GPU — it fails only if scoring itself regresses.
+selftest:
+  stage: test
+  needs: []
+  before_script:
+    - python -m pip install -e .
+  script:
+    - python -m fabench selftest
+
+# Style check — advisory (does not block merges).
+lint:
+  stage: test
+  needs: []
+  allow_failure: true
+  before_script:
+    - python -m pip install ruff
+  script:
+    - ruff check .

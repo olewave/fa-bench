@@ -1,0 +1,13 @@
+# MFA 3.4 -- exact params for the FA-Bench aligner registry.
+# Environment built by ./download_and_install.sh into evals/mfa/repo/.
+name: mfa
+adapter: mfa
+enabled: true
+modes: [A]
+granularity: [word, phone]
+params:
+  version: "3.4"                        # selects the micromamba env named 'mfa'
+  mamba_root: repo/mamba         # non-default: env lives under evals/
+  dictionary: english_us_arpa
+  acoustic_model: english_us_arpa
+  # unadapted -- the published baseline uses no speaker adaptation

@@ -1,0 +1,39 @@
+# NVIDIA Parakeet-TDT 0.6B v3 -- ASR WITH WORD TIMESTAMPS, not a forced aligner.
+# https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+#
+# TDT = Token-and-Duration Transducer: it predicts token DURATIONS, so word
+# timestamps are intrinsic to decoding rather than estimated afterwards. This is
+# also the ASR in olign's long-form pipeline, which makes it the operationally
+# relevant row.
+#
+# It IGNORES the reference transcript and decodes its own. Its rows therefore
+# mix recognition error with timing error: misrecognised words leave the matched
+# path and depress recall rather than worsening MAE. Read B-F1 (label-agnostic)
+# as the primary metric here, MAE as secondary -- the inverse of the aligner
+# tables -- and do NOT rank it head-to-head against MFA/olign/qwen3_fa.
+#
+# Word-level only; absent from phone tables by construction.
+# Runs in its own interpreter (see fabench/timestamp_asrs/subprocess_asr.py).
+name: parakeet_tdt
+adapter: parakeet_tdt
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  # Tool-local venv, built by download_and_install.sh. Pin trap to know about:
+  # a naive `pip install nemo_toolkit[asr]` can fail on the
+  # librosa -> numba -> llvmlite resolution chain; pin a numba/llvmlite pair
+  # that matches your Python before installing NeMo. Known-good combination:
+  # nemo 2.7.3 + torch 2.11.0+cu128. NOT vLLM -- NeMo runs the model directly.
+  venv: evals/timestamp_asrs/parakeet_tdt/venv
+  # Explicit so subprocess_aligner never has to locate worker.py by searching
+  # up from the venv (that search breaks whenever the venv lives elsewhere).
+  worker: worker.py
+  model: nvidia/parakeet-tdt-0.6b-v3
+  timeout_s: 14400
+  # NeMo breaks if LD_LIBRARY_PATH leaks in from the caller; olign runs it as
+  # `env -u LD_LIBRARY_PATH`. HF_HOME must be writable for model caching.
+  env:
+    LD_LIBRARY_PATH: null
+    HF_HOME: /ndata/hf

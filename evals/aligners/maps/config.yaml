@@ -1,0 +1,17 @@
+# MAPS -- Mason-Alberta Phonetic Segmentor, TensorFlow, phone-level.
+# LEAKAGE: models are 'timbuck' = TIMIT + Buckeye. Trained on both benchmark
+# corpora; every number is train=test here and must be reported as such.
+name: maps
+adapter: maps
+enabled: true
+modes: [A]
+granularity: [phone]
+params:
+  repo_path: repo/MAPS
+  python: repo/env/bin/python
+  # top-level timbuck_eng.tf is a SavedModel DIRECTORY (saved_model.pb +
+  # variables/), and is the adapter default -- this is what the original run used.
+  # ensemble_model/timbuck_eng_{1..10}.tf are the 10 individual members;
+  # selecting one of those would NOT reproduce the published number.
+  model: repo/MAPS/timbuck_eng.tf
+  device: cuda

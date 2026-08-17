@@ -1,0 +1,24 @@
+# Buckeye — canonical dataset config. load_config() merges this file in as
+# the DEFAULTS for datasets.gold.buckeye; a run config's entry overrides it
+# per key. See datasets/en/timit/config.yaml for the full pattern.
+
+enabled: false
+
+# Root containing sNN/ speaker dirs with .phones/.words/.wav. Registration-
+# gated (buckeyecorpus.osu.edu): staged by the user, never fetched — ingest
+# fails loud with acquisition instructions when unset. evals runs inject it
+# from FABENCH_BUCKEYE_ROOT.
+root: null
+
+# Split membership comes from split/<subset>.list (speaker-stratified on the
+# corpus's own sex x age design; see split/ and datasets/en/buckeye/speakers.tsv).
+subset: dev              # dev | test | train
+
+# Segmentation protocol: "paper" = split at >=300ms silence, pad +/-200ms,
+# drop utts with <=3 words or unknown/cutoff/excised words (arXiv:2606.18466).
+# "fabench" = native split-at-every-break.
+protocol: paper          # paper | fabench
+
+# How a staged copy is recognised, for `fabench init`: the sNN/ speaker dirs,
+# at the root or one level down (the corpus ships as nested zips).
+root_markers: ["s[0-9][0-9]", "*/s[0-9][0-9]", "*.phones", "*/*/*.phones"]

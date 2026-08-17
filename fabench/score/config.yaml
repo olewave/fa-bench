@@ -1,0 +1,81 @@
+# Scoring defaults (Plan Section 5) — canonical config, living beside the
+# scoring engine that consumes it. load_config() merges this under `scoring:`
+# (per key; one level into `mfa_paper`); the run config wins, so a run
+# overrides only what it changes (e.g. `scoring: { protocol: mfa_paper }` or
+# `scoring: { boundary_unit: word }`).
+
+# "fabench" (default) = the general-purpose, aligner-agnostic matcher/manner_match
+# machinery below — works for every aligner incl. torchaudio_fa/whisperx, which
+# have no equivalent in the paper's own benchmark repo. "mfa_paper" = bridges to
+# MFA's real evaluation code (kalpy.evaluation.align_phones, subprocess into the
+# `mfa` 3.4 micromamba env — verified `mfa30`'s kalpy build lacks this module
+# entirely) plus a Python port of that repo's data_prep.R manner-category filter,
+# for exact Table 5 reproduction. See fabench/score/mfa_paper/.
+protocol: fabench            # fabench | mfa_paper
+
+mfa_paper:
+  # Machine-specific; null -> the FABENCH_MICROMAMBA / FABENCH_MAMBA_ROOT
+  # env vars, falling back to ~/micromamba.
+  micromamba: null
+  mamba_root: null
+  env: mfa                   # MUST be mfa (3.4) — mfa30's kalpy has no .evaluation
+  mapping_dir: null          # null -> vendored fabench/score/mfa_paper/vendor/mapping_files
+  aligner_key: {mfa: arpa, charsiu: charsiu, maps: maps, bfa: bournemouth}
+  silence_phones: [sil]      # matches MFA's own PhoneType.silence for english_us_arpa
+  apply_manner_filter: true  # the ported data_prep.R second-stage filter
+  # Paper footnote: BFA emits both onset and offset boundaries per phone, and
+  # the inter-phone gaps are a CTC-alignment artifact, not real boundaries — use
+  # only the onset. Verified on staged data: BFA has a real timing gap between
+  # ~78% of consecutive phones, plus an explicit "-" placeholder on ~3.4% of
+  # them. fabench/score/mfa_paper/cell.py::make_onset_only() drops the "-"
+  # placeholder and stretches each phone's end to the next one's start.
+  onset_only_aligners: [bfa]
+  # Ablation-only knobs — both default false (= kalpy's own native behavior,
+  # matching Table 5). kalpy's align_phones hardcodes two exclusions we don't
+  # otherwise control: (a) a boundary right after an insertion/deletion is
+  # dropped entirely, and (b) the very first boundary of an utterance is never
+  # scored, structurally (regardless of whether that first step is itself a
+  # gap). These flags reconstruct each independently from the full alignment
+  # path (fabench/score/mfa_paper/cell.py::extract_boundary_errors) so their
+  # individual contribution can be measured rather than assumed. On real
+  # TIMIT/MFA data the two often coincide (gold's leading/trailing recording
+  # silence has no aligner counterpart, so it's *both* the first step *and* a
+  # deletion) — but they are independent conditions in kalpy's own code, and
+  # for other aligner/corpus pairs may not coincide the same way.
+  include_utterance_edge_boundaries: false
+  include_gap_adjacent_boundaries: false
+
+# Tolerance-accuracy thresholds reported in the tables (TA@10/50/100 ms).
+# The MFA-2026 paper's Table 5 uses 10/25/50; set that per run when
+# reproducing it exactly.
+ta_thresholds_ms: [10, 50, 100]
+primary_tolerance_ms: 25     # used for the CI, per-type, and calibration within-tau
+bootstrap_iters: 1000
+bootstrap_ci: 0.95
+min_matched_per_cell: 30     # cells below this flagged underpowered (5.9)
+
+# matched-set alignment: "levenshtein" (label-only NW, default/headline) or
+# "boundary_distance" (paper's modified Levenshtein — cost also rewards
+# time-close boundaries; weight = matcher_lambda). Ablation (experiment_settings.md)
+# shows boundary_distance only redistributes error, so we keep levenshtein.
+matcher: levenshtein
+matcher_lambda: 2.0          # boundary-distance weight (only used by boundary_distance)
+
+# Paper protocol: score boundary error on aligned pairs (incl. substitutions)
+# and exclude those whose manner classes differ (arXiv:2606.18466). ARR/Ins
+# keep the full label-matched set. Set false for exact-label matching only.
+manner_match: true
+
+# SUPERSEDED first-pass approximation (kept for ablation/comparison, not exact
+# reproduction — see `protocol: mfa_paper` above for the real mechanism). This
+# flag was fabench's own guess, from the paper's *text alone*, at why sharp
+# aligners ran ~4ms high: excluding all silence-adjacent boundaries reconciled
+# TIMIT numerically (MFA 16.1->12.0 vs 12.11) but was never the actual
+# mechanism. Reading MFA's real evaluation code (kalpy.evaluation.align_phones)
+# directly shows the true drivers are (a) a boundary is dropped from the tally
+# whenever it's adjacent to an insertion/deletion — not because it touches
+# silence — and (b) a separate, paper-specific manner-category-agreement filter
+# (ported in fabench/score/mfa_paper/). Silence is NOT excluded by label in
+# either mechanism. Retained here, off by default, as a documented "what our
+# best independent guess got vs. the real mechanism" comparison.
+exclude_silence_boundaries: false

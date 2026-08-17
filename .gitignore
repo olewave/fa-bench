@@ -1,0 +1,170 @@
+# Environments
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Data & outputs (never committed — corpora are licensed/restricted)
+/data/
+
+# summary/ is SCRIPT OUTPUT, all of it. Every leaderboard, report and parquet in
+# there is rewritten by the next rescore, so tracking it meant a routine
+# `rescore_all.sh` produced eighty modified files that said nothing about intent.
+#
+# What gets PUBLISHED is a deliberate act instead: evals/publish_records.py
+# writes a dated snapshot to records/aligners/en/<YYYYMM>/ and repoints `latest`.
+# A reader lands on something fixed, and a citation can name the month.
+/summary/
+/scratch/
+*.wav
+*.flac
+*.parquet
+*.TextGrid
+
+# Caches
+.cache/
+.mypy_cache/
+.ruff_cache/
+
+# Allow small test fixtures (tiny synthetic files) to be tracked
+!fabench/**/test/fixtures/**
+
+# Machine-specific staged-data config (real corpus paths). configs/ itself is
+# gone -- roots live in .fabench.env now -- but the rule stays so an old
+# checkout's file, or a hand-made variant put there out of habit, cannot be
+# committed with a licensed path in it.
+configs/
+
+# per-aligner checkouts + venvs (large, rebuildable from evals/*/download_and_install.sh)
+#
+# ** rather than a fixed depth: a nested recipe puts its environment deeper
+# (evals/aligners/mfa/v2.0.6/repo/ is four levels, not three), and the fixed
+# pattern left 5 GB of micromamba env untracked-but-committable -- one
+# `git add -A` from entering the history.
+evals/**/repo/
+evals/**/venv/
+
+# Run artefacts. Logs and per-cell configs live WITH their tool
+# (evals/<kind>/<tool>/{log,configs}/, including nested recipes at
+# <tool>/exps/<name>/ and <tool>/v<version>/); evals/log/ and evals/configs/
+# hold the cross-tool orchestration logs and scoring configs, which span every
+# tool by definition. Every one is regenerated from evals/<kind>/<tool>/
+# config.yaml by the next run, so none is worth tracking.
+#
+evals/*/*/log/
+evals/**/log/
+evals/log/
+evals/**/configs/
+
+# Generated per-cell configs, which now sit IN the cell as config.yaml. They
+# carry absolute machine paths INCLUDING the staged licensed corpus root, so
+# this must fail CLOSED: ignore every config.yaml under evals/, then re-admit
+# exactly the tracked ones. That allow-list mirrors fabench/paths.py::
+# _TOOL_GLOBS, which is the definition of "a recipe" -- if a new recipe shape
+# is added there, it needs a line here too.
+evals/**/config.yaml
+!/evals/config.yaml
+!/evals/*/*/config.yaml
+!/evals/*/*/exps/*/config.yaml
+!/evals/*/*/v*/config.yaml
+
+# setuptools build artefacts (a stale one silently poisoned a wheel check)
+build/
+*.egg-info/
+
+# path.sh drops these in $PWD; make_noisy.py cds first, but be safe
+/steps
+
+# Gold references materialised by dataprep/datasets/export_refs.py.
+# These are TIMIT .PHN / Buckeye .phones reformatted -- the LICENSED
+# annotation itself. LDC and OSU both forbid redistribution, so the
+# files live in-repo for locality but must never enter the history.
+#
+# ** rather than a fixed depth. The pattern was datasets/*/*/split/, which
+# matched datasets/en/timit/split/ exactly; moving the tree to
+# datasets/languages/en/timit/split/ added one level and the rule stopped
+# matching, leaving 14 MB of licensed transcripts stageable with no warning.
+# A depth-counted ignore fails OPEN, which is the wrong direction for this
+# particular file.
+datasets/**/split/*.ref.jsonl
+datasets/**/split/*.ref.json
+
+# mkdocs local build output
+/site/
+
+# Aligner hypothesis outputs embed the licensed corpora's transcripts
+# (word labels = the TIMIT/Buckeye text; LDC and OSU forbid redistribution).
+# Same rule as the gold refs above: local artifacts, never in history.
+hyp/
+hyp.jsonl
+
+# Logs and server-ops artifacts are machine-local, never tracked. The olign
+# server scripts operate a proprietary binary that is not part of this repo
+# (the public posture is interface-only: the adapter + a reachable endpoint).
+install.log
+*.pid
+fabench/dataprep/noisemix/*.log
+evals/aligners/olign/run/
+evals/aligners/olign/start_server.sh
+evals/aligners/olign/stop_server.sh
+
+# A tool's entire per-language output tree:
+#   evals/<kind>/<tool>/<lang>/<corpus>/<subset>/<condition>/
+# ALL of it is derived -- the config generated from the recipe, the alignment
+# from a run, the scores from that alignment in seconds -- and hyp.jsonl carries
+# the licensed transcripts besides. One rule for the subtree, so anything a
+# future stage drops in a cell is covered without a new pattern.
+#
+# One line per language (`en` is the only one today) rather than a glob like
+# [a-z][a-z]/, which would match far more by accident.
+#
+# POSITIONAL, not by name. `evals/**/en/` would have matched ANY directory
+# called `en` under evals/ -- including the five gettext catalogues in the MFA
+# conda envs (evals/aligners/mfa/repo/mamba/envs/mfa/share/locale/en and four
+# siblings). Those are already excluded by evals/**/repo/ above, so the effect
+# was invisible, but the rule would have reached a locale `en/` sitting outside
+# a repo/ or venv/ tree. A tool's output can only appear at the three recipe
+# shapes below, so name them: same list as fabench/paths.py::_TOOL_GLOBS, which
+# is the definition of "a recipe" -- add a line here when one is added there.
+evals/*/*/en/
+evals/*/*/exps/*/en/
+evals/*/*/v*/en/
+
+# A cell's output: the alignment AND its scores, in one directory
+#   evals/<kind>/<tool>/<lang>/<corpus>/<subset>/<condition>/
+# All of it is derived -- hyp from a run, scores from that hyp in seconds --
+# and hyp.jsonl carries the licensed transcripts besides.
+#
+# The .csv rule is the one that is easy to miss: these used to sit under
+# evals/**/exp/, so moving them beside the hyp exposed 41 leaderboards that had
+# been covered only by the old path. (*.parquet is already ignored globally.)
+evals/**/*.csv
+evals/**/exp/
+# (evals/**/exp/ kept for older checkouts; not to be confused with
+# <tool>/exps/, the tracked experiment CONFIGS.)
+
+# Experiment configs under <tool>/exps/ are TRACKED on purpose: evals/ exists
+# to record what was run with which parameters, and an ablation's config is
+# exactly that record. Only its outputs (hyp/, log/, venv/) are ignored, by
+# the rules above.
+#
+# EXCEPT a closed system's, where the record is not ours to publish. These
+# configs differ from one another only in `name:` and a localhost port -- the
+# variation is server-side, in a binary that is not in this repo -- so tracking
+# them adds nothing a reader can reproduce, while the directory names disclose
+# the tunable axes of a system whose design is undisclosed. The published row is
+# the shipped configuration; the sweep belongs with the system it belongs to.
+evals/aligners/olign/exps/
+
+# This machine's settings (FABENCH_*). The tracked template is
+# .fabench.env.example; the live file names real paths and is local.
+.fabench.env
+
+# Working research: plans, findings, and exploratory notes. Not part of the
+# distribution -- the reviewed, published tier is the READMEs beside the code
+# and the tables in summary/. Covers the whole tree, including the analysis
+# scripts that moved into fabench/analyze/.
+/research/
