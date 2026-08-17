@@ -35,14 +35,14 @@ too. Everything is seeded, flag-gated, and reproducible from a single command.
 **12 systems scored:**
 [BFA](https://github.com/tabahi/bournemouth-forced-aligner) ·
 [Charsiu](https://github.com/lingjzhu/charsiu) ·
-[CrisperWhisper (FA)](https://github.com/nyrahealth/CrisperWhisper) ·
+[CrisperWhisper-FA](https://github.com/nyrahealth/CrisperWhisper) ·
 [MAPS](https://github.com/MasonPhonLab/MAPS) ·
 [Montreal-Forced-Aligner (MFA)](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner) ·
 [Olign](https://www.olewave.com) ·
 [Parakeet-TDT](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) ·
 [Qwen3-ForcedAligner](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B) ·
 [stable-ts](https://github.com/jianfch/stable-ts) ·
-[TorchAudio (FA)](https://github.com/pytorch/audio) ·
+[TorchAudio-FA](https://github.com/pytorch/audio) ·
 [WhisperX](https://github.com/m-bain/whisperx)
 
 **Latest Results:** [TIMIT (read US English)](records/aligners/en/202608/timit/README.md) ·
