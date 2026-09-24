@@ -417,14 +417,22 @@ def labelled_f1_by_category(
     return res
 
 
-def _context_flags(words, matched, units):
+def _context_flags(words, matched, units, unit_matched=None):
     """The units a context-grouped metric takes its boundaries from, and per
     unit whether it counts as matched. On the word tier the units are the
-    words and the flag is the word's own. On the phone tier the flag is that
-    of the word holding the phone's midpoint, and a phone inside no word, a
-    pause, counts as silence, which matches."""
+    words and the flag is the word's own. On the phone tier the flag is the
+    phone's own when ``unit_matched`` is given, the set of unit indices the
+    phone alignment matched, which is the rule the word tier already applies
+    and the one the paper states. Without it the flag is that of the word
+    holding the phone's midpoint, and a phone inside no word, a pause, counts
+    as silence, which matches. That inherited mode is kept for callers that
+    want the transcript's classes on phone boundaries; on Track 1 it marks
+    every phone matched and the class view collapses to a time-only match."""
     if units is None:
         return words, [i in matched for i in range(len(words))]
+    if unit_matched is not None:
+        um = set(unit_matched)
+        return units, [i in um for i in range(len(units))]
     out = []
     for u in units:
         mid = (float(u.start) + float(u.end)) / 2
@@ -480,6 +488,7 @@ def _ctx_times(units, fl):
 def f1_by_word_context(
     gold_words, hyp_words, matched_word_pairs, gold_units=None, hyp_units=None,
     tols_s=SWEEP_TOL_S, gold_matched=None,
+    gold_unit_matched=None, hyp_unit_matched=None,
 ) -> dict[str, dict]:
     """Boundary F1 by recognition context, the classes fixed by the WORD
     alignment so every system scored on the same transcript sees the same
@@ -498,10 +507,15 @@ def f1_by_word_context(
     finds the start of speech need not find the end of it, and an average over
     both hides which one it missed.
 
-    THE PHONE TIER INHERITS THE WORDS' CLASSES. With ``gold_units`` and
-    ``hyp_units`` given, the boundaries scored are those units' boundaries,
-    each unit taking the match status of the word that contains its midpoint,
-    and a unit inside no word, a pause, counting as silence.
+    THE PHONE TIER IS CLASSED BY ITS OWN LABELS. With ``gold_units`` and
+    ``hyp_units`` given, the boundaries scored are those units' boundaries.
+    With ``gold_unit_matched`` and ``hyp_unit_matched`` also given, the sets
+    of unit indices the phone alignment label-matched, each unit's flag is its
+    own, so a phone the system named wrongly unmatches the boundaries beside
+    it exactly as a misrecognized word does on the word tier. This is what
+    the scorer passes. Without those sets each unit inherits the match status
+    of the word containing its midpoint, a unit inside no word counting as
+    silence, which on a given transcript marks every phone matched.
 
     HITS ARE BY TIME, WITHIN THE CLASS. The reference and recognized times of
     a class are paired one-to-one within the tolerance, closest first, as
@@ -536,8 +550,8 @@ def f1_by_word_context(
     """
     g_matched = set(gold_matched) if gold_matched is not None else {gi for gi, _ in matched_word_pairs}
     h_matched = {hj for _, hj in matched_word_pairs}
-    gu, gf = _context_flags(gold_words, g_matched, gold_units)
-    hu, hf = _context_flags(hyp_words, h_matched, hyp_units)
+    gu, gf = _context_flags(gold_words, g_matched, gold_units, gold_unit_matched)
+    hu, hf = _context_flags(hyp_words, h_matched, hyp_units, hyp_unit_matched)
     gb, hb = _ctx_times(gu, gf), _ctx_times(hu, hf)
 
     def entry(keep):
@@ -557,7 +571,7 @@ def f1_by_word_context(
 
 def mae_by_word_context(
     gold_words, hyp_words, matched_word_pairs, aligned_pairs,
-    gold_units=None, hyp_units=None, gold_matched=None,
+    gold_units=None, hyp_units=None, gold_matched=None, gold_unit_matched=None,
 ) -> dict[str, dict]:
     """Boundary MAE in the classes of `f1_by_word_context`, on the same
     reference classing, the pairs taken from the alignment rather than by time.
@@ -583,7 +597,7 @@ def mae_by_word_context(
     being the alignment's either way.
     """
     g_matched = set(gold_matched) if gold_matched is not None else {gi for gi, _ in matched_word_pairs}
-    gu, gf = _context_flags(gold_words, g_matched, gold_units)
+    gu, gf = _context_flags(gold_words, g_matched, gold_units, gold_unit_matched)
     hu = hyp_words if hyp_units is None else hyp_units
     n = len(gu)
     res = {k: {"n": 0, "sum_abs": 0.0} for k in CTX_CLASSES}

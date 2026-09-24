@@ -1960,7 +1960,7 @@ CTX_HEAD = {"int_both": _M(2, "I"), "int_one": _M(1, "I"),
             "start_ok": _M(1, "B"), "end_ok": _M(1, "E"), "rest": _M(0)}
 
 
-def _ctx_share(m, kind, rows, cell, tier):
+def _ctx_share(m, kind, rows, cell, tier, idx=0):
     """Share of reference boundaries per class for one track and cell, and
     whether every row of it agrees. A Track 1 row is handed the reference, so
     the split is the corpus's own and every row shows the same one; a Track 2
@@ -1973,7 +1973,7 @@ def _ctx_share(m, kind, rows, cell, tier):
         got = {}
         for c in CTX_COLS:
             v = collect(kind, f"n_{pre}_gold_{c}").get(t, {}).get(cell)
-            got[c] = (v[0] if v else 0.0) or 0.0
+            got[c] = (v[idx] if v else 0.0) or 0.0
             tot += got[c]
         if tot:
             per[t] = {c: 100.0 * got[c] / tot for c in CTX_COLS}
@@ -1986,7 +1986,7 @@ def _ctx_share(m, kind, rows, cell, tier):
 
 
 def class_table(m, tier: str = "word") -> str:
-    """Table 3: boundary $F_1$ by recognition class, clean audio only.
+    """Table 3: boundary $F_1$ by recognition class, Buckeye test clean and noisy.
 
     Tables 1 and 2 give one number per system per cell, which says how well a
     system did and not where it failed. This one splits that number by what
@@ -2009,7 +2009,15 @@ def class_table(m, tier: str = "word") -> str:
     f1 = {k: {"timestamp_asrs": collect("timestamp_asrs", f"{pre}_f1_{k}_20ms")}
           for k in CTX_COLS}
 
-    ncol = len(CTX_COLS) * len(PAPER_CELLS)
+    # ONE CORPUS, CLEAN AND NOISY. The ASR paragraph argues that noise
+    # raises WER and moves boundaries into M1_I, and that is read here
+    # between two columns of one corpus rather than across two corpora, which
+    # would confound the condition with the corpus. Buckeye, because it is
+    # where recognition errs enough for the move to show. idx 0 is clean and
+    # 1 is the mean of the four degradations, as collect() returns them.
+    T3 = [(("buckeye", "test"), 0, "Buckeye test clean"),
+          (("buckeye", "test"), 1, "Buckeye test noisy")]
+    ncol = len(CTX_COLS) * len(T3)
     # A family column, as Tables 1 and 2 carry, so the Open rows and the API
     # rows are separated here too rather than only by where they sit.
     # Grid comes here from Tables 1 and 2, where it cost width four times
@@ -2018,15 +2026,15 @@ def class_table(m, tier: str = "word") -> str:
     # column. The supplement lists every system, Track 1 included.
     lead = 3
     L = [r"\begin{tabular*}{\columnwidth}{@{}l@{\hspace{2pt}}lc@{\extracolsep{\fill}}"
-         + ("r" * len(CTX_COLS) + "|") * (len(PAPER_CELLS) - 1)
+         + ("r" * len(CTX_COLS) + "|") * (len(T3) - 1)
          + "r" * len(CTX_COLS) + "@{}}", r"\toprule",
          "& " * lead + " & ".join(r"\multicolumn{" + str(len(CTX_COLS)) + "}{c}{"
-                                  + CELL_LABEL[c] + "}" for c in PAPER_CELLS) + r"\\",
+                                  + lab + "}" for _, _, lab in T3) + r"\\",
          "".join(r"\cmidrule(lr){" + f"{1+lead+len(CTX_COLS)*i}-{lead+len(CTX_COLS)*(i+1)}" + "}"
-                 for i in range(len(PAPER_CELLS))),
+                 for i in range(len(T3))),
          "& & " + r"\scalebox{0.8}[1]{Grid}" + " & "
          + " & ".join(" & ".join(CTX_HEAD[c] for c in CTX_COLS)
-                      for _ in PAPER_CELLS) + r"\\",
+                      for _ in T3) + r"\\",
          r"\midrule"]
 
     # The reference counts decide whether a cell exists at all, and they are
@@ -2039,12 +2047,12 @@ def class_table(m, tier: str = "word") -> str:
         out = ([r"\multicolumn{" + str(ncol + 2) + r"}{@{}l}{" + heading + r"}\\"]
                if heading else [])
         sh, same = {}, {}
-        for cell in PAPER_CELLS:
-            sh[cell], same[cell] = _ctx_share(m, kind, rs, cell, tier)
+        for j, (cell, idx, _) in enumerate(T3):
+            sh[j], same[j] = _ctx_share(m, kind, rs, cell, tier, idx)
         if any(sh.values()):
             cells = []
-            for cell in PAPER_CELLS:
-                v = sh[cell]
+            for j in range(len(T3)):
+                v = sh[j]
                 cells += ["--" if not v or v[c] < 0.05 else f"{v[c]:.1f}" for c in CTX_COLS]
             # A rule under the shares, because they are a property of the
             # corpus and the transcript rather than a system's score, and
@@ -2055,11 +2063,11 @@ def class_table(m, tier: str = "word") -> str:
         for r in rs:
             t = r[3]
             row = []
-            for cell in PAPER_CELLS:
+            for cell, idx, _ in T3:
                 for c in CTX_COLS:
                     v = f1[c][kind].get(t, {}).get(cell)
                     n = gold_n[c][kind].get(t, {}).get(cell)
-                    row.append(v[0] if (v and n and n[0]) else None)
+                    row.append(v[idx] if (v and n and n[idx]) else None)
             vals.append((t, row))
         # Best in each column, so a reader can find the winner of a category
         # without reading the column twice. Judged on the PRINTED value, two
@@ -2067,7 +2075,7 @@ def class_table(m, tier: str = "word") -> str:
         # read as a typesetting fault rather than as a third decimal.
         r2 = lambda v: None if v is None else round(v, 2)
         best = []
-        for j in range(len(PAPER_CELLS) * len(CTX_COLS)):
+        for j in range(len(T3) * len(CTX_COLS)):
             col = [r2(row[j]) for _, row in vals if row[j] is not None]
             best.append(max(col) if col else None)
         # Runs of one family, tagged once on the run's first row.
@@ -2114,7 +2122,8 @@ def class_table(m, tier: str = "word") -> str:
         r"\setlength{\aboverulesep}{" + RULE_ABOVE + "}"
         r"\setlength{\belowrulesep}{" + RULE_BELOW + "}",
         r"\caption{\small The $F_1$s at 20\,ms of different types of word-tier "
-        r"boundaries on clean audio of Track~2. "
+        r"boundaries of Track~2 on Buckeye test, on clean audio and under "
+        r"degradation, \emph{noisy} being the mean of the four. "
         r"A boundary inside ($I$) an utterance has two adjacent "
         r"words. We use $\mathrm{M2}_{I}$ to denote both words are matched "
         r"and $\mathrm{M1}_{I}$ to denote one label is matched, where M "
