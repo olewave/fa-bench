@@ -62,8 +62,6 @@ PATH_PARAMS = frozenset({
     "micromamba", "mfa_root",
 })
 sys.path.insert(0, str(ROOT))
-from fabench.paths import cell_dir, tool_dir
-
 # .fabench.env FIRST, or the roots below read as None. Every other entry point
 # loads it -- fabench.cli does, cloud_check does -- and this one did not, so
 # running it from a shell that had not sourced the file wrote `root: null`
@@ -73,7 +71,8 @@ from fabench.paths import cell_dir, tool_dir
 # cell then runs, exits 0 and writes a full hyp file whose alignments are the
 # clean ones under a noise label. That is gate#9's founding bug, and it
 # happened again here on 2026-09-17 for four Azure cells.
-from fabench.envfile import load_env_file  # noqa: E402
+from fabench.envfile import load_env_file
+from fabench.paths import cell_dir, tool_dir
 
 load_env_file()
 

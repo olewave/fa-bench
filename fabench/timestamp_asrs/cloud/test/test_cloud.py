@@ -237,8 +237,9 @@ def test_transcript_is_ignored(audio, tmp_path, monkeypatch):
 
 # -------------------------------------------------------------------- http
 def test_retries_then_succeeds(monkeypatch):
-    from fabench.timestamp_asrs.cloud import http as H
     import urllib.error
+
+    from fabench.timestamp_asrs.cloud import http as H
 
     n = {"i": 0}
 
@@ -271,8 +272,9 @@ def test_a_retry_is_signed_again(monkeypatch):
     first Transcribe sweep lost four items to it, reported as
     InvalidSignatureException and RequestTimeTooSkewed.
     """
-    from fabench.timestamp_asrs.cloud import http as H
     import urllib.error
+
+    from fabench.timestamp_asrs.cloud import http as H
 
     n = {"i": 0}
     sent = []
@@ -322,8 +324,9 @@ def test_a_dict_of_headers_still_works(monkeypatch):
 
 
 def test_does_not_retry_a_bad_key(monkeypatch):
-    from fabench.timestamp_asrs.cloud import http as H
     import urllib.error
+
+    from fabench.timestamp_asrs.cloud import http as H
 
     n = {"i": 0}
 
@@ -355,8 +358,6 @@ def test_behaviour_options_reach_the_call_but_not_the_cache_key(audio, tmp_path,
     It was in neither set once: the recipe declared it, the provider defaulted
     it, and nothing connected the two.
     """
-    seen = {}
-
     def fake(url, **kw):
         if url.endswith("/upload"):
             return {"upload_url": "https://cdn/x"}
@@ -528,9 +529,10 @@ def test_a_cache_hit_never_reports_the_disk_read(audio, tmp_path, monkeypatch):
 
 def test_retries_and_backoff_are_attributed_to_us(audio, tmp_path, monkeypatch):
     """A slow call must be separable into vendor time and our own backoff."""
-    from fabench.timestamp_asrs.cloud import http as H
     import io
     import urllib.error
+
+    from fabench.timestamp_asrs.cloud import http as H
 
     n = {"i": 0}
 
@@ -750,7 +752,6 @@ def test_max_rpm_bounds_the_request_rate(audio, tmp_path, monkeypatch):
     far faster than a cold one -- which is how Chirp 2 lost 2,020 of 4,513
     items to a per-minute quota on a cell it had already completed cold.
     """
-    import time as _t
 
     clock = {"t": 1000.0}
     slept = {"s": 0.0}
@@ -882,7 +883,7 @@ def test_sigv4_signs_s3_paths_once_and_others_twice():
 
 def test_aws_parse_drops_punctuation_items(tmp_path):
     """Punctuation shares the item list with the words and carries no times."""
-    words, meta = P.aws_parse({
+    words, _meta = P.aws_parse({
         "jobName": "j",
         "results": {"transcripts": [{"transcript": "hi there."}], "items": [
             {"type": "pronunciation", "start_time": "0.04", "end_time": "0.52",
@@ -1088,7 +1089,7 @@ def test_aws_deletes_the_staged_object_even_when_the_job_fails(audio, tmp_path,
     a = A.AWSTranscribe("aws", {"cache_dir": str(tmp_path / "c"),
                                 "poll_interval_s": 0})
     a.load()
-    with pytest.raises(Exception):
+    with pytest.raises(P.CloudASRError):
         a.align(audio)
     assert seen[0] == "PUT", seen
     assert "DELETE" in seen, f"staged object was orphaned: {seen}"

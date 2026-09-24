@@ -130,9 +130,9 @@ def test_a_negative_fixed_cost_is_never_reported():
 # --------------------------------------------------------------- coverage
 def test_coverage_marks_a_truncated_cell():
     """A cell cut off mid-run scores as a clean row unless coverage says so."""
+    from fabench.schema import Interval, Utterance
     from fabench.score.aggregate import aggregate
     from fabench.score.core import score_pair
-    from fabench.schema import Interval, Utterance
 
     def utt(uid):
         return Utterance(utt_id=uid, speaker_id="s", source_corpus="timit",

@@ -132,7 +132,7 @@ def request(
             body = b""
             try:
                 body = e.read()[:400]
-            except Exception:
+            except Exception:  # noqa: S110 - the status line is the error
                 pass
             last = f"HTTP {e.code}: {body!r}"
             text = body.decode("utf-8", "replace")
@@ -212,9 +212,9 @@ def probe_connect(host: str, port: int = 443, n: int = 3,
     for _ in range(n):
         t0 = time.monotonic()
         try:
-            with socket.create_connection((host, port), timeout_s) as sock:
-                with ctx.wrap_socket(sock, server_hostname=host):
-                    pass
+            with socket.create_connection((host, port), timeout_s) as sock, \
+                    ctx.wrap_socket(sock, server_hostname=host):
+                pass
         except Exception:
             return None
         out.append(time.monotonic() - t0)
