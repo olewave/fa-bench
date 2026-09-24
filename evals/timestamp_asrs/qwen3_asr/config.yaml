@@ -1,0 +1,21 @@
+# Qwen3-ASR-1.7B -- multilingual ASR, track 2. It decodes its own words, so it
+# is NOT comparable head-to-head with the aligners.
+# https://huggingface.co/Qwen/Qwen3-ASR-1.7B
+#
+# Its timestamps are produced by Qwen3-ForcedAligner-0.6B, loaded alongside the
+# ASR and run on the text the ASR just decoded. That checkpoint is scored
+# separately in track 1 as `qwen3_fa`, so this row is a cascade internally.
+# Reading it against MFA run on the SAME decoded text isolates the aligner.
+name: qwen3_asr
+adapter: qwen3_asr
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: evals/timestamp_asrs/qwen3_asr/venv
+  worker: worker.py
+  model: Qwen/Qwen3-ASR-1.7B
+  timeout_s: 14400
+  env:
+    HF_HOME: /ndata/hf

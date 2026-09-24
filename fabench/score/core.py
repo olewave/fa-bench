@@ -111,6 +111,45 @@ class UttScore:
     n_gold_wbnd: int = 0
     n_hyp_wbnd: int = 0
     n_wbnd_hits: int = 0
+    #: hits keyed by tolerance in whole ms, for the F1 sweep. Only the hit
+    #: count moves with the tolerance, so the gold and hyp counts above serve
+    #: every width. Default factories, because a score built without boundary
+    #: scoring must still compare equal to one built with it.
+    n_bnd_hits_by_tol: dict = field(default_factory=dict)
+    n_wbnd_hits_by_tol: dict = field(default_factory=dict)
+    #: LABEL-CHECKED hits, same boundaries and same widths, but a hit must also
+    #: agree about which boundary it is: the units on BOTH sides have to be the
+    #: aligned, same-labelled units. `_lbl` is the strict set, `_pos` allows a
+    #: substitution on either side (the units correspond, the labels need not).
+    #: The gap to the time-only count above is the share of hits that credit a
+    #: neighbouring boundary. See segmentation.labelled_hits_by_tol.
+    n_bnd_hits_lbl_by_tol: dict = field(default_factory=dict)
+    n_bnd_hits_pos_by_tol: dict = field(default_factory=dict)
+    n_wbnd_hits_lbl_by_tol: dict = field(default_factory=dict)
+    n_wbnd_hits_pos_by_tol: dict = field(default_factory=dict)
+    #: The word tier's label-checked score runs on the SILENCE-FILTERED word
+    #: sequences, because a "[sil]" pseudo-word is not a word and the WER path
+    #: already drops it. Its denominators therefore differ from n_gold_wbnd /
+    #: n_hyp_wbnd for the two systems that emit them (Charsiu, MAPS), so they
+    #: are carried here, together with the time-only hit count over the same
+    #: filtered sequences -- which is the only baseline the label-checked score
+    #: can honestly be differenced against.
+    n_gold_wbnd_lbl: int = 0
+    n_hyp_wbnd_lbl: int = 0
+    n_wbnd_hits_nosil_by_tol: dict = field(default_factory=dict)
+    #: BY RECOGNITION CONTEXT (fabench.score.segmentation.f1_by_word_context).
+    #: Every boundary is classed by the words around it, the interior three
+    #: ways and the two utterance edges apart, so a boundary can be read
+    #: against the words the system got right there rather than against the
+    #: utterance as a whole. ``{key: {"n_gold","n_hyp","hits":{ms:count}}}``
+    #: over the classes, their named unions, ``pool`` and ``all``; ``all`` is
+    #: the whole utterance's denominators with only the matched-both hits, so
+    #: it charges a recognition error exactly like a timing error. The MAE
+    #: dicts are ``{key: {"n","sum_abs"}}`` over the same classes.
+    wbnd_ctx: dict = field(default_factory=dict)
+    bnd_ctx: dict = field(default_factory=dict)
+    wbnd_ctx_mae: dict = field(default_factory=dict)
+    bnd_ctx_mae: dict = field(default_factory=dict)
     # Edit decomposition of the phone alignment. n_match + n_sub + n_del ==
     # n_gold_phone exactly, so these say WHY a gold phone left the matched path
     # -- ARR alone cannot separate "labelled differently" from "never emitted".
@@ -134,6 +173,28 @@ class UttScore:
     matched_gold_phone_idx: list[int] = field(default_factory=list)
 
     rtf: float | None = None
+    #: Wall time for the ONE request that produced this utterance, and the
+    #: audio it was given. rtf cannot stand in: on the batch path it is one
+    #: amortised figure for the whole cell, and it divides by duration, which
+    #: for a network endpoint buries a fixed per-request cost. See
+    #: fabench/score/latency.py.
+    latency_s: float | None = None
+    audio_s: float | None = None
+    #: DNS + TCP + TLS floor to this endpoint from the machine that ran the
+    #: sweep. Network, not service; recorded so lat_fixed_s can be read net.
+    setup_s: float | None = None
+    #: How many utterances the SPLIT has, not how many were scored. The two
+    #: differ when a tool drops items and nothing else in the row shows it: a
+    #: Chirp 2 cell holding 837 of Buckeye dev's 4,456 scored as a clean row at
+    #: WER 19.8 against ~14.7 for the complete ones. Wrong, not merely partial,
+    #: and invisible.
+    n_gold_utts: int | None = None
+    #: How many utterances the SPLIT has, not how many were scored. The two
+    #: differ when a tool drops items, and nothing else in the row shows it:
+    #: a Chirp 2 cell holding 837 of Buckeye dev's 4,456 scored as a clean row
+    #: at WER 19.8 against ~14.7 for the complete ones. Wrong, not merely
+    #: partial, and invisible.
+    n_gold_utts: int | None = None
 
 
 def score_pair(
@@ -153,7 +214,12 @@ def score_pair(
     matcher_lambda: float = 2.0,
     exclude_silence_boundaries: bool = False,
     boundary_unit: str = "phone",
+    input_tokens: list[str] | None = None,
     rtf: float | None = None,
+    latency_s: float | None = None,
+    audio_s: float | None = None,
+    setup_s: float | None = None,
+    n_gold_utts: int | None = None,
 ) -> UttScore:
     """Score one (gold, hyp) pair into a UttScore.
 
@@ -181,7 +247,49 @@ def score_pair(
         aligner=aligner,
         mode=mode,
         rtf=rtf,
+        latency_s=latency_s,
+        audio_s=audio_s,
+        setup_s=setup_s,
+        n_gold_utts=n_gold_utts,
     )
+
+    if input_tokens and score_words and hyp.words:
+        # Map the aligner's output back onto the words it was GIVEN, before any
+        # word-tier metric sees it -- the label metrics (WER/S/D/I) and the
+        # boundary metrics must agree about how many words the system produced.
+        #
+        # `input_tokens` is the real input: the reference words for a
+        # gold-transcript aligner, the ASR's decoded words for a cascade.
+        # Passing gold here for a cascade would erase the recognition error
+        # that track exists to measure, which is why the caller supplies it
+        # rather than this function assuming `gold`.
+        from dataclasses import replace as _replace
+
+        from fabench.aligners.relabel import relabel_to_input
+        hyp = _replace(hyp, words=relabel_to_input(input_tokens, hyp.words))
+
+    # THE WORD CLASSING BOTH TIERS USE. Computed once, before either tier is
+    # scored, because a phone boundary takes the class of the word holding it
+    # and the two tiers must agree about which words those are. The reference
+    # side is classed by the transcript the system was GIVEN, so every system
+    # handed the same words sees the same reference classes; the recognized
+    # side is classed by what the system returned. A system that emits no word
+    # tier at all was still handed words and timed them, so its phones are
+    # classed by those, which is the reference classing exactly.
+    _cgw = [w for w in gold.words if w.label.lower() not in _SILENCE_WORDS]
+    _chw = [w for w in hyp.words if w.label.lower() not in _SILENCE_WORDS]
+    _cgl = [w.label.lower() for w in _cgw]
+    _chl = [w.label.lower() for w in _chw]
+    _c_gold_matched = None
+    if input_tokens is not None:
+        _itok = [str(t).lower() for t in input_tokens]
+        _c_gold_matched = {gi for gi, _ in nw_align(_cgl, _itok).matched(_cgl, _itok)}
+    if _chw:
+        _c_wmatched = nw_align(_cgl, _chl).matched(_cgl, _chl)
+    elif input_tokens is not None:
+        _chw, _c_wmatched = _cgw, [(i, i) for i in range(len(_cgw))]
+    else:
+        _c_wmatched = []
 
     if boundary_unit == "word" and score_words and gold.words and hyp.words:
         # Word-boundary benchmark: us.boundary_errors carries WORD boundaries, so
@@ -229,7 +337,11 @@ def score_pair(
             else:
                 bmatched = matched
         else:
-            matched = matched_indices(gcanon, hcanon)
+            # nw_align rather than matched_indices, which calls it anyway: the
+            # label-checked boundary score needs the alignment itself, not
+            # just the pairs whose labels agreed.
+            aln = nw_align(gcanon, hcanon)
+            matched = aln.matched(gcanon, hcanon)
             bmatched = matched
         # ARR / InsertRate use the full label-matched set (Plan 5.6).
         us.n_matched_phone = len(matched)
@@ -242,6 +354,14 @@ def score_pair(
 
         _s = _seg.score_segmentation(gold_ivs, hyp_ivs)
         us.n_gold_bnd, us.n_hyp_bnd, us.n_bnd_hits = _s.n_gold, _s.n_hyp, _s.hits
+        us.n_bnd_hits_by_tol = _seg.hits_by_tolerance(
+            _seg.boundaries_from_intervals(gold_ivs),
+            _seg.boundaries_from_intervals(hyp_ivs))
+        # The same boundaries and widths, scored with the identity check.
+        us.n_bnd_hits_lbl_by_tol = _seg.labelled_hits_by_tol(
+            gold_ivs, hyp_ivs, matched)
+        us.n_bnd_hits_pos_by_tol = _seg.labelled_hits_by_tol(
+            gold_ivs, hyp_ivs, aln.aligned())
         # SUB / DEL / INS on the same canonical label sequences the matcher used,
         # so the decomposition is consistent with ARR by construction.
         from fabench.score.matched import edit_counts
@@ -258,6 +378,13 @@ def score_pair(
             bmatched, gold_ivs, hyp_ivs, manner_fn,
             skip_silence_adjacent=exclude_silence_boundaries,
         )
+        if _cgw:
+            us.bnd_ctx = _seg.f1_by_word_context(
+                _cgw, _chw, _c_wmatched, gold_ivs, hyp_ivs,
+                gold_matched=_c_gold_matched)
+            us.bnd_ctx_mae = _seg.mae_by_word_context(
+                _cgw, _chw, _c_wmatched, aln.aligned(), gold_ivs, hyp_ivs,
+                gold_matched=_c_gold_matched)
 
     if score_words and gold.words and hyp.words:
         us.word_abs_errors = word.word_abs_errors(gold.words, hyp.words)
@@ -271,6 +398,33 @@ def score_pair(
         us.n_gold_wbnd, us.n_hyp_wbnd, us.n_wbnd_hits = (
             _ws.n_gold, _ws.n_hyp, _ws.hits
         )
+        us.n_wbnd_hits_by_tol = _wseg.hits_by_tolerance(
+            _wseg.boundaries_from_intervals(gold.words),
+            _wseg.boundaries_from_intervals(hyp.words))
+        # Label-checked, on the silence-filtered sequences the word-boundary
+        # MAE path already uses, with its own denominators and its own
+        # time-only baseline over exactly those sequences.
+        _gwl = [w for w in gold.words if w.label.lower() not in _SILENCE_WORDS]
+        _hwl = [w for w in hyp.words if w.label.lower() not in _SILENCE_WORDS]
+        _gll = [w.label.lower() for w in _gwl]
+        _hll = [w.label.lower() for w in _hwl]
+        _waln = nw_align(_gll, _hll)
+        us.n_gold_wbnd_lbl = len(_wseg.boundaries_from_intervals(_gwl))
+        us.n_hyp_wbnd_lbl = len(_wseg.boundaries_from_intervals(_hwl))
+        us.n_wbnd_hits_nosil_by_tol = _wseg.hits_by_tolerance(
+            _wseg.boundaries_from_intervals(_gwl),
+            _wseg.boundaries_from_intervals(_hwl))
+        us.n_wbnd_hits_lbl_by_tol = _wseg.labelled_hits_by_tol(
+            _gwl, _hwl, _waln.matched(_gll, _hll))
+        us.n_wbnd_hits_pos_by_tol = _wseg.labelled_hits_by_tol(
+            _gwl, _hwl, _waln.aligned())
+        if _gwl:
+            us.wbnd_ctx = _wseg.f1_by_word_context(
+                _gwl, _hwl, _waln.matched(_gll, _hll),
+                gold_matched=_c_gold_matched)
+            us.wbnd_ctx_mae = _wseg.mae_by_word_context(
+                _gwl, _hwl, _waln.matched(_gll, _hll), _waln.aligned(),
+                gold_matched=_c_gold_matched)
         # word match counts for a word-level ARR (reuse matcher on labels)
         from fabench.score.matched import edit_counts, recall_counts
 

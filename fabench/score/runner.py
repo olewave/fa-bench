@@ -25,6 +25,7 @@ so the cross-system common-matched set (survivor-bias guard) is available.
 
 from __future__ import annotations
 
+import pathlib
 import sys
 
 from fabench.config import load_config
@@ -50,6 +51,52 @@ def _hyp_utt(rec: dict) -> Utterance:
     )
 
 
+
+def _cascade_input(cfg, tool: str, corpus: str, subset: str, cond: str) -> dict[str, str]:
+    """The words a cascade was handed for one cell: ``{utt_id: "w1 w2 ..."}``.
+
+    Empty for anything that is not a cascade. The upstream hypothesis is named
+    in the cell's own config (``params.transcript_hyp``) rather than inferred
+    from the tool name, so a cell scored here is relabelled against exactly the
+    file it was aligned against -- including a cascade whose upstream is not the
+    one its name suggests.
+    """
+    import json
+
+    import yaml
+
+    from fabench.paths import tool_index
+
+    ent = tool_index(cfg.repo_root()).get(tool)
+    if ent is None:
+        return {}
+    cell = ent[1] / "en" / corpus / subset / (cond or "origin") / "config.yaml"
+    if not cell.is_file():
+        return {}
+    try:
+        spec_cfg = yaml.safe_load(cell.read_text()) or {}
+        als = spec_cfg.get("aligners") or []
+        rel = (als[0].get("params", {}) or {}).get("transcript_hyp") if als else None
+    except (OSError, yaml.YAMLError, AttributeError, IndexError):
+        return {}
+    if not rel:
+        return {}
+    hyp = pathlib.Path(rel)
+    if not hyp.is_absolute():
+        hyp = cfg.repo_root() / hyp
+    if not hyp.is_file():
+        return {}
+    out: dict[str, str] = {}
+    with hyp.open() as fh:
+        for line in fh:
+            r = json.loads(line)
+            words = [w["label"] if isinstance(w, dict) else w[0]
+                     for w in (r.get("words") or [])]
+            if words:
+                out[r["utt_id"]] = " ".join(words)
+    return out
+
+
 def score_all(cfg):
     """Return (leaderboard_rows, per_type_rows) over all enabled aligners."""
     from fabench.dataprep.datasets import ingest_corpus
@@ -63,6 +110,7 @@ def score_all(cfg):
     boundary_unit = str(scoring.get("boundary_unit", "phone"))  # phone | word
     uttscores = []
     from fabench.paths import hyp_path as _hyp_path
+    from fabench.paths import tool_kind
     for corpus, _ in cfg.enabled_gold():
         try:
             gold_by_id = {u.utt_id: u for u in ingest_corpus(corpus, cfg)}
@@ -84,6 +132,18 @@ def score_all(cfg):
             if not hyp_path.exists():
                 continue
             hyp_recs = list(load_jsonl(hyp_path))
+            # WHAT THIS TOOL WAS GIVEN, so its output can be mapped back onto
+            # it (fabench.aligners.relabel). A cascade was handed the upstream
+            # ASR's words -- using gold here would erase exactly the
+            # recognition error track 2 exists to measure. A timestamped ASR
+            # was handed nothing and chose its own words: no relabelling.
+            #
+            # Read from the CELL config, not the spec: a pooled rescore builds
+            # its aligner list from the recipes, and transcript_hyp is per cell
+            # by design, so the spec in hand does not carry it.
+            _asr_in = _cascade_input(cfg, spec.name, corpus,
+                                     cfg.subset_of(corpus), cfg.condition_tag())
+            _is_asr_tool = tool_kind(cfg.repo_root(), spec.name) == "timestamp_asrs"
             if protocol == "mfa_paper":
                 # Bridges to the real kalpy.evaluation.align_phones + the ported
                 # data_prep.R manner filter (fabench/score/mfa_paper/) instead of
@@ -104,10 +164,23 @@ def score_all(cfg):
                 gold = gold_by_id.get(rec["utt_id"])
                 if gold is None:
                     continue
+                if _asr_in:
+                    _in_tok = _asr_in.get(rec["utt_id"], "").split()
+                elif _is_asr_tool:
+                    _in_tok = None          # decoded its own words
+                else:
+                    _in_tok = [w.label for w in gold.words]
                 us = score_pair(
                     gold,
                     _hyp_utt(rec),
-                    condition=rec["condition"],
+                    input_tokens=_in_tok,
+                    # The run config's tag wins over the hyp record's own
+                    # field: hypotheses aligned before the shadow-root labelling
+                    # fix all carry "clean" regardless of the audio they saw, so
+                    # trusting the record would keep every noisy leaderboard
+                    # mislabelled until each cell is re-aligned. This makes it a
+                    # rescore instead. Empty tag (a clean cell) keeps the record.
+                    condition=cfg.condition_tag() or rec["condition"],
                     aligner=rec["aligner"],
                     mode=rec["mode"],
                     gold_canon=gold_canon,
@@ -121,6 +194,10 @@ def score_all(cfg):
                     exclude_silence_boundaries=exclude_silence,
                     boundary_unit=boundary_unit,
                     rtf=rec.get("rtf"),
+                    latency_s=rec.get("latency_s"),
+                    audio_s=rec.get("audio_s"),
+                    setup_s=rec.get("setup_s"),
+                    n_gold_utts=len(gold_by_id),
                 )
                 uttscores.append(us)
     return aggregate(

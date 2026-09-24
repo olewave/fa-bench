@@ -47,14 +47,39 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+
+#: Recipe parameters whose value may be a path relative to the recipe directory.
+#: Anything not named here is left exactly as written, however much it may look
+#: like a filename. `model` earns its place because MAPS ships a checkpoint in
+#: its own tree (`repo/MAPS/timbuck_eng.tf`) while others name a HuggingFace id
+#: or a service alias; the exists() check downstream tells those apart.
+PATH_PARAMS = frozenset({
+    "venv", "worker", "python", "repo", "repo_path", "mamba_root",
+    "model_path", "model", "cache_dir",
+    # A cascade recipe reaches into the aligner it wraps, so its paths are
+    # written relative to its own directory and resolved here. These two were
+    # missing, which is why those recipes carried an absolute path instead.
+    "micromamba", "mfa_root",
+})
 sys.path.insert(0, str(ROOT))
 from fabench.paths import cell_dir, tool_dir
 
+# .fabench.env FIRST, or the roots below read as None. Every other entry point
+# loads it -- fabench.cli does, cloud_check does -- and this one did not, so
+# running it from a shell that had not sourced the file wrote `root: null`
+# without complaint. What that costs is not a crash. gen_noisy_configs
+# rewrites the clean root into the shadow root by string replacement, so a
+# null root produces a NOISY config that still points at clean audio, and the
+# cell then runs, exits 0 and writes a full hyp file whose alignments are the
+# clean ones under a noise label. That is gate#9's founding bug, and it
+# happened again here on 2026-09-17 for four Azure cells.
+from fabench.envfile import load_env_file  # noqa: E402
+
+load_env_file()
+
 # Staged corpus roots — machine-specific and licensed, so they come from the
 # environment. TIMIT is the NIST tree (TRAIN/ + TEST/); Buckeye is the
-# flattened sNN/ tree produced by unpacking both zip layers. Left unset, the
-# generated config carries a null root and ingest fails loud with the
-# acquisition instructions (never a download).
+# flattened sNN/ tree produced by unpacking both zip layers.
 ROOTS = {
     "timit": os.environ.get("FABENCH_TIMIT_ROOT"),
     "buckeye": os.environ.get("FABENCH_BUCKEYE_ROOT"),
@@ -86,7 +111,7 @@ def build(corpus: str, subset: str, tools: list[str],
                       for p in languages_dir(ROOT).glob("*/*/config.yaml")})
     cfg.setdefault("datasets", {})["gold"] = {
         name: (
-            {"enabled": True, "root": ROOTS[corpus], "subset": subset}
+            {"enabled": True, "root": _require_root(corpus), "subset": subset}
             if name == corpus
             else {"enabled": False}
         )
@@ -121,12 +146,26 @@ def build(corpus: str, subset: str, tools: list[str],
         # a move, a clone, or another machine.
         #
         # Relative values are resolved here, at generation time, so the config
-        # still carries absolute paths for the runner. The `exists()` guard is
-        # what makes this safe to apply blindly: `model: nvidia/parakeet-tdt`
-        # is a HuggingFace id, not a path, and does not resolve to a real file.
+        # still carries absolute paths for the runner.
+        #
+        # BY KEY, not by whether the value happens to name something on disk.
+        # The exists() guard alone was applied to every parameter and is
+        # order-dependent, because a tool's OUTPUT tree lives under its own
+        # recipe directory: `language: en` resolved to `<recipe>/en` the moment
+        # that tool's first cell had been written, so deepgram's TIMIT dev cell
+        # generated correctly and its core-test cell -- generated seconds later,
+        # after `<recipe>/en/` existed -- came out with
+        # `language: /.../deepgram/en` and failed all 192 items on
+        # "No such model/language/tier combination found".
+        #
+        # Every other short value is the same landmine waiting: `device: cpu`,
+        # `version: 2.0`, `preset: en-us`, `recognizer: _`. An allowlist cannot
+        # have that failure mode, and exists() is kept on top of it so that
+        # `model: nvidia/parakeet-tdt` stays a HuggingFace id rather than
+        # becoming a path.
         recipe_dir = p.parent
         for k, v in list((e.get("params") or {}).items()):
-            if isinstance(v, str) and v and not v.startswith("/"):
+            if k in PATH_PARAMS and isinstance(v, str) and v and not v.startswith("/"):
                 cand = recipe_dir / v
                 if cand.exists():
                     e["params"][k] = str(cand.resolve())
@@ -154,6 +193,25 @@ def build(corpus: str, subset: str, tools: list[str],
     cfg.setdefault("paths", {})["results_dir"] = str(
         cell_dir(ROOT, tool, corpus, subset, condition=condition).resolve())
     return cfg
+
+
+def _require_root(corpus: str) -> str:
+    """The staged root, or a refusal that says what to set.
+
+    Refusing beats writing null. A null root does not stop anything: the clean
+    cell still runs off the staged manifest, and the noisy configs derived
+    from it silently keep pointing at clean audio.
+    """
+    root = ROOTS.get(corpus)
+    if not root:
+        var = f"FABENCH_{corpus.upper()}_ROOT"
+        raise SystemExit(
+            f"gen_config: {var} is not set, and writing `root: null` here is "
+            f"worse than stopping -- the noisy configs derived from this one "
+            f"would point at CLEAN audio and run to completion under a noise "
+            f"label. Put {var} in .fabench.env (it is read automatically) or "
+            f"export it.")
+    return str(root)
 
 
 def main() -> int:

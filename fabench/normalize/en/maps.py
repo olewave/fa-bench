@@ -185,6 +185,16 @@ IPA_TO_39: dict[str, str | None] = {
 
 _STRESS = re.compile(r"[0-2]$")
 
+#: Buckeye writes two diacritics on top of an ARPABET vowel: "+1" for primary
+#: stress, and a trailing "n" for a nasalized vowel -- "don't" is transcribed
+#: ``d ahn t``, the /n/ realized as nasalization on the vowel instead of a
+#: segment of its own. Both are stripped like an ARPABET stress digit, but only
+#: when a vowel is left, so ``en``/``eng``/``nx`` and the marker set survive.
+_BUCKEYE_STRESS = re.compile(r"\+1")
+_BUCKEYE_VOWELS = frozenset(
+    ("aa", "ae", "ah", "ao", "aw", "ay", "eh", "er", "ey", "ih", "iy", "ow", "oy", "uh", "uw")
+)
+
 
 def norm_arpabet(label: str) -> str:
     """Lowercase and strip a trailing stress digit (AH0 -> ah)."""
@@ -196,8 +206,18 @@ def norm_timit(label: str) -> str:
 
 
 def norm_buckeye(label: str) -> str:
-    # keep case for the marker set; ARPABET part is lowercased on lookup
-    return label.strip()
+    """Strip Buckeye's vowel diacritics (ah+1 -> ah, ahn -> ah, ah+1n -> ah).
+
+    Case is kept for the marker set; the ARPABET part is lowercased on lookup.
+    """
+    label = label.strip()
+    stem = _BUCKEYE_STRESS.sub("", label)
+    low = stem.lower()
+    if low in _BUCKEYE_VOWELS:
+        return stem
+    if low[:-1] in _BUCKEYE_VOWELS and low.endswith("n"):
+        return stem[:-1]
+    return label
 
 
 def norm_ipa(label: str) -> str:

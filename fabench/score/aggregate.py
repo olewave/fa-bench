@@ -33,10 +33,18 @@ import numpy as np
 
 from fabench import metrics as M
 from fabench.score import boundary as B
-from fabench.score import calibration, word
+from fabench.score import calibration, latency, word
 from fabench.score.core import UttScore
 
 MS = 1000.0  # seconds -> milliseconds
+
+#: The tolerance the BOUNDARY-DETECTION family is summarised at, in ms, and it
+#: is not `primary_tol_s`. That one is tolerance accuracy's primary and the
+#: configs set it to 25; F1/P/R are fixed at 20, which is what the
+#: segmentation literature reports and what Table 1 prints. Keying the
+#: label-checked aliases off primary_tol_s silently published a 25 ms score
+#: under a 20 ms caption, so the two are kept apart by name.
+F1_TOL_MS = 20
 
 
 # --------------------------------------------------------------------------
@@ -250,10 +258,54 @@ def aggregate(
         row["n_bnd_gold"] = seg.n_gold
         row["n_bnd_hyp"] = seg.n_hyp
 
+        # The same detection metrics at every swept width. Only the hit count
+        # moves, so the gold and hyp totals above are reused. This is what lets
+        # F1 be read against tolerance accuracy at one width; before it, F1
+        # existed at 20 ms and nowhere else.
+        for _ms in sorted({m for g in group for m in g.n_bnd_hits_by_tol}):
+            _s = SegmentationScore(
+                n_gold=seg.n_gold, n_hyp=seg.n_hyp,
+                hits=sum(g.n_bnd_hits_by_tol.get(_ms, 0) for g in group),
+                tol_s=_ms / MS)
+            row[f"bnd_p_{_ms}ms"] = _s.precision
+            row[f"bnd_r_{_ms}ms"] = _s.recall
+            row[f"bnd_f1_{_ms}ms"] = _s.f1
+        # ---- label-checked boundary detection ----
+        # Same boundaries, same denominators, same widths. A hit must also agree
+        # about WHICH boundary it is: the units on both sides are the aligned,
+        # same-labelled units. `pos` relaxes that to "the units correspond",
+        # so the lbl-to-pos gap is what substitutions cost and the lbl-to-plain
+        # gap is what pairing across ranks was worth.
+        for _tag, _fld in (("lbl", "n_bnd_hits_lbl_by_tol"),
+                           ("pos", "n_bnd_hits_pos_by_tol")):
+            for _ms in sorted({m for g in group for m in getattr(g, _fld)}):
+                _s = SegmentationScore(
+                    n_gold=seg.n_gold, n_hyp=seg.n_hyp,
+                    hits=sum(getattr(g, _fld).get(_ms, 0) for g in group),
+                    tol_s=_ms / MS)
+                row[f"bnd_p_{_tag}_{_ms}ms"] = _s.precision
+                row[f"bnd_r_{_tag}_{_ms}ms"] = _s.recall
+                row[f"bnd_f1_{_tag}_{_ms}ms"] = _s.f1
+        _pt = F1_TOL_MS
+        row["bnd_precision_lbl"] = row.get(f"bnd_p_lbl_{_pt}ms", float("nan"))
+        row["bnd_recall_lbl"] = row.get(f"bnd_r_lbl_{_pt}ms", float("nan"))
+        row["bnd_f1_lbl"] = row.get(f"bnd_f1_lbl_{_pt}ms", float("nan"))
+        row["bnd_f1_pos"] = row.get(f"bnd_f1_pos_{_pt}ms", float("nan"))
+        # Share of time-only hits that credited a neighbouring boundary.
+        _h = sum(g.n_bnd_hits_by_tol.get(_pt, 0) for g in group)
+        _hl = sum(g.n_bnd_hits_lbl_by_tol.get(_pt, 0) for g in group)
+        row["bnd_wrong_hit_pct"] = 100.0 * (1 - _hl / _h) if _h else float("nan")
+        _ctx_columns(row, group, "bnd", "bnd_ctx", "bnd_ctx_mae")
+
         # ---- word metrics (WBE micro/macro) ----
         wm = word.word_boundary_error([g.word_abs_errors for g in group])
         row["wbe_ms"] = wm["wbe_s"] * MS
         row["n_word_boundaries"] = wm["n_word_boundaries"]
+        # The same tolerances the phone tier reports, on the word tier. Without
+        # these a word-only system had no tolerance accuracy at any width.
+        for _ms, _v in word.word_tolerance_accuracy(
+                [g.word_abs_errors for g in group], ta_thresholds_s).items():
+            row[f"wta_{_ms}ms"] = _v
 
         # ---- word-boundary detection: P/R/F1 @ 20 ms ----
         wseg = SegmentationScore(
@@ -267,6 +319,44 @@ def aggregate(
         row["wbnd_f1"] = wseg.f1
         row["wbnd_os"] = wseg.os
         row["w_r_value"] = wseg.r_value
+        for _ms in sorted({m for g in group for m in g.n_wbnd_hits_by_tol}):
+            _s = SegmentationScore(
+                n_gold=wseg.n_gold, n_hyp=wseg.n_hyp,
+                hits=sum(g.n_wbnd_hits_by_tol.get(_ms, 0) for g in group),
+                tol_s=_ms / MS)
+            row[f"wbnd_p_{_ms}ms"] = _s.precision
+            row[f"wbnd_r_{_ms}ms"] = _s.recall
+            row[f"wbnd_f1_{_ms}ms"] = _s.f1
+        # ---- label-checked word-boundary detection ----
+        # On the silence-filtered word sequences, so "[sil]" from Charsiu and
+        # MAPS is not a boundary. Its own denominators go with it, and `nosil`
+        # is the time-only score over exactly those sequences -- the only
+        # baseline the label-checked number can be differenced against. For
+        # every system that emits no pseudo-words, nosil equals the plain score.
+        _wg = sum(g.n_gold_wbnd_lbl for g in group)
+        _wh = sum(g.n_hyp_wbnd_lbl for g in group)
+        row["n_wbnd_gold_lbl"], row["n_wbnd_hyp_lbl"] = _wg, _wh
+        for _tag, _fld in (("lbl", "n_wbnd_hits_lbl_by_tol"),
+                           ("pos", "n_wbnd_hits_pos_by_tol"),
+                           ("nosil", "n_wbnd_hits_nosil_by_tol")):
+            for _ms in sorted({m for g in group for m in getattr(g, _fld)}):
+                _s = SegmentationScore(
+                    n_gold=_wg, n_hyp=_wh,
+                    hits=sum(getattr(g, _fld).get(_ms, 0) for g in group),
+                    tol_s=_ms / MS)
+                row[f"wbnd_p_{_tag}_{_ms}ms"] = _s.precision
+                row[f"wbnd_r_{_tag}_{_ms}ms"] = _s.recall
+                row[f"wbnd_f1_{_tag}_{_ms}ms"] = _s.f1
+        row["wbnd_precision_lbl"] = row.get(f"wbnd_p_lbl_{_pt}ms", float("nan"))
+        row["wbnd_recall_lbl"] = row.get(f"wbnd_r_lbl_{_pt}ms", float("nan"))
+        row["wbnd_f1_lbl"] = row.get(f"wbnd_f1_lbl_{_pt}ms", float("nan"))
+        row["wbnd_f1_pos"] = row.get(f"wbnd_f1_pos_{_pt}ms", float("nan"))
+        row["wbnd_f1_nosil"] = row.get(f"wbnd_f1_nosil_{_pt}ms", float("nan"))
+        _wh0 = sum(g.n_wbnd_hits_nosil_by_tol.get(_pt, 0) for g in group)
+        _whl = sum(g.n_wbnd_hits_lbl_by_tol.get(_pt, 0) for g in group)
+        row["wbnd_wrong_hit_pct"] = (100.0 * (1 - _whl / _wh0) if _wh0
+                                     else float("nan"))
+        _ctx_columns(row, group, "wbnd", "wbnd_ctx", "wbnd_ctx_mae")
 
         # ---- WER and its decomposition ----
         # Only meaningful for a system that DECODES its own transcript. A
@@ -293,12 +383,43 @@ def aggregate(
         row["cal_ece"] = cal["ece"]
         row["n_conf"] = cal["n_conf"]
 
+        # ---- coverage ----
+        # Scored utterances against the size of the split. Reported always,
+        # because a shortfall is normal for some tools and fatal for others: a
+        # cascade drops what its upstream heard as nothing and NeMo-FA 80 ms
+        # drops 32 short Buckeye utterances by design, both landing at 93-100%,
+        # while a cell cut off by an expired token sat at 19% and scored as a
+        # clean row. `incomplete` fires only on the second kind.
+        golds = [g.n_gold_utts for g in group if g.n_gold_utts]
+        n_gold_utts = max(golds) if golds else 0
+        row["n_gold_utts"] = n_gold_utts
+        row["coverage"] = (len(group) / n_gold_utts) if n_gold_utts else float("nan")
+        row["incomplete"] = bool(n_gold_utts and len(group) < 0.90 * n_gold_utts)
+
         # ---- efficiency ----
         rtfs = [g.rtf for g in group if g.rtf is not None]
         row["rtf_mean"] = float(np.mean(rtfs)) if rtfs else float("nan")
+        # Per-request latency, for systems where a request is a unit of work.
+        # Empty for everything that reports none, which is every local tool
+        # today -- nan rather than 0, so an absent measurement cannot be read
+        # as a fast one.
+        row.update(latency.latency_metrics([g.latency_s for g in group],
+                                           [g.audio_s for g in group],
+                                           [g.setup_s for g in group]))
 
         # ---- power flag ----
-        row["underpowered"] = n_m < min_matched_per_cell
+        # Keyed on the tier the row ACTUALLY REPORTS, not on phones. The flag
+        # was `n_matched_phone < min`, which is 0 for every word-only tool --
+        # WhisperX, UnitY2, MMS-FA, NeMo-FA, whisper-timestamped, every
+        # timestamped ASR -- so all of them carried a "too few matched units to
+        # trust" star on cells with thousands of matched WORDS. The star then
+        # meant "word tier" rather than "small sample", which is the opposite
+        # of what a reader takes from it.
+        #
+        # A row with neither tier matched is still flagged: nothing matched is
+        # the strongest form of underpowered there is.
+        n_mw = sum(g.n_matched_word for g in group)
+        row["underpowered"] = max(n_m, n_mw) < min_matched_per_cell
 
         leaderboard.append(row)
 
@@ -322,6 +443,47 @@ def aggregate(
             )
 
     return leaderboard, per_type_rows
+
+
+def _ctx_columns(row, group, prefix, f1_field, mae_field):
+    """Boundary F1, MAE and denominators by recognition context, one set of
+    columns per class.
+
+    The classes come from `fabench.score.segmentation.f1_by_word_context`, the
+    interior boundaries split by how many of their two words the system got
+    right and the two utterance edges kept apart from each other. Counts add
+    across utterances, so the cell's figure is over its pooled boundaries
+    rather than an average of per-utterance rates.
+
+    ``{prefix}_f1_all_20ms`` is the one to read against the rest of the
+    leaderboard. Its denominator is every boundary of the cell, the two
+    utterance edges included, and only a boundary with a matched word on each
+    side can score. The label-checked columns above already hold every
+    INTERIOR boundary in their denominator, so the difference is the edges,
+    which they drop from numerator and denominator alike.
+    """
+    from fabench.score.segmentation import CTX_CLASSES, CTX_VIEWS
+
+    keys = tuple(CTX_CLASSES) + tuple(CTX_VIEWS) + ("pool", "all")
+    dicts = [getattr(g, f1_field) for g in group if getattr(g, f1_field)]
+    if dicts:
+        tols = sorted({m for d in dicts for k in d for m in d[k]["hits"]})
+        for k in keys:
+            ng = sum(d[k]["n_gold"] for d in dicts if k in d)
+            nh = sum(d[k]["n_hyp"] for d in dicts if k in d)
+            row[f"n_{prefix}_gold_{k}"] = ng
+            row[f"n_{prefix}_hyp_{k}"] = nh
+            for ms in tols:
+                hits = sum(d[k]["hits"].get(ms, 0) for d in dicts if k in d)
+                den = ng + nh
+                row[f"{prefix}_f1_{k}_{ms}ms"] = (2.0 * hits / den) if den else float("nan")
+    mdicts = [getattr(g, mae_field) for g in group if getattr(g, mae_field)]
+    if mdicts:
+        for k in tuple(CTX_CLASSES) + tuple(CTX_VIEWS) + ("all",):
+            n = sum(d[k]["n"] for d in mdicts if k in d)
+            sa = sum(d[k]["sum_abs"] for d in mdicts if k in d)
+            row[f"n_{prefix}_mae_{k}"] = n
+            row[f"{prefix}_mae_{k}_ms"] = (MS * sa / n) if n else float("nan")
 
 
 def _common_mae(group: Sequence[UttScore], common: dict[tuple, set[int]]) -> float:

@@ -64,7 +64,13 @@ from pathlib import Path
 want = set(sys.argv[1:])
 out = []
 for base in ("evals/aligners", "evals/timestamp_asrs"):
-    for p in Path(base).glob("**/configs/noisy_*.yaml"):
+    # Two layouts. gen_noisy_configs.py writes per-CELL configs by default and
+    # flat noisy_*.yaml only when --out-dir is given; run_evals.sh stage 2 calls
+    # it WITHOUT --out-dir, so globbing only the flat form found nothing and
+    # every noisy cell was silently skipped.
+    cells = [q for q in Path(base).glob("**/en/*/*/*/config.yaml")
+             if q.parent.name != "origin"]
+    for p in list(Path(base).glob("**/configs/noisy_*.yaml")) + cells:
         try:
             c = yaml.safe_load(p.read_text()) or {}
             tool = next(a["name"] for a in c.get("aligners", []) if a.get("enabled", True))
@@ -72,7 +78,8 @@ for base in ("evals/aligners", "evals/timestamp_asrs"):
             continue
         if not want or tool in want:
             out.append(str(p))
-print("\n".join(sorted(out)))
+if out:                       # an empty result printed a blank line, which
+    print("\n".join(sorted(set(out))))   # mapfile turned into a phantom "" cell
 EOF
 )
 echo "== ${#CFGS[@]} noisy cells"
@@ -100,9 +107,42 @@ EOF
   # assumed path does not exist and every hyp check silently reported "missing".
   tdir=$("$PY" -c "from fabench.paths import tool_dir; from pathlib import Path; print(tool_dir(Path('$ROOT'), '$tool'))" 2>/dev/null) || tdir=""
   [ -n "$tdir" ] || { echo "[SKIP] $base -- unknown tool $tool"; continue; }
+  # Two layouts again: the flat <subset>__<cond> form this script originally
+  # wrote, and the nested <subset>/<cond> form gen_noisy_configs.py produces for
+  # per-cell configs. Checking only the flat one reported EMPTY for cells that
+  # had in fact aligned every utterance.
   hyp="$tdir/en/$corpus/${subset}__${cond}/hyp.jsonl"
+  [ -s "$hyp" ] || hyp="$tdir/en/$corpus/${subset}/${cond}/hyp.jsonl"
+  # COMPLETE, not merely non-empty. `-s` alone treated a cell that had lost
+  # 3,619 of 4,456 utterances to an expired token as done, so a restart could
+  # never repair it -- the damage was permanent and silent. Compare against the
+  # split that defines the cell instead.
+  # COMPLETE ENOUGH, not merely non-empty. `-s` alone treated a cell that had
+  # lost 3,619 of 4,456 utterances to an expired token as done, so a restart
+  # could never repair it.
+  #
+  # But short is not always damaged. A cascade legitimately drops an utterance
+  # its upstream ASR recognised as nothing, and NeMo-FA 80 ms drops 32 short
+  # Buckeye utterances with fewer frames than CTC states -- documented, and in
+  # the paper. Those sit at 93-100% of the split and must not be re-run, which
+  # for a paid API would also mean re-billing. Only a severe shortfall is
+  # damage, so the threshold is deliberately low and overridable.
+  redo_below=${FABENCH_REDO_BELOW:-0.90}
+  want=$(grep -cvE '^[[:space:]]*(#|$)' \
+         "$ROOT/datasets/languages/en/$corpus/split/$subset.list" 2>/dev/null || echo 0)
   if [ -s "$hyp" ]; then
-    echo "[SKIP] $base -- already has $(wc -l < "$hyp") records"; continue
+    have=$(wc -l < "$hyp")
+    keep=$(awk -v h="$have" -v w="$want" -v t="$redo_below" \
+           'BEGIN{print (w>0 && h < w*t) ? "redo" : "skip"}')
+    if [ "$keep" = redo ]; then
+      echo "[REDO] $base -- has $have of $want ($(awk -v h=$have -v w=$want 'BEGIN{printf "%.0f%%", 100*h/w}')); re-running"
+      rm -f "$hyp"
+    else
+      [ "$want" -gt 0 ] && [ "$have" -lt "$want" ] \
+        && echo "[SKIP] $base -- $have of $want, within tolerance" \
+        || echo "[SKIP] $base -- already has $have records"
+      continue
+    fi
   fi
 
   tlog="$tdir/log"; mkdir -p "$tlog"

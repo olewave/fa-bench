@@ -1,0 +1,18 @@
+# UnitY2 alignment extractor (Meta, seamless_communication). WORD TIER ONLY.
+#
+# CPU: fairseq2 0.2.* is built against torch 2.1.1+cu121, which has no kernels
+# for this box's Blackwell cards. ~0.9s an utterance.
+name: unity2
+adapter: unity2
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: evals/aligners/unity2/venv
+  worker: evals/aligners/unity2/worker.py
+  model: nar_t2u_aligner
+  device: cpu
+  timeout_s: null
+  env:
+    HF_HOME: /ndata/hf

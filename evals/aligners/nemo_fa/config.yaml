@@ -1,0 +1,61 @@
+# NVIDIA NeMo Forced Aligner (NFA) -- Viterbi over a NeMo CTC model's posteriors.
+# https://github.com/NVIDIA-NeMo/Speech/tree/main/tools/nemo_forced_aligner
+#
+# A genuine track-1 aligner: it takes the reference transcript and places the
+# words. What it cannot do is phones. Every English checkpoint NVIDIA ships is a
+# character or BPE model, so NFA's token tier is subword text and there is no
+# phone tier and no mode B here.
+#
+# The checkpoint is the one NFA's own README uses. It subsamples 8x from a 10 ms
+# window, so the posteriors arrive every 80 ms and that is the floor on how
+# sharp any boundary can be. Swapping in a finer-stride model would flatter the
+# row and measure something nobody runs.
+#
+# The 80 ms stride also costs coverage on fast conversational speech. A CTC path
+# needs at least one frame per token, and NFA drops any utterance with fewer
+# frames than that, so 18 of 4456 Buckeye dev utterances and 14 of 4513 test
+# utterances produce no alignment at all. They are short and dense -- 1.7 s
+# carrying twelve words, and the like. Those items are absent from the hyp file
+# and cost the row recall, which is the correct accounting: the tool did not
+# align them. TIMIT loses none.
+#
+# TWO FIXES WERE TESTED AND BOTH REJECTED. Do not reach for either again.
+#
+# Padding the audio so the lattice has room recovers every dropped item, 3/3 on
+# the ones that failed, but it moves boundaries that were already right. align.py
+# pins the first token at t=0 of whatever file it is handed, so a LEADING pad
+# puts the first word inside the silence and shifts the rest by roughly, not
+# exactly, the pad: no constant offset undoes it. A TRAILING pad leaves working
+# utterances bit-identical but moves the last word, measured 1.76-2.08 s becoming
+# 2.08-2.24 s on a 2.15 s file. Recovering 0.4% of items by disturbing the other
+# 99.6% is not a trade worth making.
+#
+# stt_en_conformer_ctc_large recovers them cleanly: 40 ms frames rather than 80,
+# and a 128-token lowercase BPE vocabulary that matches the normalised
+# transcript instead of 1024 tokens carrying punctuation and capitalisation this
+# benchmark never feeds it. It is the better-matched model, not a flattering one.
+# We report the README default anyway, because that is what a user following
+# NVIDIA's own instructions runs, and the coverage loss is disclosed in the
+# paper's table rather than engineered away.
+#
+# Runs in its own interpreter (see fabench/aligners/subprocess_aligner.py); the
+# venv is the NeMo 2.7.3 environment built for parakeet_tdt.
+name: nemo_fa
+adapter: nemo_fa
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: evals/aligners/nemo_fa/venv
+  worker: evals/aligners/nemo_fa/worker.py
+  repo: evals/aligners/nemo_fa/repo
+  model: stt_en_fastconformer_hybrid_large_pc
+  device: cuda
+  batch_size: 4
+  timeout_s: null
+  # NeMo breaks if LD_LIBRARY_PATH leaks in from the caller. HF_HOME must be
+  # writable so the checkpoint caches once instead of per cell.
+  env:
+    LD_LIBRARY_PATH: null
+    HF_HOME: /ndata/hf

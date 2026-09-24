@@ -9,9 +9,14 @@ granularity: [word, phone]
 emits_confidence: true
 params:
   transport: rest
-  # The FULL assess endpoint, not just the host: the adapter POSTs to
-  # "{base_url}?{query}" directly, so a bare host 404s.
-  base_url: http://127.0.0.1:8096/v1/assess
+  # The endpoint is NOT set here. It is machine-specific -- an internal host on
+  # someone's network -- and this file is public, so it comes from
+  # OLIGN_BASE_URL in .fabench.env (untracked) instead. Give it the FULL assess
+  # endpoint, not just the host: the adapter POSTs to "{base_url}?{query}"
+  # directly, so a bare host 404s. A server mounted under a path prefix
+  # serves below that prefix:
+  #   OLIGN_BASE_URL=http://<host>:<port>/<base-path>/v1/assess
+  # A private variant may still pin params.base_url, which wins over the env.
   accent: 2                 # 1 = UK, 2 = US
   timeout_s: 60
   concurrency: 8            # olign is a batch aligner; ~1 stream/core

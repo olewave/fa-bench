@@ -1,0 +1,21 @@
+# FALCON -- Rousso, Cohen & Keshet 2026, arXiv:2606.25460. MIT licence.
+#
+# PHONE TIER, MODE B ONLY. Its English path requires the phone sequence; text
+# input is routed through a Dutch G2P. See fabench/aligners/falcon/adapter.py.
+name: falcon
+adapter: falcon
+enabled: true
+modes: [B]
+granularity: [phone]
+emits_confidence: false
+params:
+  venv: evals/aligners/falcon/venv
+  worker: evals/aligners/falcon/worker.py
+  repo_path: repo
+  # The joint checkpoint on every cell. The per-corpus checkpoints would make
+  # FALCON a specialist scored against general systems.
+  model: pretrained_models/falcon_joint_multilingual.pt
+  timeout_s: null
+  env:
+    WANDB_MODE: disabled
+    HF_HOME: /ndata/hf

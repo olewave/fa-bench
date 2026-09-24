@@ -1,0 +1,45 @@
+# NeMo Forced Aligner on stt_en_conformer_ctc_large -- THE SAME ALIGNER, A
+# FINER FRAME RATE.
+#
+# This exists so the frame-rate question is answered inside one tool instead of
+# across two. nemo_fa and nemo_fa_conformer run identical code on identical
+# words and identical audio. What differs is the checkpoint NFA decodes over:
+#
+#   nemo_fa            FastConformer, 8x subsampling -> 80 ms frames,
+#                      1024 BPE tokens WITH punctuation and capitalisation
+#   nemo_fa_conformer  Conformer,     4x subsampling -> 40 ms frames,
+#                      128 BPE tokens, lowercase, no punctuation
+#
+# So the pair is not a clean single variable. The finer model also has the
+# vocabulary that matches the normalised transcript this benchmark feeds every
+# system, where the 1024-token cased one does not. An 8-item probe put the frame
+# rate well ahead as the driver, 78.0 ms against 63.2, but the two move together
+# and the row should not be read as frame rate alone.
+#
+# Neither checkpoint is recommended by NFA for alignment. Its README shows the
+# FastConformer one in a quickstart command and nothing ranks checkpoints, while
+# the framework docs list what NFA accepts as "any Quartznet, Citrinet,
+# Conformer CTC model" and do not name FastConformer at all. Running both is the
+# only honest way to report that.
+#
+# Coverage is the other thing this settles. The 80 ms model returns nothing for
+# 32 short dense Buckeye utterances, which have fewer frames than CTC states.
+# 40 ms frames recover all of them, verified 3/3 on the items that failed.
+name: nemo_fa_conformer
+adapter: nemo_fa
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: evals/aligners/nemo_fa/venv
+  worker: evals/aligners/nemo_fa/worker.py
+  repo: evals/aligners/nemo_fa/repo
+  model: stt_en_conformer_ctc_large
+  device: cuda
+  batch_size: 4
+  timeout_s: null
+  env:
+    LD_LIBRARY_PATH: null
+    HF_HOME: /ndata/hf
+  frame_s: 0.040

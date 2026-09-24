@@ -1,0 +1,101 @@
+# Google Cloud STT v2 with Chirp 2. TRACK 2, ONE STEP, COMMERCIAL.
+#
+# The sibling of the v1 `latest_long` row, and the pair exists to answer the
+# question that cannot be settled by reading a vendor page: WHICH MODEL GIVES
+# THE BETTER TIMESTAMPS, which is not the same question as which recognises
+# better. FA-Bench's own table already shows the two coming apart. Parakeet-TDT
+# has one of the two lowest WERs in the benchmark and the worst timestamps of
+# any modern system, and Whisper large-v3 recognises well at 133 ms of word
+# MAE. A foundation-model recognizer whose word times are derived rather than
+# decoded can be the better ASR and the worse aligner at once.
+#
+# So both are run. Chirp 2 should win on WER, especially on Buckeye's
+# spontaneous speech. Whether it wins on boundary MAE is the measurement.
+#
+# MEASURED 2026-09-16, one Buckeye utterance through every model Google will
+# serve this project. This is why chirp_2 and not something newer or cheaper:
+#
+#   model            location          grid    word confidence
+#   chirp_2          us-central1       40 ms   yes
+#   chirp_2          europe-west4      40 ms   yes
+#   chirp_2          asia-southeast1   40 ms   yes
+#   chirp_3          us                40 ms   NO, rejects enable_word_confidence
+#   long / short     us-central1      100 ms   yes
+#   v1 latest_long, latest_short, video, default  100 ms
+#
+# So 40 ms is the FLOOR for Google, not a property of the model we picked.
+# chirp_3 matches it and loses confidence, so it earns no row. v1 is 100 ms AND
+# seven times the price, so it is ruled out on both counts.
+#
+# WHAT 40 ms COSTS THIS ROW. The nearest point on a 40 ms grid is up to 20 ms
+# from the truth, so quantisation alone puts roughly a 10 ms floor under word
+# MAE before the recognizer makes any error of its own. Olign's whole clean
+# word MAE is 16.9 ms and MFA's is 19.8, so the floor is a large fraction of
+# the number being measured. It barely touches F1 at 20 ms, which is why the
+# tolerance sweep in records/ matters more for this row than for most: at 10 ms
+# the grid caps it near 0.5 whatever the model does. UnitY2 carries the same
+# caveat at 20 ms and the paper already states it.
+#
+# NON-STREAMING, and deliberately so. Google offers three recognition modes and
+# this recipe uses the first:
+#   recognize        synchronous, one request, whole response at once. Used here.
+#                    Caps at 60 s of audio, and FA-Bench's longest utterance is
+#                    23.6 s, so nothing is near the limit.
+#   batchRecognize   asynchronous, long audio, reads from a GCS bucket. Would
+#                    add storage cost and an upload stage for no gain at these
+#                    durations.
+#   StreamingRecognize  bidirectional gRPC, real time.
+#
+# Streaming is not a cheaper way to get the same answer, it is a DIFFERENT
+# measurement. A streaming recognizer is causal or near-causal, so its word
+# times are emitted with limited lookahead and are systematically later and
+# less certain than the same model's offline times. Scoring a streaming row
+# against these offline rows would compare architectures and latency budgets at
+# once. Every other Track 2 system here -- Whisper, Parakeet-TDT,
+# CrisperWhisper, Qwen3-ASR, whisper-timestamped, TorchAudio, WhisperX -- is
+# offline too, so the track is internally consistent. Streaming timestamps
+# would be a worthwhile axis of their own, and a separate one.
+#
+# It also settles which latency metrics apply. There is no time-to-first-word
+# for a synchronous call, so the streaming measures (first partial,
+# finalization lag, emission delay) are absent by construction rather than by
+# omission. See fabench/score/latency.py.
+#
+# Chirp 2 is REGIONAL. It is not served from `global` or from `us`, so location
+# must name a region that has it, and project_id must be this machine's project.
+# chirp_3, confusingly, is served from `us` and from no region we found.
+name: google_stt_chirp2
+adapter: google_stt
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  model: chirp_2
+  language: en-US
+  punctuate: false
+  # v2 needs an OAuth bearer token, not an API key. GOOGLE_STT_ACCESS_TOKEN, or
+  # this command on a machine that has run `gcloud auth login`.
+  access_token_cmd: gcloud auth print-access-token
+  # project_id is what switches the adapter from v1 to v2. This is the
+  # FA-Bench project ("forced-align"); anyone reproducing this substitutes
+  # their own, since the bearer token is theirs and the row is billed to it.
+  project_id: project-e4c68661-4166-4e4b-b96
+  location: us-central1
+  recognizer: _
+  concurrency: 8
+  # Requests per minute, client side. Google's "Recognize requests per minute
+  # per region" quota cost 2,020 of one cell's 4,513 items, and concurrency
+  # does not bound the rate: on a mostly-cached re-run the hits return at
+  # memory speed and the real calls bunch up. 240 leaves headroom under the
+  # ~343/min that concurrency 8 reaches cold.
+  max_rpm: 240
+  timeout_s: 120
+  # 8, not 5. The quota that bit is "Recognize requests per minute per region",
+  # and five retries buy only 31 s of backoff against a limit that resets on the
+  # minute, so one utterance in 400 was lost on the first TIMIT cell. Eight buys
+  # 183 s. A dropped utterance is a coverage gap in a cell, and waiting is free
+  # where re-running is not.
+  retries: 8
+  cache: true
