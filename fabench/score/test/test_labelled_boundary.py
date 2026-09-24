@@ -405,6 +405,37 @@ def test_word_context_phones_inherit_their_words_group():
     assert (r["both"]["hits"][20], r["one"]["hits"][20], r["none"]["hits"][20]) == (2, 2, 1)
 
 
+def test_word_context_phones_classed_by_their_own_labels():
+    """Same words A B against A B, both matched, but the phones are a1 a2 b1 b2
+    against a1 a2 X b2, so one phone is substituted. Inheriting the words'
+    flags marks every phone matched and every boundary ``both``. With the
+    phone alignment's own matched sets the two boundaries beside X are
+    ``one`` and only the other three can score in ``all``, which is the rule
+    the word tier applies and the one the paper states."""
+    from fabench.score.segmentation import f1_by_word_context
+
+    gold = ivs([("a", 0.0, 1.0), ("b", 1.0, 2.0)])
+    hyp = ivs([("a", 0.0, 1.0), ("b", 1.0, 2.0)])
+    gph = ivs([("a1", 0.0, 0.5), ("a2", 0.5, 1.0), ("b1", 1.0, 1.5), ("b2", 1.5, 2.0)])
+    hph = ivs([("a1", 0.0, 0.5), ("a2", 0.5, 1.0), ("x", 1.0, 1.5), ("b2", 1.5, 2.0)])
+    gl, hl = [w.label for w in gold], [w.label for w in hyp]
+    wm = nw_align(gl, hl).matched(gl, hl)
+    # inherited from the words: every phone matched, five boundaries all both
+    r0 = f1_by_word_context(gold, hyp, wm, gph, hph, tols_s=TOLS)
+    assert (r0["both"]["n_gold"], r0["one"]["n_gold"]) == (5, 0)
+    assert r0["all"]["hits"][20] == 5
+    # the phone's own label: b1 against x is unmatched on both sides
+    gpl, hpl = [u.label for u in gph], [u.label for u in hph]
+    pm = nw_align(gpl, hpl).matched(gpl, hpl)
+    assert sorted(pm) == [(0, 0), (1, 1), (3, 3)]
+    r = f1_by_word_context(gold, hyp, wm, gph, hph, tols_s=TOLS,
+                           gold_unit_matched={g for g, _ in pm},
+                           hyp_unit_matched={h for _, h in pm})
+    assert (r["both"]["n_gold"], r["one"]["n_gold"], r["none"]["n_gold"]) == (3, 2, 0)
+    assert r["all"]["n_gold"] == 5 and r["all"]["hits"][20] == 3
+    assert r["one"]["hits"][20] == 2
+
+
 def test_mae_by_word_context_is_edge_based_not_boundary_based():
     """Every word matched, so every edge is ``both``. This function charges the
     two edges of each aligned pair, so a contiguous run of 3 words gives 6
