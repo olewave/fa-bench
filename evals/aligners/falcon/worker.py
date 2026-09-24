@@ -38,9 +38,9 @@ CWD0 = os.getcwd()
 sys.path.insert(0, REPO)
 os.chdir(REPO)                     # its conf/ and assets/ resolve relatively
 
-import torch                                            # noqa: E402
-import torchaudio                                       # noqa: E402
-import predict as falcon                                # noqa: E402
+import predict as falcon
+import torch
+import torchaudio
 
 falcon._load_model = functools.lru_cache(maxsize=1)(falcon._load_model)
 
@@ -62,8 +62,7 @@ def _align(wav_path: str, phones: list, ckpt: str, td: str):
     n = audio.shape[1]
     step = n / len(phones)
     with open(os.path.join(td, stem + ".phn"), "w") as f:
-        for i, p in enumerate(phones):
-            f.write(f"0 {int((i + 1) * step)} {p}\n")
+        f.writelines(f"0 {int((i + 1) * step)} {p}\n" for i, p in enumerate(phones))
 
     pred, _truth, _mapped = falcon.main_predict(
         wav, ckpt, w_phi=0.5, language="english", annotation="phn", no_plots=True)

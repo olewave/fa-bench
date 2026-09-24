@@ -40,8 +40,8 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from fabench.schema import Interval                              # noqa: E402
-from fabench.score.segmentation import boundaries_from_intervals  # noqa: E402
+from fabench.schema import Interval
+from fabench.score.segmentation import boundaries_from_intervals
 
 #: (label, gold manifest glob, cell path under a tool directory)
 CASES = [

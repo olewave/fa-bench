@@ -18,8 +18,8 @@ import sys
 
 os.environ.setdefault("HF_HOME", "/ndata/hf")
 
-import torch                                      # noqa: E402
-import whisper_timestamped as wts                 # noqa: E402
+import torch
+import whisper_timestamped as wts
 
 
 def main() -> int:

@@ -23,8 +23,8 @@ import sys
 
 os.environ.setdefault("HF_HOME", "/ndata/hf")
 
-import torch                                             # noqa: E402
-from seamless_communication.models.aligner.alignment_extractor import (  # noqa: E402
+import torch
+from seamless_communication.models.aligner.alignment_extractor import (
     AlignmentExtractor,
 )
 

@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 
 from fabench.schema import Utterance
 from fabench.score import boundary, recall, word
-from fabench.score.matched import matched_indices, nw_align
+from fabench.score.matched import nw_align
 
 
 def identity(label: str) -> str:
@@ -90,6 +90,10 @@ class UttScore:
     mode: str
 
     boundary_errors: list[boundary.BoundaryError] = field(default_factory=list)
+    #: Each matched unit's start and end, tagged onset and offset. Feeds the
+    #: onset/offset columns only. `boundary_errors` counts BOUNDARIES and so
+    #: cannot carry that split, two contiguous units sharing one boundary.
+    unit_edge_errors: list[boundary.BoundaryError] = field(default_factory=list)
     word_abs_errors: list[float] = field(default_factory=list)
 
     # "fabench" (default, general-purpose scorer) or "mfa_paper" (bridges to the
@@ -188,12 +192,6 @@ class UttScore:
     #: Chirp 2 cell holding 837 of Buckeye dev's 4,456 scored as a clean row at
     #: WER 19.8 against ~14.7 for the complete ones. Wrong, not merely partial,
     #: and invisible.
-    n_gold_utts: int | None = None
-    #: How many utterances the SPLIT has, not how many were scored. The two
-    #: differ when a tool drops items, and nothing else in the row shows it:
-    #: a Chirp 2 cell holding 837 of Buckeye dev's 4,456 scored as a clean row
-    #: at WER 19.8 against ~14.7 for the complete ones. Wrong, not merely
-    #: partial, and invisible.
     n_gold_utts: int | None = None
 
 
@@ -298,6 +296,8 @@ def score_pair(
         # fields are populated with WORD counts so ARR/InsertRate are word-level
         # too. common-matched is a phone concept -> opt out (empty idx list).
         us.boundary_errors, wmatched, gw, hw = _word_boundary_errors(gold.words, hyp.words)
+        us.unit_edge_errors = boundary.unit_edge_errors(
+            wmatched, gw, hw, lambda _label: "word")
         us.n_matched_phone, us.n_gold_phone, us.n_hyp_phone = len(wmatched), len(gw), len(hw)
         us.matched_gold_phone_idx = []
     elif boundary_unit == "phone" and score_phones and gold.phones and hyp.phones:
@@ -378,6 +378,8 @@ def score_pair(
             bmatched, gold_ivs, hyp_ivs, manner_fn,
             skip_silence_adjacent=exclude_silence_boundaries,
         )
+        us.unit_edge_errors = boundary.unit_edge_errors(
+            bmatched, gold_ivs, hyp_ivs, manner_fn)
         if _cgw:
             us.bnd_ctx = _seg.f1_by_word_context(
                 _cgw, _chw, _c_wmatched, gold_ivs, hyp_ivs,

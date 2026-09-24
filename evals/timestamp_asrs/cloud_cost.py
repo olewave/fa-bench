@@ -103,7 +103,7 @@ def _durations(manifest: Path) -> list[float]:
         try:
             with wave.open(json.loads(line)["mixed_audio_path"]) as w:
                 out.append(w.getnframes() / float(w.getframerate() or 1))
-        except Exception:
+        except Exception:  # noqa: S112 - an unreadable file is not priced
             continue
     return out
 

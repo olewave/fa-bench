@@ -113,7 +113,7 @@ def load_measure_grid():
     return m
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def recipe_dirs() -> dict:
     """Tool name to recipe directory, walked the way measure_grid.systems() does.
 
@@ -134,7 +134,7 @@ def recipe_dirs() -> dict:
     return out
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def grid_label(tool: str, tier: str = "words") -> str:
     """The Grid cell: the step in ms that every boundary of `tool` sits on.
 
@@ -1725,10 +1725,15 @@ NAME_SMALL = r"\fontsize{5.8pt}{7.4pt}\selectfont"
 #: Every system name in Tables 1 and 2, a size under the numbers beside it.
 TABLE_NAME_SIZE = r"\fontsize{8pt}{8.8pt}\selectfont"
 TABLE_STRETCH = "1.0"
-#: Space booktabs leaves above and below each rule in Tables 1 and 2.
-#: The defaults are 0.4ex and 0.65ex, which is what Table 3 uses.
-RULE_ABOVE = "0.4ex"
-RULE_BELOW = "0.65ex"
+#: Space booktabs leaves above and below each rule. The defaults are 0.4ex
+#: and 0.65ex, which on a table whose blocks are closed by a dozen rules adds
+#: a visible ~1ex gap at every block break and makes the Open/API split look
+#: like a paragraph break rather than a row. At 0pt a rule costs only its own
+#: 0.25pt and a block boundary is spaced like any other row. All three tables
+#: set it, since \setlength inside table is local and Table 3 would otherwise
+#: keep the defaults and stop matching.
+RULE_ABOVE = "0pt"
+RULE_BELOW = "0pt"
 
 
 def grid_table(m) -> str:
@@ -1879,15 +1884,12 @@ def merged_table(m) -> str:
 
     group_spec = "|".join(["r"] * SLOTS)
     colspec = "@{}l|" + r"@{\hspace{2.5pt}}|@{\hspace{2.5pt}}".join([group_spec] * len(groups)) + "@{}"
-    corpora = corpus_order()
-    per_corpus = SLOTS * len(PAPER_CONDS) * max(len(splits_of(c)) for c in corpora)
     conds = ["clean", "noisy"]
     mid = "System & " + " & ".join(r"\multicolumn{" + str(SLOTS) + r"}{c}{" + CORPUS_LABEL[c[0]] + " "
                                    + SPLIT_LABEL[c] + " " + conds[k] + "}"
                                    for c, k in groups) + r"\\"
     mid_rules = "".join(r"\cmidrule(lr){" + f"{2 + SLOTS * i}-{1 + SLOTS * (i + 1)}" + "}"
                         for i in range(len(groups)))
-    top, top_rules = "", ""
     L = [
         r"\begin{table*}[!t]", r"\centering",
         r"\caption{\small Boundary error on the test split of each corpus, on clean "
@@ -1950,8 +1952,8 @@ CTX_COLS = ("int_both", "int_one", "start_ok", "end_ok", "rest")
 def _M(n: int, place: str = "") -> str:
     """``M2_I`` and friends. The place rides in a scriptscript subscript so
     the five heads still fit the column, which a full-size one overran."""
-    sub = r"_{\scriptscriptstyle %s}" % place if place else ""
-    return r"$\mathrm{M%d}%s$" % (n, sub)
+    sub = rf"_{{\scriptscriptstyle {place}}}" if place else ""
+    return rf"$\mathrm{{M{n}}}{sub}$"
 
 
 CTX_HEAD = {"int_both": _M(2, "I"), "int_one": _M(1, "I"),
@@ -2109,6 +2111,8 @@ def class_table(m, tier: str = "word") -> str:
         r"\begin{table}[t]", r"\centering",
         r"\fontsize{8pt}{8.8pt}\selectfont",
         r"\setlength{\tabcolsep}{0.05pt}\renewcommand{\arraystretch}{" + TABLE_STRETCH + "}",
+        r"\setlength{\aboverulesep}{" + RULE_ABOVE + "}"
+        r"\setlength{\belowrulesep}{" + RULE_BELOW + "}",
         r"\caption{\small The $F_1$s at 20\,ms of different types of word-tier "
         r"boundaries on clean audio of Track~2. "
         r"A boundary inside ($I$) an utterance has two adjacent "
@@ -2118,7 +2122,8 @@ def class_table(m, tier: str = "word") -> str:
         r"the beginning ($B$) and the ending ($E$) boundary of an utterance "
         r"respectively, each with only one adjacent word. $\mathrm{M0}$ "
         r"denotes the remaining boundaries. Grid is the step of boundaries "
-        r"in ms.}",
+        r"in ms. The first row is the share of reference boundaries in each "
+        r"category, averaged over the rows.}",
         r"\label{tab:class}", body, r"\end{table}",
     ])
 
@@ -2345,6 +2350,11 @@ _RADII = (7.0, 10.0, 13.5, 18.0, 24.0, 31.0, 40.0, 50.0, 62.0)
 #: generously: a leader is uglier than a label sitting a few points off its
 #: mark, and with the rings this close every label lands beside its own dot.
 _LEADER_AT = 20.0
+#: Labels placed by hand, in WARPED axis coordinates, always with a leader.
+#: The solver puts Speechmatics west of its own dot, inside the tightest
+#: cluster on the panel. On the top edge it is clear of Azure and IBM and
+#: its leader still says which dot is its own.
+_LABEL_AT = {"Speechmatics": (2.98, 3.86)}
 
 
 def _place_labels(pts, w_pt, h_pt, xlo, xhi, ylo, yhi):
@@ -2603,6 +2613,9 @@ def onset_bias_scatter(m, cell: str = "timit/core_test", tier: str = "word",
             shown.append((x, y, nm, gi))
     allp = [(x, y, nm) for x, y, nm, _ in shown] + [(x, y, nm) for x, y, _, _, nm, _ in off]
     lab = _place_labels(allp, side, side, fx, hi, fy, hi)
+    for _k, (_x, _y, _nm) in enumerate(allp):
+        if _nm in _LABEL_AT:
+            lab[_k] = (*_LABEL_AT[_nm], True)
     label = {"timit/dev": "TIMIT dev", "timit/core_test": "TIMIT test",
              "buckeye/dev": "Buckeye dev", "buckeye/test": "Buckeye test"}[cell]
     # Four decimals on the limits: at two, xmax rounded DOWN below the 100
@@ -2657,7 +2670,7 @@ def onset_bias_scatter(m, cell: str = "timit/core_test", tier: str = "word",
             # Visible at print size. 30 percent black at 0.2pt vanished, which
             # is why a reader saw no leaders at all. Still lighter than the
             # off-scale arrows so the two kinds of line stay distinct.
-            L.append(r"\draw[draw=black!60, line width=0.4pt] (axis cs:"
+            L.append(r"\draw[draw=black!85, line width=0.45pt] (axis cs:"
                      f"{x:.3f},{y:.3f}" r") -- (axis cs:" f"{lx:.3f},{ly:.3f}" r");")
         # An off-scale label is named so an arrow can leave it. The arrow
         # runs from the side of the label that faces the missing point and
@@ -2682,7 +2695,7 @@ def onset_bias_scatter(m, cell: str = "timit/core_test", tier: str = "word",
             # bow carries it clear of the labels between the two ends.
             bend = "left" if ox and oy else "left=45"
             bend = bend if "=" in bend else bend + "=20"
-            L.append(r"\draw[draw=black!75, line width=0.6pt, "
+            L.append(r"\draw[draw=black, line width=0.7pt, "
                      r"-{Stealth[length=2.6pt,width=2.6pt]}] "
                      f"(offlab{k - n_shown}.{anchor}) to[bend {bend}] "
                      f"(axis cs:{ex},{ey});")
@@ -2697,24 +2710,18 @@ def onset_bias_scatter(m, cell: str = "timit/core_test", tier: str = "word",
                      + " ".join(f"({x:.3f},{y:.3f})" for x, y, _, _ in co) + "};")
             L.append(r"\addlegendentry{" + gname + r"}")
     L += [r"\end{axis}", r"\end{tikzpicture}",
-          r"\caption{Mean signed word-boundary error on " + label + r", "
+          r"\caption{\small Mean signed word-boundary error on " + label + r", "
           r"hypothesis minus reference, over the words the label alignment "
           r"matched. Track~2 only. Every two-step point aligns Qwen3-ASR's "
           r"transcript, so the recognizer is fixed and only the aligner varies. "
-          r"Shape is the pipeline and fill the access, both legible in "
-          r"greyscale. Both axes are warped by $\mathrm{asinh}(v/4)$, which "
-          r"keeps the small errors readable and the large ones on the plot, and "
-          r"their ticks are in real ms"
-          + ((r". They are cut at $" + f"{BIAS_FLOOR_X:.0f}" + r"$, and the "
-              if floor_ms == BIAS_FLOOR_X else
-              r". They are cut at $" + f"{BIAS_FLOOR_X:.0f}" + r"$ and $"
-              + f"{floor_ms:.0f}" + r"$, and the ")
-             + f"{len(off)}" + r" systems past the cut are named at the edge "
-             r"with an arrow toward where they sit"
-             if off else r"") + r". The distance from the dashed line $y=x$ is "
-          r"the mean error in word duration.}",
+          r"Both axes are warped by $\mathrm{asinh}(v/4)$. The distance from "
+          r"the dashed line $y=x$ is the mean error in word duration.}",
           r"\label{fig:bias-" + cell.replace("/", "-") + "-" + tier
           + ("-all" if len(pts) > 20 else "") + r"}",
+          # \textfloatsep is set with "minus 5pt", so it collapses to nothing
+          # and the next section heading sits on the caption. Give this float
+          # its own floor.
+          r"\vspace{5pt}",
           r"\end{" + env + r"}"]
     return "\n".join(L)
 
@@ -2797,7 +2804,6 @@ def wer_table(m) -> str:
     if not rows:
         return ""
 
-    per = 2                                   # dev, test under one condition
     first = 2                                 # one lead column
     # "TIMIT clean" in one row rather than a TIMIT span above a clean span, as
     # in Tables 1 and 2: the columns beneath are wider than the label either way.

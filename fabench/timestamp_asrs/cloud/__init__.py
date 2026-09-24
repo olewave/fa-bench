@@ -24,5 +24,14 @@ from fabench.timestamp_asrs.cloud.adapter import (
     Speechmatics,
 )
 
-__all__ = ["CloudASR", "Deepgram", "AssemblyAI", "ElevenLabs", "GoogleSTT",
-           "IBMWatson", "Speechmatics", "AWSTranscribe", "AzureSpeech"]
+__all__ = [
+    "AWSTranscribe",
+    "AssemblyAI",
+    "AzureSpeech",
+    "CloudASR",
+    "Deepgram",
+    "ElevenLabs",
+    "GoogleSTT",
+    "IBMWatson",
+    "Speechmatics",
+]

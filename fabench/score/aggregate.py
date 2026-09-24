@@ -184,8 +184,12 @@ def aggregate(
             row["err_gt100_pct"] = float((abs_all > 0.100).mean()) * 100.0
 
             # onset/offset component MAE
-            on = [e.abs for e in pooled if e.edge == "onset"]
-            off = [e.abs for e in pooled if e.edge == "offset"]
+            # Units, not boundaries. A unit's start and its end are two
+            # different placements even where two units share a time, so
+            # this split keeps its own pool.
+            _ue = [e for g in group for e in g.unit_edge_errors]
+            on = [e.abs for e in _ue if e.edge == "onset"]
+            off = [e.abs for e in _ue if e.edge == "offset"]
             row["onset_mae_ms"] = float(np.mean(on)) * MS if on else float("nan")
             row["offset_mae_ms"] = float(np.mean(off)) * MS if off else float("nan")
 

@@ -37,12 +37,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-import yaml                                                    # noqa: E402
+import yaml
 
-from fabench.aligners import get_adapter                       # noqa: E402
-from fabench.config import AlignerSpec                         # noqa: E402
-from fabench.envfile import load_env_file                      # noqa: E402
-from fabench.paths import tool_index                           # noqa: E402
+from fabench.aligners import get_adapter
+from fabench.config import AlignerSpec
+from fabench.envfile import load_env_file
+from fabench.paths import tool_index
+
 
 #: Every commercial recipe, so `cloud_check.py` with no argument checks
 #: everything that can bill. The list went stale twice by being written
