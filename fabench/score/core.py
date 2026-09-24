@@ -381,12 +381,20 @@ def score_pair(
         us.unit_edge_errors = boundary.unit_edge_errors(
             bmatched, gold_ivs, hyp_ivs, manner_fn)
         if _cgw:
+            # THE PHONE'S OWN LABEL DECIDES. `matched` is the canonical-label
+            # alignment of the phones, and each phone's flag is whether it is
+            # in it, the rule the word tier applies to words. Inheriting the
+            # word's flag instead marked every phone matched on Track 1 and
+            # bnd_f1_all fell to a time-only match while PER read 30 percent.
+            _pg = {gi for gi, _ in matched}
+            _ph = {hj for _, hj in matched}
             us.bnd_ctx = _seg.f1_by_word_context(
                 _cgw, _chw, _c_wmatched, gold_ivs, hyp_ivs,
-                gold_matched=_c_gold_matched)
+                gold_matched=_c_gold_matched,
+                gold_unit_matched=_pg, hyp_unit_matched=_ph)
             us.bnd_ctx_mae = _seg.mae_by_word_context(
                 _cgw, _chw, _c_wmatched, aln.aligned(), gold_ivs, hyp_ivs,
-                gold_matched=_c_gold_matched)
+                gold_matched=_c_gold_matched, gold_unit_matched=_pg)
 
     if score_words and gold.words and hyp.words:
         us.word_abs_errors = word.word_abs_errors(gold.words, hyp.words)
