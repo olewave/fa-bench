@@ -192,6 +192,42 @@ def table(data: dict) -> str:
     return "\n".join(L)
 
 
+
+def fabench_release() -> str:
+    """One line naming the FA-Bench commit this snapshot was cut from.
+
+    The table below says which VERSION of each system produced the numbers. It
+    says nothing about the version of the benchmark that measured them, and the
+    scoring code moves: a matcher change, a normalisation fix or a new metric
+    all shift published numbers without touching a single aligner. Without the
+    commit, a snapshot cannot be reproduced -- you would know what was measured
+    but not what did the measuring.
+
+    A dirty tree is reported as such rather than silently attributed to HEAD,
+    because a snapshot cut from uncommitted work is not reproducible from that
+    commit and saying so is the whole point of recording it.
+    """
+    import subprocess
+
+    def git(*args):
+        try:
+            # check=False: a missing git, or a directory that is not a
+            # checkout, means "no commit to record" -- not a failed publish.
+            return subprocess.run(("git", *args), cwd=ROOT, capture_output=True,
+                                  text=True, timeout=30, check=False).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    sha = git("rev-parse", "--short=12", "HEAD")
+    if not sha:
+        return "**FA-Bench release:** unknown (not a git checkout)"
+    when = (git("log", "-1", "--format=%cs") or "").strip()
+    dirty = " + uncommitted changes" if git("status", "--porcelain") else ""
+    branch = git("rev-parse", "--abbrev-ref", "HEAD")
+    where = f", branch `{branch}`" if branch and branch != "HEAD" else ""
+    return f"**FA-Bench release:** commit `{sha}`{where} ({when}){dirty}"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--offline", action="store_true",
@@ -199,8 +235,8 @@ def main(argv=None) -> int:
     # The published snapshot, not summary/ -- which is script output now.
     # publish_records.py passes the dated directory; this default is the
     # current one for a manual run.
-    ap.add_argument("--doc", default=str(ROOT / "records" / "aligners" / "en"
-                                        / "latest" / "README.md"))
+    ap.add_argument("--doc", default=str(ROOT / "records" / "latest" / "en"
+                                        / "README.md"))
     a = ap.parse_args(argv)
 
     data = collect(a.offline)
@@ -209,7 +245,7 @@ def main(argv=None) -> int:
     if missing:
         print(f"  no version resolved for: {', '.join(missing)}", file=sys.stderr)
 
-    body = table(data)
+    body = fabench_release() + "\n\n" + table(data)
     # resolve() so a relative --doc still prints (and compares) correctly:
     # relative_to(ROOT) raised on the unresolved path AFTER the file was
     # already written, which read as a failed run that had in fact succeeded

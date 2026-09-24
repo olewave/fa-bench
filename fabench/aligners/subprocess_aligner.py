@@ -146,6 +146,7 @@ class SubprocessAligner(AlignerAdapter):
         self.load()
         results: dict[str, AlignerOutput] = {}
         n_err = 0
+        first_err = ""
         with tempfile.TemporaryDirectory(dir=self.params.get("tmp_dir")) as td:
             jobs = Path(td) / "jobs.jsonl"
             with open(jobs, "w") as f:
@@ -204,6 +205,12 @@ class SubprocessAligner(AlignerAdapter):
                 except json.JSONDecodeError:
                     continue          # library chatter on stdout, not a result
                 if "error" in rec:
+                    # Keep the first one: a worker that fails every item used to
+                    # report only the count, and the reason had to be recovered
+                    # by running the worker by hand. crisperwhisper_fa failed
+                    # 400/400 TIMIT items on a CUDA OOM that nothing printed.
+                    if not n_err:
+                        first_err = str(rec.get("item_id")) + ": " + str(rec["error"])
                     n_err += 1
                     continue
                 dur = 0.0
@@ -236,7 +243,8 @@ class SubprocessAligner(AlignerAdapter):
                     meta=meta,
                 )
         if n_err:
-            print(f"  [{self.name}] {n_err}/{len(items)} items failed in worker")
+            print(f"  [{self.name}] {n_err}/{len(items)} items failed in worker; "
+                  f"first: {first_err}")
         return results
 
     def align(self, audio_path, transcript, phone_seq=None, mode="A") -> AlignerOutput:

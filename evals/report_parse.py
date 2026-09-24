@@ -91,6 +91,12 @@ def _key(h: str) -> str:
     h = h.strip().lower()
     if h in HEADER_KEY:
         return HEADER_KEY[h]
+    if h.startswith("b-f1@"):
+        return "bnd_f1_" + h[len("b-f1@"):].strip()
+    if h.startswith("w-f1@"):
+        return "wbnd_f1_" + h[len("w-f1@"):].strip()
+    if h.startswith(("w-t≤", "w-t<=")):
+        return "wta_" + h.replace("w-t\u2264", "").replace("w-t<=", "").strip()
     if h.startswith(("t≤", "t<=")):
         return "ta_" + h.replace("t\u2264", "").replace("t<=", "").strip()
     return h.replace(" ", "_")

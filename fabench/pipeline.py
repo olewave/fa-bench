@@ -48,6 +48,11 @@ def cmd_run(args) -> int:
     # patching only one of them leaves the other writing where nothing looks.
     from fabench.paths import hyp_path
     aligners = cfg.aligners(enabled_only=True)
+    #: Aligner cells that failed or produced nothing. The run deliberately
+    #: continues past them, but the EXIT CODE must still say so -- a sweep that
+    #: lost every aligner used to finish green, which is how a broken tool
+    #: survives an unattended overnight run.
+    failures: list[str] = []
 
     # Ingest first — do NOT touch the noise provider (which may fetch ~11 GB of
     # MUSAN) until at least one corpus is confirmed staged.
@@ -83,7 +88,16 @@ def cmd_run(args) -> int:
             except Exception as e:
                 print(f"[run]   FAIL {spec.name}: {type(e).__name__}: {e} — "
                       "skipping this aligner, run continues", file=sys.stderr)
+                failures.append(f"{spec.name}x{corpus} ({type(e).__name__})")
                 continue
+            if not recs:
+                # "Ran but wrote nothing" is the failure that looks like success:
+                # an empty hyp scores as an absent cell, and without this the
+                # command still exits 0. Recorded, not raised -- the surrounding
+                # contract is that one bad aligner costs its own rows only.
+                print(f"[run]   EMPTY {spec.name} x {corpus}: produced no records",
+                      file=sys.stderr)
+                failures.append(f"{spec.name}x{corpus} (no records)")
             out = hyp_path(cfg.repo_root(), spec.name, corpus, cfg.subset_of(corpus),
                        condition=cfg.condition_tag())
             out.parent.mkdir(parents=True, exist_ok=True)
@@ -106,5 +120,9 @@ def cmd_run(args) -> int:
     if staged == 0:
         print("[run] no gold corpora staged — nothing scored. See acquisition "
               "instructions above.", file=sys.stderr)
+        return 1
+    if failures:
+        print(f"[run] {len(failures)} aligner cell(s) failed: " + "; ".join(failures),
+              file=sys.stderr)
         return 1
     return 0

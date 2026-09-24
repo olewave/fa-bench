@@ -21,12 +21,12 @@
 A deterministic, config-driven benchmark measuring how **forced aligners**
 perform and degrade under **additive noise**, scored against human linguists'
 hand-labeled ground truth phone- and word-level boundaries. English so far, on
-read speech ([TIMIT](records/aligners/en/202608/timit/README.md#about-timit))
+read speech ([TIMIT](records/202609/en/gold/word/timit/README.md#about-timit))
 and spontaneous speech
-([Buckeye](records/aligners/en/202608/buckeye/README.md#about-buckeye)), using
+([Buckeye](records/202609/en/gold/word/buckeye/README.md#about-buckeye)), using
 each corpus's own boundaries with **no new annotation** — times as annotated,
 labels folded to the shared TIMIT-39 set. Every system runs on **clean** audio
-and [four degradations](records/aligners/en/202608/README.md#what-the-four-conditions-are)
+and [four degradations](records/202609/en/README.md#what-the-four-conditions-are)
 (`reverb`, `noise`, `music`, `babble`), scored in **two tracks that never share
 a leaderboard**: aligners are given the reference transcript, while timestamped
 ASRs decode their own words, so their timing error carries recognition error
@@ -45,9 +45,9 @@ too. Everything is seeded, flag-gated, and reproducible from a single command.
 [TorchAudio-FA](https://github.com/pytorch/audio) ·
 [WhisperX](https://github.com/m-bain/whisperx)
 
-**Latest Results:** [TIMIT (read US English)](records/aligners/en/202608/timit/README.md) ·
-[Buckeye (spontaneous English)](records/aligners/en/202608/buckeye/README.md) ·
-[Methodology](records/aligners/en/202608/README.md)
+**Latest Results:** [TIMIT — word](records/202609/en/gold/word/timit/README.md) · [phone](records/202609/en/gold/phone/timit/README.md) ·
+[Buckeye — word](records/202609/en/gold/word/buckeye/README.md) · [phone](records/202609/en/gold/phone/buckeye/README.md) ·
+[Timestamped ASRs](records/202609/en/asr/word/timit/README.md) · [Methodology](records/202609/en/README.md)
 
 
 > **License — [PolyForm Noncommercial 1.0.0](LICENSE)**
@@ -128,7 +128,7 @@ fabench/     the library — one folder per subsystem, each with its own README
 evals/       how each system was run: recipes, environments, raw output
 datasets/    split lists + per-corpus config; prep/ records how gold was built
 summary/     leaderboards and reports — SCRIPT OUTPUT, gitignored
-records/     the published snapshots: aligners/en/<YYYYMM>/, with latest -> newest
+records/     published snapshots: <YYYYMM>/en/<transcript>/<tier>/<corpus>/
 ```
 
 Every path below `evals/` and `summary/` shares one cell key —
@@ -139,12 +139,12 @@ Every path below `evals/` and `summary/` shares one cell key —
 | `evals/<kind>/<tool>/<cell>/` | one tool's run — config, `hyp.jsonl`, and its scores, together | no |
 | `summary/<kind>/<cell>/` | the cross-tool leaderboard for that track | no — regenerated |
 | `summary/local/<cell>/` | your own `fabench run` | no |
-| `records/aligners/en/<YYYYMM>/` | the **published snapshot**, written by `evals/publish_records.py` | **yes** |
+| `records/<YYYYMM>/en/<transcript>/<tier>/<corpus>/` | the **published snapshot**, written by `evals/publish_records.py` | **yes** |
 
 Nothing you run is tracked, so reproducing the benchmark leaves `git status`
 clean. **Publishing is a separate, deliberate act:** `evals/publish_records.py`
-snapshots the current numbers into `records/aligners/en/<YYYYMM>/` and repoints
-`latest`, carrying the previous month's prose forward so only the tables move.
+snapshots the current numbers into `records/<YYYYMM>/en/<transcript>/<tier>/<corpus>/`,
+carrying the previous month's prose forward so only the tables move.
 
 Further reading: [`evals/README.md`](evals/README.md) (how systems were run) ·
 [`datasets/README.md`](datasets/README.md) (staging, splits, licensing) ·
@@ -198,7 +198,7 @@ question is never a system's accuracy but how much of it survives.
 own matcher + manner-match exclusion, works for every aligner) or `mfa_paper`
 (bridges to the paper's **actual** evaluation code for exact Table 5
 reproduction). What that changes, and the residual it does not explain, is
-worked through in [the methodology page](records/aligners/en/202608/README.md).
+worked through in [the methodology page](records/202609/en/README.md).
 
 ---
 
@@ -222,7 +222,7 @@ stable-ts and WhisperX emit words but no phones**, so they appear only in the
 word tables; the tables show an em dash rather than a number wherever that is
 so. Every other system is scored on both tiers. Per-system notes are in each
 tool's README under `fabench/aligners/`; the numbers and their caveats are in
-[`records/`](records/aligners/en/202608/timit/README.md).
+[`records/`](records/202609/en/gold/word/timit/README.md).
 
 Reproduce with `.venv/bin/python -m pytest -q` and `fabench gates`. The only
 gate needing restricted data is gold plausibility, which runs inside

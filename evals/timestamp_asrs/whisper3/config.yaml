@@ -1,0 +1,19 @@
+# Whisper large-v3 -- track 2. Decodes its own words, so it is NOT comparable
+# head-to-head with the aligners.  https://huggingface.co/openai/whisper-large-v3
+#
+# Word times come from cross-attention DTW, not from a duration head. Do not
+# confuse this row with WhisperX in track 1: same encoder, but WhisperX throws
+# these times away and re-aligns with a separate wav2vec2 CTC model.
+name: whisper3
+adapter: whisper3
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: evals/timestamp_asrs/whisper3/venv
+  worker: worker.py
+  model: openai/whisper-large-v3
+  timeout_s: 14400
+  env:
+    HF_HOME: /ndata/hf

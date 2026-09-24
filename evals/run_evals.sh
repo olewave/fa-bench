@@ -82,12 +82,19 @@ TOOLS=("$@")
 # each driver: see evals/env.sh and the FABENCH_* knobs it documents.
 . "$HERE/env.sh"
 
+# The default grid. FABENCH_CELLS overrides it with a ';'-separated list, so a
+# sweep can be split across GPUs by running one invocation per cell:
+#   FABENCH_CELLS="buckeye test" FABENCH_DEVICE=cuda:3 ./run_evals.sh ... tool
+if [ -n "${FABENCH_CELLS:-}" ]; then
+  IFS=';' read -ra CELLS <<< "$FABENCH_CELLS"
+else
 CELLS=(
   "timit dev"
   "timit core_test"
   "buckeye dev"
   "buckeye test"
 )
+fi
 
 [ -f "$SUMMARY" ] || printf 'corpus\tsubset\ttool\tstatus\tseconds\n' > "$SUMMARY"
 
@@ -133,7 +140,13 @@ for cell in "${CELLS[@]}"; do
       # and writes an EMPTY hypothesis file -- whisperx did exactly this
       # across all five cells (a float64/float32 mismatch) and was recorded as
       # OK. Check the run actually produced records.
-      hyp="$HERE/$kind/$tool/en/$corpus/$subset/hyp.jsonl"
+      # $tdir, not $HERE/$kind/$tool: a recipe nested under exps/ or v*/ does
+      # not live at its own name, so the guessed path missed every one. And the
+      # CONDITION is its own directory level (fabench.paths.cell_dir) -- the
+      # check predates that change and never gained the segment, so it had been
+      # looking one level too high for every tool since. Both together made it
+      # report EMPTY for 53 runs that had written full hypothesis files.
+      hyp="$tdir/en/$corpus/$subset/origin/hyp.jsonl"
       if [ ! -s "$hyp" ]; then
         echo "[EMPTY] $tag  ($((SECONDS - t0))s) -- ran, but produced 0 records; see $log"
         printf '%s\t%s\t%s\tEMPTY\t%d\n' "$corpus" "$subset" "$tool" $((SECONDS - t0)) >> "$SUMMARY"
@@ -152,7 +165,12 @@ fi   # stage 1
 # --- stage 2: the same cells over noise-augmented audio ---------------------
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ] && [ "${use_noisy_dataset}" = true ]; then
   echo "=== stage 2: align, noisy ==="
-  "$PY" "$HERE/gen_noisy_configs.py" --tools "${TOOLS[@]}" || \
+  # Stage 2 must cover the SAME cells stage 1 ran. gen_noisy_configs.py
+  # defaults to timit:core_test + buckeye:test, so a dev sweep silently
+  # regenerated the TEST configs, found them already done and skipped --
+  # yielding clean dev results and no noisy ones, with no error anywhere.
+  _subs=(); for _c in "${CELLS[@]}"; do set -- $_c; _subs+=("$1:$2"); done
+  "$PY" "$HERE/gen_noisy_configs.py" --tools "${TOOLS[@]}" --subsets "${_subs[@]}" || \
     echo "[SKIP] stage 2 -- no noisy configs generated"
   "$HERE/run_noisy_evals.sh" "${TOOLS[@]}"
 elif [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then

@@ -72,7 +72,13 @@ def load_resample(path: str, target_sr: int) -> tuple[np.ndarray, int]:
 
 class Aligner:
     def __init__(self, bundle_name: str, phoneme_model: str | None, device: str):
-        self.device = device if (device == "cuda" and torch.cuda.is_available()) else "cpu"
+        # `device.startswith` and NOT `device == "cuda"`. The cell runners pin a
+        # card by passing "cuda:0" with CUDA_VISIBLE_DEVICES set, and an exact
+        # match against "cuda" sent every one of those runs to the CPU without a
+        # word. Same alignments, an order of magnitude slower: the MMS Buckeye
+        # cells took 90 minutes on 32 cores while three Blackwells sat at 0%.
+        self.device = (device if (device.startswith("cuda")
+                                  and torch.cuda.is_available()) else "cpu")
         self.F = torchaudio.functional
 
         self.bundle = getattr(torchaudio.pipelines, bundle_name)
@@ -81,6 +87,11 @@ class Aligner:
         labels = self.bundle.get_labels()
         self.tok = {c: i for i, c in enumerate(labels)}
         self.blank = 0
+        # Bundles disagree on case. WAV2VEC2_ASR_BASE_960H labels are upper,
+        # MMS_FA's are lower, and a transcript folded the wrong way drops every
+        # character at the tok lookup below. MMS scored 0.0 F1 on 44 of 3140
+        # boundaries before this.
+        self.upper = any(c.isupper() for c in labels)
 
         self.phoneme = None
         if phoneme_model:
@@ -113,7 +124,8 @@ class Aligner:
         n_samples, n_frames = wav.size(1), logp.size(1)
         ratio = n_samples / n_frames / self.sr
 
-        wlist = re.findall(r"[A-Za-z']+", transcript.upper())
+        folded = transcript.upper() if self.upper else transcript.lower()
+        wlist = re.findall(r"[A-Za-z']+", folded)
         if not wlist:
             return []
         tokens, per_word = [], []

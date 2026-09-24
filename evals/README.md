@@ -75,6 +75,7 @@ since a `.so` is loaded once per process.
 | crisperwhisper, neufa, parakeet_tdt, qwen3_fa, stable_ts, torchaudio_fa, whisperx | `<tool>/venv` |
 | crisperwhisper_fa | shares `timestamp_asrs/crisperwhisper/venv` — same package |
 | olign | none: a REST client to a running server |
+| deepgram, assemblyai, elevenlabs, google_stt | none: HTTPS from the shared venv |
 
 Each declares its own in `params.venv`, and `SubprocessAligner` refuses to load
 without it. Batch by construction — a subprocess per utterance would pay the
@@ -84,6 +85,114 @@ model load every time.
 `uv pip install --python .venv/bin/python <pkg>`; `.venv/bin/pip` does not
 exist, and a `cd` in a backgrounded shell does not persist — both produce the
 same misleading "No such file or directory".
+
+## Commercial endpoints
+
+Four timestamped ASRs are paid HTTPS services rather than checkpoints:
+`deepgram`, `assemblyai`, `elevenlabs`, `google_stt`. They are Track 2,
+one-step, word tier, and they are wired through
+`fabench/timestamp_asrs/cloud/` with **no vendor SDK and no venv** — four
+dependency trees would undo the isolation above, and the GPU host has no PyPI route,
+while all four APIs are plain HTTPS and JSON that `urllib` can speak.
+
+They differ from every other row in four ways the code has to answer for.
+
+**A call costs money, so nothing is ever called twice.** Every response is
+cached under `evals/timestamp_asrs/<tool>/cache/`, keyed by the SHA-256 of the
+audio bytes plus the model and every request option that can change the answer.
+A rescore, a restart after a crash, or a re-run to fix a scoring bug all hit the
+cache and cost nothing. Change the model or an option and the key changes, so
+the cache cannot serve a stale configuration. The directory is gitignored: the
+payloads carry the licensed corpora's transcripts, the same reason `hyp.jsonl`
+is.
+
+Budget before starting, with `evals/timestamp_asrs/cloud_cost.py`, which reads
+the real durations out of the mix manifests rather than guessing. Both corpora
+across five conditions are **47,805 requests and 34.1 audio hours per
+provider**, which is about **$40 for the three vendors that bill per second and
+anywhere from $39 to $287 for Google**, because FA-Bench sends one request per
+utterance and its utterances are short. At a 2.6 s mean, a vendor rounding each
+request up to a 15-second increment bills 5.8x the audio it heard. The
+increment, not the rate, is what to check before committing.
+
+Check one utterance first:
+
+```
+evals/timestamp_asrs/cloud_check.py                 # every provider, one file
+evals/timestamp_asrs/cloud_check.py deepgram        # just one
+evals/timestamp_asrs/cloud_check.py --no-cache      # force a real call
+```
+
+A provider with no credential is reported and skipped, so registering them one
+at a time is the normal path. `params.max_calls` caps a recipe while a key is
+being tried.
+
+**A key is a secret and this repo is public.** Credentials come from the
+environment only — `DEEPGRAM_API_KEY`, `ASSEMBLYAI_API_KEY`,
+`ELEVENLABS_API_KEY`, and for Google either `GOOGLE_STT_API_KEY` or
+`GOOGLE_STT_ACCESS_TOKEN`, falling back to `gcloud auth print-access-token`.
+Put them in `.fabench.env`, which is gitignored. Nothing reads a key out of a
+tracked config even if one is written there.
+
+**Every one of them formats text for a human by default**, turning "twenty one"
+into "21" and adding capitals and punctuation. Against a gold transcript that
+spells its numbers out, that is not a recognition error but it scores as one,
+and it would rank the vendor that formats hardest rather than the one that
+hears worst. So each recipe asks for raw words. ElevenLabs Scribe has no such
+switch, which is recorded in its recipe and is a real caveat on its WER — its
+timing, which the formatting does not touch, reads straight.
+
+**They are not reproducible the way an open checkpoint is.** The model behind an
+endpoint can change without notice and without a version number, so a row
+records what the service returned on the date of the run and nothing stronger.
+That is a property of the systems, not of the benchmark. Each recipe declares
+`access: commercial` so the distinction is data rather than a list someone has
+to maintain, and these rows belong in a commercial track reported apart from the
+open-weight one rather than mixed into a single leaderboard.
+
+**Latency is measured per request**, because for these rows a request is the
+unit of work. `rtf_mean` cannot serve: on the batch path the runner computes one
+`elapsed / total_audio` for the whole cell, so at concurrency 8 it reports
+throughput and every utterance carries the same number. RTF also divides by
+audio duration, which for a network endpoint buries a fixed per-request cost --
+the same API scores RTF 0.31 on a 2.6 s utterance and 0.01 on a 60 s file.
+
+`fabench/score/latency.py` reports the distribution and the decomposition
+instead: `lat_p50_s`, `lat_p90_s`, `lat_p95_s`, `lat_p99_s`, `lat_max_s`, and a
+least-squares split of `latency = lat_fixed_s + lat_per_audio_s x duration`
+with its `lat_r2`. Percentiles rather than a mean because one retried call
+outweighs a hundred fast ones in a mean while moving p50 not at all, and p95 is
+what a 48,000-request sweep actually waits on. The split because it separates
+what a request costs before any audio is processed from the rate once it is,
+which is exactly what RTF conflates.
+
+**The network is inside the number, so it is measured too.** Before the first
+paid call of a cell the adapter probes DNS + TCP + TLS to that endpoint with no
+payload, and reports it as `lat_setup_s` with `lat_fixed_net_s` = `lat_fixed_s`
+minus it. The first is a property of this machine's network, the second of the
+service, and only the second is comparable across vendors. From our scoring host the floor
+is 38 ms to Google's us-central1, 46 ms to ElevenLabs, 68 ms to AssemblyAI and
+149 ms to Deepgram, against observed calls around 1.4 s. So it is a few percent
+rather than the whole story, but a few percent separates vendors that otherwise
+look tied, and all of it is an artefact of where the sweep ran.
+
+Note that urllib opens a new connection per request and does not pool, so that
+floor is paid on every call rather than once. Over 47,805 requests it is 30
+minutes for Google and two hours for Deepgram of pure handshake.
+
+So these are a **deployment** measurement, not a vendor benchmark. They answer
+what a sweep costs in wall clock from here, and they support a ranking among
+providers measured from one machine at one time. They do not support an
+absolute claim about a vendor's speed and they do not reproduce on another
+network. They also hold only at the concurrency the cell ran at. Cache hits
+contribute nothing, by recording no latency rather than a zero, and retries,
+their backoff and AssemblyAI's polling are counted separately in the hyp
+record, so a slow call can be attributed to the vendor or to our own client.
+
+`fabench/timestamp_asrs/cloud/test/test_cloud.py` covers the response shapes,
+the millisecond and nanosecond time forms, the cache keying, the spend cap and
+the retry policy with the network stubbed, so a wiring mistake costs nothing to
+find.
 
 ## Using the box: `env.sh`
 
@@ -128,6 +237,25 @@ Stage 3 scores **one tool** into its own cell. The cross-tool leaderboards under
 `rescore_all.sh`, which scores the two tracks separately — aligners are given
 the reference transcript, timestamped ASRs decode their own words, and the two
 must not be ranked head to head.
+
+## Checking the per-word claims
+
+Most numbers in the paper come out of `summary/`, so anyone can read them off
+the published tables. Five do not. They split words by what the recogniser did
+to each one -- kept it, swapped it, dropped it, invented it -- and no pooled
+per-cell metric can answer that.
+
+```bash
+./analyze_recognition_effects.py                       # buckeye dev, clean
+./analyze_recognition_effects.py --corpus timit --subset core_test
+```
+
+It reads the same hypotheses the scorer reads, aligns each system's words to
+the gold words with the scorer's own Needleman-Wunsch, and prints every quoted
+figure. Two readings of "a word the recogniser missed" are printed side by
+side, because the phrase is ambiguous and the choice moves the answer: counting
+substitutions as missed gives a 2.2x ratio on Qwen3-ASR, counting only outright
+deletions gives 1.9x. The paper quotes the first.
 
 ## Splits
 
