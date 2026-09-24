@@ -143,7 +143,7 @@ def sign_headers(
     def _hmac(key: bytes, msg: str) -> bytes:
         return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
 
-    k = _hmac(f"AWS4{secret_key}".encode("utf-8"), datestamp)
+    k = _hmac(f"AWS4{secret_key}".encode(), datestamp)
     for piece in (region, service, "aws4_request"):
         k = _hmac(k, piece)
     signature = hmac.new(k, to_sign.encode("utf-8"), hashlib.sha256).hexdigest()

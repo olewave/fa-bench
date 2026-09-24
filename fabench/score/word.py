@@ -40,20 +40,52 @@ def word_abs_errors(
     gold_words: Sequence[Interval],
     hyp_words: Sequence[Interval],
 ) -> list[float]:
-    """Pooled |start| and |end| offsets over matched words, in seconds.
+    """Absolute time error at each MATCHED BOUNDARY, in seconds.
 
     Words are matched by canonical label via the same monotonic aligner as
     phones (labels here are lowercased word strings; normalization is identity
     for words).
+
+    ONE ENTRY PER BOUNDARY, not two per word. This used to walk the matched
+    words and append each one's start and its end. Adjacent words share a time
+    in 89.6% of TIMIT and 94.9% of Buckeye, so an interior boundary between two
+    matched words went in twice, and the two entries were the same number in
+    98-99% of cases. That gave the easy interior double the weight of the
+    utterance edges and of boundaries with one matched neighbour, which are
+    exactly the ones the benchmark reports on. Deduplicating raises word MAE by
+    3 to 5 ms across the systems and changes the reported quantity from a mean
+    over word edges to a mean over boundaries, which is what the paper says.
+
+    A BOUNDARY IS MATCHED WHEN EVERY UNIT BESIDE IT MATCHED. An utterance edge
+    and a boundary against an interior silence gap have one unit beside them,
+    so that one decides; silence is not a unit and matches trivially. This is
+    the same rule Boundary F1 uses, so the two metrics now filter alike and
+    differ only in what they do with the survivors. On Track 1 nothing turns on
+    it, since the reference transcript is given and every unit matches.
+
+    The hypothesis time comes from the left unit's end, or from the right
+    unit's start where the boundary opens an utterance or follows a gap. Where
+    both exist they are the same time unless the hypothesis puts a gap where
+    the reference has none, which is 1-2% of boundaries.
     """
     gl = [w.label for w in gold_words]
     hl = [w.label for w in hyp_words]
     aln = nw_align(gl, hl)
+    matched = dict(aln.matched(gl, hl))
+    # gold boundary time -> [unit ending here, unit starting here]
+    sides: dict[float, list[int | None]] = {}
+    for i, w in enumerate(gold_words):
+        sides.setdefault(round(w.start, 9), [None, None])[1] = i
+        sides.setdefault(round(w.end, 9), [None, None])[0] = i
     errs: list[float] = []
-    for gi, hj in aln.matched(gl, hl):
-        g, h = gold_words[gi], hyp_words[hj]
-        errs.append(abs(h.start - g.start))
-        errs.append(abs(h.end - g.end))
+    for left, right in sides.values():
+        near = [i for i in (left, right) if i is not None]
+        if not all(i in matched for i in near):
+            continue
+        if left is not None:
+            errs.append(abs(hyp_words[matched[left]].end - gold_words[left].end))
+        else:
+            errs.append(abs(hyp_words[matched[right]].start - gold_words[right].start))
     return errs
 
 

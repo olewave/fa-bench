@@ -332,9 +332,9 @@ def labelled_hits_by_class(
             c = "both" if (n_g - 1, n_h - 1) in mset else "one"
             d = abs(float(hyp_ivs[-1].end) - float(gold_ivs[-1].end))
             out[c]["n"] += 1; out[c]["dists"].append(d); edges["n"] += 1; edges["dists"].append(d)
-    for c in out:
-        d = out[c].pop("dists")
-        out[c]["hits"] = {round(t * 1000): sum(1 for x in d if x <= t) for t in tols_s}
+    for c, rec in out.items():
+        d = rec.pop("dists")
+        rec["hits"] = {round(t * 1000): sum(1 for x in d if x <= t) for t in tols_s}
     d = edges.pop("dists")
     edges["hits"] = {round(t * 1000): sum(1 for x in d if x <= t) for t in tols_s}
     out["edges"] = edges

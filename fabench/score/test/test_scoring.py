@@ -69,27 +69,31 @@ def _errs():
 # --------------------------------------------------------------------------
 def test_boundary_mae_median_signed():
     errs = _errs()
-    # 8 dual-edge abs errors (s): [0, .02, .02, .01, .01, .01, .01, 0] -> sum .08
-    assert len(errs) == 8
-    assert B.mae(errs) == pytest.approx(0.08 / 8)          # 0.010 s = 10 ms
-    assert B.median_abs(errs) == pytest.approx(0.010)       # median of the 8
-    # signed (hyp-gold) sum = +.04 -> mean +.005 s = +5 ms (aligner lags)
-    assert B.signed_mean(errs) == pytest.approx(0.04 / 8)
+    # 4 contiguous units share 3 interior times, so the utterance has 5
+    # boundaries, not 8 unit edges: [0, .02, .01, .01, 0] -> sum .04
+    assert len(errs) == 5
+    assert B.mae(errs) == pytest.approx(0.04 / 5)           # 8 ms
+    assert B.median_abs(errs) == pytest.approx(0.010)
+    # signed (hyp-gold) sum = +.02 -> mean +.004 s = +4 ms (aligner lags)
+    assert B.signed_mean(errs) == pytest.approx(0.02 / 5)
 
 
 def test_threshold_accuracy():
     errs = _errs()
-    # <=10ms: two 0.0 + four 0.01 = 6/8 ; the two 0.02 excluded
-    assert B.threshold_accuracy(errs, 0.010) == pytest.approx(6 / 8)
-    # <=20ms: all 8
+    # <=10ms: two 0.0 + two 0.01 = 4/5 ; the single 0.02 excluded
+    assert B.threshold_accuracy(errs, 0.010) == pytest.approx(4 / 5)
+    # <=20ms: all 5
     assert B.threshold_accuracy(errs, 0.020) == pytest.approx(1.0)
 
 
 def test_onset_offset_components():
-    errs = _errs()
-    on = B.onset_only(errs)
-    off = B.offset_only(errs)
-    assert len(on) == 4 and len(off) == 4
+    """The split is over UNITS, so it keeps its own pool. A unit's start and
+    its end are two placements even where two units share one boundary, which
+    is why this cannot be read off the deduplicated boundary list."""
+    ue = B.unit_edge_errors(_matched_11(4), GOLD, HYP, manner_of)
+    on = B.onset_only(ue)
+    off = B.offset_only(ue)
+    assert len(ue) == 8 and len(on) == 4 and len(off) == 4
     # onsets abs: [0, .02, .01, .01] -> mean .01 ; offsets: [.02, .01, .01, 0] -> mean .01
     assert B.mae(on) == pytest.approx(0.04 / 4)
     assert B.mae(off) == pytest.approx(0.04 / 4)
@@ -129,16 +133,18 @@ def test_wbe_pools_over_all_boundaries():
     hyp1 = _phones([("she", 0.0, 0.32), ("sells", 0.32, 0.69)])
     gold2 = _phones([("hi", 0.0, 0.2)])
     hyp2 = _phones([("hi", 0.0, 0.25)])
-    e1 = word.word_abs_errors(gold1, hyp1)  # [0, .02, .02, .01]
+    # ONE entry per boundary. "she sells" is contiguous, so its three
+    # boundaries are 0.0, the shared 0.3, and 0.7 -- not four word edges with
+    # the middle one counted from both sides.
+    e1 = word.word_abs_errors(gold1, hyp1)  # [0, .02, .01]
     e2 = word.word_abs_errors(gold2, hyp2)  # [0, .05]
-    assert sorted(e1) == pytest.approx([0.0, 0.01, 0.02, 0.02])
+    assert sorted(e1) == pytest.approx([0.0, 0.01, 0.02])
     mm = word.word_boundary_error([e1, e2])
-    # One number: the mean over ALL 6 boundaries, not the mean of the two
+    # One number: the mean over ALL 5 boundaries, not the mean of the two
     # per-utterance means. The short utterance therefore carries the weight its
-    # 2 boundaries earn, not the half it would get from utterance-averaging --
-    # which for this pair is .10/6 = 16.7 ms against (.0125+.025)/2 = 18.8 ms.
-    assert mm["wbe_s"] == pytest.approx(0.10 / 6)
-    assert mm["n_word_boundaries"] == 6
+    # 2 boundaries earn, not the half it would get from utterance-averaging.
+    assert mm["wbe_s"] == pytest.approx(0.08 / 5)
+    assert mm["n_word_boundaries"] == 5
     assert mm["n_utts_with_words"] == 2
     assert "wbe_macro_s" not in mm
 
@@ -185,7 +191,8 @@ def test_score_pair_mode_b():
         manner_of_canonical=manner_of,
     )
     assert (us.n_matched_phone, us.n_gold_phone, us.n_hyp_phone) == (4, 4, 4)
-    assert B.mae(us.boundary_errors) == pytest.approx(0.010)
+    # 4 contiguous phones -> 5 boundaries, mean |err| .04/5
+    assert B.mae(us.boundary_errors) == pytest.approx(0.008)
     assert us.matched_gold_phone_idx == [0, 1, 2, 3]
 
 
@@ -199,16 +206,19 @@ def test_score_pair_manner_match_keeps_consistent_substitutions():
     gold = Utterance("u", "toy", "read", "spk", "x.wav", 16000, 0.4, words=[], phones=gp)
     hyp = Utterance("u", "toy", "read", "spk", "x.wav", 16000, 0.4, words=[], phones=hp)
 
-    # exact-label matching (default): only iy matches -> 1 pair -> 2 dual-edge errs
+    # exact-label matching (default): only iy matches. Its onset sits beside an
+    # unmatched z, so only the utterance-final boundary is scored.
     us_exact = score_pair(gold, hyp, condition="clean", aligner="t", mode="A")
     assert us_exact.n_matched_phone == 1
-    assert len(us_exact.boundary_errors) == 2
+    assert len(us_exact.boundary_errors) == 1
     assert us_exact.matched_gold_phone_idx == [2]
 
     # manner-match: s~sh + iy~iy kept (2 pairs -> 4 errs), z~d excluded
     us_mm = score_pair(gold, hyp, condition="clean", aligner="t", mode="A", manner_match=True)
     assert us_mm.n_matched_phone == 1               # ARR unchanged (exact only)
-    assert len(us_mm.boundary_errors) == 4
+    # s~sh and iy~iy aligned, z~d dropped: the utterance edges plus nothing
+    # interior, since every interior boundary touches the dropped z.
+    assert len(us_mm.boundary_errors) == 2
     assert us_mm.matched_gold_phone_idx == [0, 2]   # z (idx 1) dropped by manner
 
 
@@ -220,10 +230,10 @@ def test_score_pair_exclude_silence_boundaries():
     kw = {"condition": "clean", "aligner": "toy", "mode": "B", "manner_of_canonical": manner_of}
     us_all = score_pair(gold, hyp, **kw)
     us_sp = score_pair(gold, hyp, exclude_silence_boundaries=True, **kw)
-    # GOLD = sil,s,iy,sil -> only the internal s<->iy boundary is speech-to-speech
-    # (dual-edge: s.offset + iy.onset); everything else touches silence/edge.
-    assert len(us_all.boundary_errors) == 8
-    assert len(us_sp.boundary_errors) == 2
+    # GOLD = sil,s,iy,sil -> of the 5 boundaries only the internal s|iy one is
+    # speech-to-speech; every other touches silence or an utterance edge.
+    assert len(us_all.boundary_errors) == 5
+    assert len(us_sp.boundary_errors) == 1
     for e in us_sp.boundary_errors:
         assert e.left_manner != "silence" and e.right_manner != "silence"
 
@@ -246,13 +256,14 @@ def test_boundary_unit_word_scores_word_boundaries():
                 Interval("hh", 0.30, 0.42), Interval("ae", 0.42, 0.52), Interval("d", 0.52, 0.57)],
     )
     us_w = score_pair(gold, hyp, condition="c", aligner="a", mode="A", boundary_unit="word")
-    # 2 words x 2 edges; errors: she.start .02, she.end 0, had.start 0, had.end .03
-    assert len(us_w.boundary_errors) == 4
-    assert sorted(round(b.abs, 4) for b in us_w.boundary_errors) == [0.0, 0.0, 0.02, 0.03]
+    # 2 contiguous words -> 3 boundaries: .10 off by .02, the shared .30 exact,
+    # .60 off by .03. The shared one is counted once, not once per word.
+    assert len(us_w.boundary_errors) == 3
+    assert sorted(round(b.abs, 4) for b in us_w.boundary_errors) == [0.0, 0.02, 0.03]
     assert us_w.n_matched_phone == 2 and us_w.n_gold_phone == 2  # word counts -> word ARR
-    # phone mode still uses phones (5 phones x 2 edges = 10)
+    # phone mode still uses phones: 5 contiguous phones -> 6 boundaries
     us_p = score_pair(gold, hyp, condition="c", aligner="a", mode="A", boundary_unit="phone")
-    assert len(us_p.boundary_errors) == 10
+    assert len(us_p.boundary_errors) == 6
 
 
 def test_boundary_unit_word_drops_silence_pseudowords():

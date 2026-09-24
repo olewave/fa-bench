@@ -23,14 +23,21 @@ was given, with the utterance edges in, and within a group the boundaries
 are paired by time for F1. MAE is the paper's dual-edge error over the
 aligned units, substitutions included so that every group has one, each
 edge charged to the reference boundary it sits on."""
-import importlib.util, json, glob, sys, pathlib
+import glob
+import importlib.util
+import json
+import math
+import pathlib
+import sys
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+from fabench.aligners.relabel import relabel_to_input
+from fabench.normalize import make_canon
 from fabench.schema import Interval
 from fabench.score import segmentation as seg
-from fabench.score.matched import nw_align
 from fabench.score.core import _SILENCE_WORDS, _prep_phones
-from fabench.normalize import make_canon
-from fabench.aligners.relabel import relabel_to_input
+from fabench.score.matched import nw_align
+
 spec = importlib.util.spec_from_file_location('g', 'evals/gen_paper_tables.py'); g = importlib.util.module_from_spec(spec); spec.loader.exec_module(g)
 m = g.load_tables_module(); g._SHORT_NAMES = True
 TOL = 0.020; T = 20
@@ -38,7 +45,7 @@ CELLS = (("timit", "core_test", "TIMIT test"), ("buckeye", "test", "Buckeye test
 OUT = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path("docs/paper")
 
 def load_gold(corpus, subset):
-    f = sorted(glob.glob(f"data/work/canonical/{corpus}__*{subset}*.jsonl"))[0]
+    f = min(glob.glob(f"data/work/canonical/{corpus}__*{subset}*.jsonl"))
     out = {}
     for line in open(f):
         r = json.loads(line)
@@ -192,10 +199,10 @@ def rows_for(tier):
 
 golds = {(c, s): load_gold(c, s) for c, s, _ in CELLS}
 tex_all = []
-fmt = lambda v: "   --" if v != v else f"{v:5.2f}"
-fmt_t = lambda v: "--" if v != v else f"{v:.2f}"
-fmt_m = lambda v: "    --" if v != v else f"{v:6.1f}"
-fmt_mt = lambda v: "--" if v != v else f"{v:.1f}"
+fmt = lambda v: "   --" if math.isnan(v) else f"{v:5.2f}"
+fmt_t = lambda v: "--" if math.isnan(v) else f"{v:.2f}"
+fmt_m = lambda v: "    --" if math.isnan(v) else f"{v:6.1f}"
+fmt_mt = lambda v: "--" if math.isnan(v) else f"{v:.1f}"
 F1CAT = ("all", "pool", "both", "one", "none")
 CAT = ("all", "both", "one", "none")
 NC = len(F1CAT) + 2 * len(CAT)  # F1, then MAE and reference n without the pool

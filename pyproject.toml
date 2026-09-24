@@ -124,3 +124,19 @@ ignore = [
     # never occurs; ruff cannot prove it. Verified by reading all four.
     "B023",
 ]
+
+# Two rules that are right for the library and wrong for the scripts beside it.
+# Both are clean inside fabench/ and stay enforced there.
+[tool.ruff.lint.per-file-ignores]
+"evals/**" = [
+    # ISC004 implicit concatenation in a collection (14 sites). The table and
+    # figure generators build LaTeX as lists of adjacent string literals, one
+    # per output line, so the source reads in the order the output does.
+    # Parenthesising each run would hide that shape for no gain.
+    "ISC004",
+    # SIM115 open() without a context manager (13 sites). These are one-shot
+    # analysis scripts and per-cell workers that read a file once into a
+    # comprehension and exit. A `with` around each would add a nesting level
+    # to a throwaway read. Library code under fabench/ has none of these.
+    "SIM115",
+]

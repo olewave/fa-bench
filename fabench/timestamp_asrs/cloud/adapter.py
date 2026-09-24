@@ -45,13 +45,14 @@ import subprocess
 import sys
 import threading
 import time
+from itertools import pairwise
 from pathlib import Path
 
 from fabench.aligners.base import AlignerAdapter, AlignerError, AlignerOutput
-from fabench.timestamp_asrs.cloud.http import CloudASRError
 from fabench.schema import Interval
 from fabench.timestamp_asrs.cloud import http as H
 from fabench.timestamp_asrs.cloud import providers as P
+from fabench.timestamp_asrs.cloud.http import CloudASRError
 
 #: Failures that mean the ACCOUNT is out, not that the network hiccuped. These
 #: do not recover by waiting or retrying, and every remaining call in the cell
@@ -527,7 +528,7 @@ class CloudASR(AlignerAdapter):
             elif abs(end - start) < 1e-9:
                 n_zero += 1
             ivs.append(Interval(label, start, max(end, start), conf))
-        n_disordered = sum(1 for a, b in zip(ivs, ivs[1:]) if b.start < a.start - 1e-9)
+        n_disordered = sum(1 for a, b in pairwise(ivs) if b.start < a.start - 1e-9)
         ivs.sort(key=lambda iv: (iv.start, iv.end))
         for k, v in (("n_reversed", n_reversed), ("n_zero_len", n_zero),
                      ("n_disordered", n_disordered)):

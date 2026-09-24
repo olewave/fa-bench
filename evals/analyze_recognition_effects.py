@@ -41,9 +41,9 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from fabench.config import load_config          # noqa: E402
-from fabench.paths import hyp_path              # noqa: E402
-from fabench.score.matched import nw_align      # noqa: E402
+from fabench.config import load_config
+from fabench.paths import hyp_path
+from fabench.score.matched import nw_align
 
 TOL = 0.020
 
