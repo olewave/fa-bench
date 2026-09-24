@@ -117,6 +117,31 @@ def test_buckeye_specifics():
     assert canonicalize("IVER", "buckeye") == DELETE
 
 
+def test_buckeye_vowel_diacritics_stripped():
+    # "+1" is primary stress and a trailing "n" a nasalized vowel: "don't" is
+    # transcribed `d ahn t`, the /n/ realized on the vowel. Both are written on
+    # top of an ARPABET vowel and fold to it, as a stress digit does.
+    assert canonicalize("ah+1", "buckeye") == "ah"
+    assert canonicalize("ahn", "buckeye") == "ah"
+    assert canonicalize("ah+1n", "buckeye") == "ah"
+    assert canonicalize("own", "buckeye") == "ow"
+    assert canonicalize("iy+1", "buckeye") == "iy"
+
+
+def test_buckeye_syllabics_survive_the_n_strip():
+    # the trailing-"n" rule must not eat the syllabic nasals or the flap
+    assert canonicalize("en", "buckeye") == "n"
+    assert canonicalize("eng", "buckeye") == "ng"
+    assert canonicalize("n", "buckeye") == "n"
+    assert canonicalize("nx", "buckeye") == "n"
+
+
+def test_buckeye_transcription_errors_stay_unmapped():
+    # single letters and multi-phone labels are annotation slips, not phones
+    for junk in ("a", "h", "i", "x", "ah l", "ah ix"):
+        assert canonicalize(junk, "buckeye") == UNMAPPED
+
+
 def test_ipa_common():
     assert canonicalize("ʃ", "charsiu") == "sh"
     assert canonicalize("θ", "charsiu") == "th"

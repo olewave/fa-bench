@@ -57,6 +57,24 @@ def word_abs_errors(
     return errs
 
 
+def word_tolerance_accuracy(
+    per_utt_errors: Sequence[Sequence[float]],
+    taus_s: Sequence[float],
+) -> dict[int, float]:
+    """Share of matched word boundaries within each tolerance.
+
+    The phone tier has had this since the first release and the word tier never
+    did, so a word-only system had no tolerance column at all and the published
+    sweep covered half the benchmark. Same pooled errors the mean is taken over,
+    so TA and MAE describe the same set of boundaries.
+    """
+    all_errs = [e for utt in per_utt_errors for e in utt]
+    if not all_errs:
+        return {round(t * 1000): float("nan") for t in taus_s}
+    a = np.asarray(all_errs)
+    return {round(t * 1000): float((a <= t).mean()) for t in taus_s}
+
+
 def word_boundary_error(
     per_utt_errors: Sequence[Sequence[float]],
 ) -> dict:
@@ -80,3 +98,4 @@ def word_boundary_error(
         "n_word_boundaries": len(all_errs),
         "n_utts_with_words": len(per_utt_means),
     }
+

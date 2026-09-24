@@ -13,13 +13,14 @@
 name: torchaudio_fa
 adapter: torchaudio_fa
 enabled: true
-# Mode A gives WORDS; the phone tier only exists in Mode B, where the gold
-# phone SEQUENCE is supplied and the aligner just places its boundaries.
-#
-# READ THE MODE-B ROW AS A DIFFERENT TASK. Every other phone row here is Mode A,
-# where the system derives phones from its own lexicon and can therefore
-# substitute or delete them. Mode B removes that entirely -- it is the cleanest
-# possible boundary measurement and is NOT comparable to a Mode A phone MAE.
+# Mode A gives WORDS; the phone tier runs under Mode B, but only as plumbing.
+# The worker IGNORES the gold sequence the runner supplies in Mode B and aligns
+# the phones eSpeak G2P derives from the transcript (see phones() in
+# worker.py), so the row answers the same question as every other phone row:
+# words in, phones worked out, boundaries out. Its S and I are therefore real
+# (PER 34% on TIMIT dev), unlike FALCON, which is genuinely given the gold
+# sequence. An earlier revision did hand this tool the gold phones; that row
+# was withdrawn and the mode-B label stayed because the code path did.
 modes: [A, B]
 granularity: [word, phone]
 emits_confidence: true     # CTC frame posteriors

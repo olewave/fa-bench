@@ -1,0 +1,59 @@
+# IBM Watson Speech to Text v1. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# CREDENTIAL: IBM_STT_API_KEY (or IBM_API_KEY), from the environment or
+# .fabench.env. Sent as HTTP Basic with the username literally "apikey", which
+# is IBM's own scheme. Deliberately not the IAM token exchange: a Basic key
+# does not expire mid-sweep, and an expiring token is what cost Google 3,619
+# utterances on a single cell.
+#
+# SERVICE URL IS INSTANCE-SPECIFIC and must be set. IBM issues one per service
+# instance, e.g.
+#   https://api.us-south.speech-to-text.watson.cloud.ibm.com/instances/<id>
+# Put it in .fabench.env as IBM_STT_URL and pass it in below, or set
+# service_url here if this recipe is never shared.
+#
+# WORD TIMES ARE OPT-IN. Watson is the only provider here that returns a
+# transcript and no times unless timestamps=true is asked for, which the
+# adapter always sets. They arrive as bare triples, [word, start, end], rather
+# than the objects everyone else sends.
+#
+# Offline, not streaming, like every other Track 2 row here. Watson sells a
+# WebSocket endpoint; we do not use it.
+name: ibm
+adapter: ibm
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  # en-US is what IBM calls the "Large US English model", their newest
+  # generation, and the row reports the current model as every other commercial
+  # recipe here does.
+  #
+  # MEASURED 2026-09-17 on this account's six en-US models:
+  #   en-US                 16 kHz  20 ms   Large model, newest
+  #   en-US_Multimedia      16 kHz  20 ms   previous broadband generation
+  #   en-US_Telephony        8 kHz  20 ms   narrowband, wrong rate for our audio
+  #   en-US_BroadbandModel  16 kHz  10 ms   DEPRECATED, and twice the resolution
+  #   en-US_ShortForm_Nb     8 kHz  10 ms   deprecated
+  #
+  # The deprecated broadband model has twice the timestamp resolution of both
+  # current ones and scored the same 3 of 4 exact on the probe sample. That is
+  # the second vendor to show it -- Deepgram's nova-3 is 80 ms against nova-2's
+  # 10 ms -- so newer-and-coarser is a pattern rather than a quirk. Reported
+  # rather than exploited: this row runs the model a user would actually get.
+  model: en-US
+  # The INSTANCE endpoint. The bare regional URL also answers with this key and
+  # was what a resource-controller lookup suggested -- that lookup returned
+  # zero instances, because the key can authenticate without being allowed to
+  # enumerate them. Naming the instance is the right thing anyway: it says
+  # which service the numbers were billed to and cannot silently resolve
+  # somewhere else.
+  service_url: ""
+  smart_format: false
+  profanity_filter: false
+  concurrency: 8
+  timeout_s: 180
+  retries: 8
+  cache: true

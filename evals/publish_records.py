@@ -30,10 +30,17 @@ by a person: a monthly snapshot of the curated pages, with the numbers as they
 stood. A reader lands on a fixed thing that will not shift under them, and a
 citation can name the month.
 
-    records/aligners/en/
-        202608/timit/README.md  Details.md
-        202608/buckeye/README.md  Details.md
-        latest -> 202608
+    records/<yyyymm>/en/<transcript>/<tier>/<corpus>/{README.md,Details.md}
+
+        202608/en/README.md                              methodology
+        202608/en/README.md                          methodology
+        202608/en/gold/{word,phone}/{timit,buckeye}/  transcript supplied
+        202609/en/asr/{word}/{timit,buckeye}/         transcript decoded
+
+    <transcript> is where the WORDS came from -- the only split that affects
+    comparability. A combination with no systems is simply absent: there is no
+    asr/phone/ yet, because no ASR here emits phones, though a cascade that
+    aligns an ASR transcript with MFA or Olign will create one.
 
 CARRYING PROSE FORWARD. The pages are ~70% hand-written analysis with generated
 tables between BEGIN/END markers. A new month therefore starts as a COPY of the
@@ -54,7 +61,11 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RECORDS = ROOT / "records" / "aligners" / "en"
+#: Snapshots live at records/<yyyymm>/en/<transcript>/<tier>/<corpus>/. The old
+#: records/aligners/en/<yyyymm>/ layout is gone -- redirect stubs are all that
+#: remain there -- and this script kept pointing at it after the move, so a
+#: publish scanned the stubs and reported "no snapshot" for a month that exists.
+RECORDS = ROOT / "records"
 LATEST = RECORDS / "latest"
 
 
@@ -63,29 +74,54 @@ def month_dirs() -> list[str]:
     return sorted(p.name for p in RECORDS.glob("[0-9]" * 6) if p.is_dir())
 
 
+def snapshot_dir(month: str) -> Path:
+    """The directory BLOCK_DOC paths are relative to, for one month."""
+    return RECORDS / month / "en"
+
+
 def seed(target: Path) -> str:
     """Create `target`, carrying the previous snapshot's prose forward.
 
-    Returns a one-line description of where the content came from, because
-    "seeded from 202607" and "started empty" mean very different things when
-    reviewing the diff.
+    The pages are ~70 % hand-written analysis with generated tables between
+    markers, so a new month starts as a COPY of the last one and only the
+    blocks are refilled.
+
+    A month may also exist but be PARTIAL: 202609 was created for the
+    timestamped-ASR pages alone, before the gold pages moved into this layout.
+    Refilling such a month without carrying the rest forward would publish a
+    snapshot that silently lost track 1, so any page the previous snapshot has
+    and this one does not is copied in.
     """
-    if target.exists():
-        return f"{target.name} exists -- refilling its blocks"
-    prev = month_dirs()
-    if prev:
-        src = RECORDS / prev[-1]
-        shutil.copytree(src, target)
-        return f"{target.name} seeded from {src.name} (prose carried forward)"
-    target.mkdir(parents=True)
-    return f"{target.name} created empty -- no earlier snapshot to carry"
+    month = target.parent.name
+    prev = [m for m in month_dirs() if m < month]
+    if not target.exists():
+        if prev:
+            shutil.copytree(snapshot_dir(prev[-1]), target)
+            return f"{month} seeded from {prev[-1]} (prose carried forward)"
+        target.mkdir(parents=True)
+        return f"{month} created empty -- no earlier snapshot to carry"
+    if not prev:
+        return f"{month} exists -- refilling its blocks"
+    src = snapshot_dir(prev[-1])
+    carried = []
+    for f in sorted(src.rglob("*.md")):
+        dest = target / f.relative_to(src)
+        if not dest.exists():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(f, dest)
+            carried.append(str(f.relative_to(src)))
+    if carried:
+        return (f"{month} exists -- refilling, and carried {len(carried)} page(s) "
+                f"forward from {prev[-1]}: {', '.join(carried[:4])}"
+                + (" ..." if len(carried) > 4 else ""))
+    return f"{month} exists -- refilling its blocks"
 
 
 def point_latest(target: Path) -> None:
     """Repoint `latest` at `target`, relatively."""
     if LATEST.is_symlink() or LATEST.exists():
         LATEST.unlink()
-    LATEST.symlink_to(target.name)
+    LATEST.symlink_to(target.parent.name)   # records/latest -> <yyyymm>
 
 
 def retarget_readme(month: str) -> None:
@@ -99,7 +135,7 @@ def retarget_readme(month: str) -> None:
     """
     readme = ROOT / "README.md"
     text = readme.read_text()
-    new = re.sub(r"records/aligners/en/\d{6}/", f"records/aligners/en/{month}/", text)
+    new = re.sub(r"records/\d{6}/en/", f"records/{month}/en/", text)
     if new != text:
         readme.write_text(new)
         print(f"  README records links -> {month}")
@@ -111,13 +147,33 @@ def main(argv: list[str] | None = None) -> int:
                     help="snapshot to write (YYYYMM); default is this month")
     ap.add_argument("--check", action="store_true",
                     help="exit 1 if the snapshot would change (for CI)")
+    ap.add_argument("--force", action="store_true",
+                    help="allow writing a month that is not the newest "
+                         "(published snapshots are immutable by default)")
     a = ap.parse_args(argv)
 
     if not (len(a.month) == 6 and a.month.isdigit()):
         print(f"--month must be YYYYMM, got {a.month!r}", file=sys.stderr)
         return 2
 
-    target = RECORDS / a.month
+    # A PUBLISHED MONTH IS A HISTORICAL RECORD AND DOES NOT MOVE. Its numbers
+    # were produced by a particular benchmark commit against a particular set of
+    # installed systems, and the page says so; refilling it later with today's
+    # scoring would leave that statement attached to numbers it never described.
+    # Anyone comparing two snapshots is entitled to assume the older one is the
+    # same document it was when it was cut. Publishing therefore only ever
+    # writes the newest month, and --force exists for the one legitimate case,
+    # repairing a snapshot the same day it was cut.
+    existing = month_dirs()
+    older = [m for m in existing if m > a.month]
+    if older and not a.force:
+        print(f"refusing to publish {a.month}: it is not the newest snapshot "
+              f"(found {', '.join(older)}). A published month is immutable; "
+              f"pass --force only to repair one you have just cut.",
+              file=sys.stderr)
+        return 2
+
+    target = snapshot_dir(a.month)
     if a.check:
         if not target.is_dir():
             print(f"no snapshot for {a.month}", file=sys.stderr)

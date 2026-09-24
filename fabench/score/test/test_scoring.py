@@ -266,3 +266,61 @@ def test_boundary_unit_word_drops_silence_pseudowords():
     us = score_pair(gold, hyp, condition="c", aligner="a", mode="A", boundary_unit="word")
     assert len(us.boundary_errors) == 2  # only "she", both edges ~0 error
     assert us.n_gold_phone == 1 and us.n_hyp_phone == 1  # [sil] not counted
+
+
+def test_relabel_to_input_repairs_lexicon_normalisation():
+    """An aligner returns its own lexicon's tokens, not the ones it was given:
+    BFA drops every apostrophe, MFA splits tom-boy and strips kids'. Those are
+    the aligner's spelling, not a different word, and the word tier must not
+    charge them -- a forced aligner handed the reference cannot misrecognise.
+    """
+    from fabench.aligners.relabel import relabel_to_input
+    from fabench.schema import Interval as I
+
+    given = ["this", "tom-boy", "don't", "kids'", "take care"]
+    hyp = [I("this", 0, .1), I("tom", .1, .2), I("boy", .2, .3),
+           I("don", .3, .4), I("t", .4, .5), I("kids", .5, .6),
+           I("take", .6, .7), I("care", .7, .8)]
+    out = relabel_to_input(given, hyp)
+    assert [w.label for w in out] == given
+    assert (out[1].start, out[1].end) == (.1, .3)     # merged span is the run's
+    assert (out[4].start, out[4].end) == (.6, .8)
+
+
+def test_relabel_to_input_is_conservative():
+    """Only a run that rebuilds the input token may be merged: a wrong word is
+    never rescued, and genuine infidelity stays visible in the numbers."""
+    from fabench.aligners.relabel import relabel_to_input
+    from fabench.schema import Interval as I
+
+    # Charsiu duplicating a word must survive relabelling
+    dup = relabel_to_input(["those", "big", "you"],
+                           [I("those", 0, .1), I("big", .1, .2),
+                            I("big", .2, .3), I("you", .3, .4)])
+    assert [w.label for w in dup] == ["those", "big", "big", "you"]
+
+    # a wrong word is not turned into a right one
+    bad = relabel_to_input(["don't"], [I("do", 0, .2), I("x", .2, .4)])
+    assert [w.label for w in bad] == ["do", "x"]
+
+
+def test_word_tier_scores_zero_for_a_faithful_aligner():
+    """End-to-end: a gold-transcript aligner that merely respells what it was
+    given must score no substitutions, deletions or insertions."""
+    from fabench.schema import Interval as I
+    from fabench.schema import Utterance
+    from fabench.score.core import score_pair
+
+    def utt(words):
+        return Utterance(utt_id="u", source_corpus="c", register="", speaker_id="s",
+                         audio_path="", sample_rate=16000, duration_s=1.0,
+                         words=words, phones=[])
+
+    given = ["i", "don't", "know"]
+    gold = utt([I("i", 0, .1), I("don't", .1, .5), I("know", .5, .9)])
+    split = utt([I("i", 0, .1), I("don", .1, .3), I("t", .3, .5), I("know", .5, .9)])
+
+    a = score_pair(gold, split, input_tokens=given, condition="clean",
+                   aligner="t", mode="A", boundary_unit="word")
+    assert (a.n_sub_word, a.n_del_word, a.n_ins_word) == (0, 0, 0)
+    assert a.n_hyp_word == 3

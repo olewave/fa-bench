@@ -53,11 +53,21 @@ def build_report(leaderboard: list[dict], per_type: list[dict], cfg) -> str:
                   "`fabench run`._\n")
         return "\n".join(md)
 
+    # THE CELL'S OWN CONDITION, not the literal "clean". Each report covers one
+    # cell, and a noisy cell's rows say "babble" (or reverb/noise/music) now that
+    # the condition label is correct -- filtering on "clean" then matched nothing
+    # and published an empty leaderboard for every noisy cell. Fall back to the
+    # label the rows actually carry when no tag is set.
+    cell_cond = (getattr(cfg, "condition_tag", lambda: "")() or "")
+    if not cell_cond:
+        seen = {r["condition"] for r in leaderboard}
+        cell_cond = seen.pop() if len(seen) == 1 else "clean"
+
     for corpus in corpora:
         reg = next((r["register"] for r in leaderboard if r["corpus"] == corpus), "")
         md.append(f"\n## Corpus: {corpus} ({reg})\n")
-        md.append("### Leaderboard (clean condition)\n")
-        md.append(tables.leaderboard_table(leaderboard, corpus, "clean"))
+        md.append(f"### Leaderboard ({cell_cond} condition)\n")
+        md.append(tables.leaderboard_table(leaderboard, corpus, cell_cond))
         md.append("\n### Degradation: MAE (ms) vs SNR\n")
         dt, flags = curves.degradation_table(leaderboard, corpus, "mae_ms")
         md.append(dt)
@@ -68,11 +78,11 @@ def build_report(leaderboard: list[dict], per_type: list[dict], cfg) -> str:
                 "for: " + ", ".join(f"{f['aligner']}/{f['mode']}/{f['noise']}" for f in bad)
                 + " — investigate mixing/transfer.\n"
             )
-        md.append("\n### Per-boundary-type MAE/TA20 (clean)\n")
-        md.append(tables.per_type_panel(per_type, corpus, "clean"))
+        md.append(f"\n### Per-boundary-type MAE/TA20 ({cell_cond})\n")
+        md.append(tables.per_type_panel(per_type, corpus, cell_cond))
 
-    md.append("\n## Confidence calibration (clean)\n")
-    md.append(tables.calibration_panel(leaderboard, "clean"))
+    md.append(f"\n## Confidence calibration ({cell_cond})\n")
+    md.append(tables.calibration_panel(leaderboard, cell_cond))
 
     md.append("\n## Notes / caveats\n")
     md.append(

@@ -1,0 +1,15 @@
+# TorchAudio wav2vec2 CTC as a plain ASR -- track 2, deliberately the weak row.
+# Same bundle as `torchaudio_fa` in track 1, but here it decodes its own words
+# instead of being handed the transcript, so the pair isolates what recognition
+# error costs. Expect poor WER on Buckeye: trained on read LibriSpeech.
+name: torchaudio_asr
+adapter: torchaudio_asr
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: evals/aligners/torchaudio_fa/venv     # same deps; no second 6 GB copy
+  worker: worker.py
+  model: WAV2VEC2_ASR_BASE_960H
+  timeout_s: 14400

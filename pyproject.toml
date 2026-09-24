@@ -114,9 +114,10 @@ ignore = [
     # catches broadly on purpose: one tool's failure must not abort a sweep of
     # eleven systems across twenty cells. The catches log to stderr and carry on.
     #
-    # This is NOT cover for the known defect that `fabench run` exits 0 when a
-    # whole aligner fails (aligners/runner.py, the batch handler). That is an
-    # exit-code bug to fix in the runner, not something a linter can see.
+    # Carrying on is not the same as reporting success: `fabench run` records
+    # every failed or empty aligner cell and exits non-zero (pipeline.py), so a
+    # sweep that loses a tool cannot finish green. Locked by
+    # test_run_exits_nonzero_when_an_aligner_raises / ..._emits_nothing.
     "BLE001",
     # B023 loop-variable capture (4 sites, all in update_public_tables). Each
     # closure is built and consumed inside the same iteration, so late binding

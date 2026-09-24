@@ -15,7 +15,7 @@ __pycache__/
 # `rescore_all.sh` produced eighty modified files that said nothing about intent.
 #
 # What gets PUBLISHED is a deliberate act instead: evals/publish_records.py
-# writes a dated snapshot to records/aligners/en/<YYYYMM>/ and repoints `latest`.
+# writes a dated snapshot to records/<YYYYMM>/en/<transcript>/<tier>/<corpus>/.
 # A reader lands on something fixed, and a citation can name the month.
 /summary/
 /scratch/
@@ -28,6 +28,13 @@ __pycache__/
 .cache/
 .mypy_cache/
 .ruff_cache/
+
+# Cached responses from the paid ASR endpoints
+# (evals/timestamp_asrs/<tool>/cache/). Keyed by audio bytes + model + request
+# options, so re-running a cell or a rescore never re-bills. Local by design:
+# the payloads are the licensed corpora's transcripts, the same reason
+# hyp.jsonl is ignored, and they are rebuildable at the cost of another sweep.
+evals/**/cache/
 
 # Allow small test fixtures (tiny synthetic files) to be tracked
 !fabench/**/test/fixtures/**
@@ -170,3 +177,21 @@ evals/aligners/olign/exps/
 /research/
 # Local working notes, never published
 ATTN_Claude.txt
+
+# LaTeX build artifacts (docs/paper)
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+
+# Editor config: a local build recipe, not part of the published tree
+.vscode/
+
+# Overleaf upload bundle, regenerated on demand from the sources beside it
+docs/paper/overleaf.zip
+
+# Model checkpoints supplied by hand. neufa_en.pt is 82 MB and is not
+# published upstream, so it is staged here and never committed.
+model/

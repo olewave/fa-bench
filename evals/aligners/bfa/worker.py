@@ -63,7 +63,13 @@ def main(argv: list[str]) -> int:
     import torch
     from bournemouth_aligner import PhonemeTimestampAligner
 
-    device = "cuda" if (device == "cuda" and torch.cuda.is_available()) else "cpu"
+    # `device.startswith` and NOT `device == "cuda"`. The cell runners pin a
+    # card by passing "cuda:0" with CUDA_VISIBLE_DEVICES set, and an exact
+    # match against "cuda" sent every one of those runs to the CPU without a
+    # word. Same alignments, an order of magnitude slower: the MMS Buckeye
+    # cells took 90 minutes on 32 cores while three Blackwells sat at 0%.
+    device = device if (device.startswith("cuda")
+                        and torch.cuda.is_available()) else "cpu"
     al = PhonemeTimestampAligner(preset=preset, device=device)
     sr = al.sample_rate
 
