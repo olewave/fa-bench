@@ -24,9 +24,8 @@ which does not coincide with ours, so its training speakers overlap our dev and
 test. Those cells carry the same disclosure MAPS does.
 """
 from fabench.aligners.base import BatchItem
-from fabench.normalize import make_canon
 from fabench.aligners.subprocess_aligner import SubprocessAligner
-
+from fabench.normalize import make_canon
 
 #: FA-Bench and FALCON agree on the 39 classes and disagree on three of the
 #: labels: FALCON keeps the syllabic forms and the low-back `ao` as its class

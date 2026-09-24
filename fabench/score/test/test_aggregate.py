@@ -57,7 +57,9 @@ def test_bootstrap_brackets_point_estimate_and_deterministic():
 
 
 def test_aggregate_rollup_values():
-    # Two utts, identical hyp offsets => known MAE 10 ms.
+    # Two utts, identical hyp offsets. 4 contiguous phones give 5 boundaries
+    # per utterance, so MAE is 8 ms; the per-unit onset/offset split, which
+    # keeps its own pool of 8 edges, is 10 ms.
     hyp_phones = _p(
         [("sil", 0.0, 0.12), ("s", 0.12, 0.19), ("iy", 0.19, 0.41), ("sil", 0.41, 0.5)]
     )
@@ -74,11 +76,16 @@ def test_aggregate_rollup_values():
     row = lb[0]
     assert row["n_utts"] == 2
     assert row["n_speakers"] == 2
-    assert row["mae_ms"] == pytest.approx(10.0)
+    assert row["mae_ms"] == pytest.approx(8.0)
     assert row["arr"] == pytest.approx(1.0)          # Mode B
     assert row["insert_rate"] == pytest.approx(0.0)
     assert row["ta_20ms"] == pytest.approx(1.0)
-    assert row["ta_10ms"] == pytest.approx(0.75)
+    assert row["ta_10ms"] == pytest.approx(0.80)
+    # the unit-based split keeps its own pool of 8 edges and still reads 10 ms
+    assert row["onset_mae_ms"] == pytest.approx(10.0)
+    assert row["offset_mae_ms"] == pytest.approx(10.0)
+    assert row["onset_mae_ms"] == pytest.approx(10.0)
+    assert row["offset_mae_ms"] == pytest.approx(10.0)
     # underpowered: 8 matched-phones (n_matched=8) < 100
     assert row["underpowered"] is True
     # CI brackets the point estimate

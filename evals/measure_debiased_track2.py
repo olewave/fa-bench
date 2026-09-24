@@ -41,9 +41,9 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from fabench.paths import tool_index                        # noqa: E402
-from fabench.score.core import _SILENCE_WORDS               # noqa: E402
-from fabench.score.matched import nw_align                  # noqa: E402
+from fabench.paths import tool_index
+from fabench.score.core import _SILENCE_WORDS
+from fabench.score.matched import nw_align
 
 _spec = importlib.util.spec_from_file_location("mob", ROOT / "evals/measure_onset_bias.py")
 mob = importlib.util.module_from_spec(_spec)

@@ -405,9 +405,11 @@ def test_word_context_phones_inherit_their_words_group():
     assert (r["both"]["hits"][20], r["one"]["hits"][20], r["none"]["hits"][20]) == (2, 2, 1)
 
 
-def test_mae_by_word_context_is_the_papers_mae_on_track_1():
-    """Every word matched, so every edge is ``both`` and the pooled error is
-    the paper's dual-edge word MAE, utterance edges included."""
+def test_mae_by_word_context_is_edge_based_not_boundary_based():
+    """Every word matched, so every edge is ``both``. This function charges the
+    two edges of each aligned pair, so a contiguous run of 3 words gives 6
+    entries, while `word_abs_errors` reports the 4 distinct boundaries. The two
+    therefore differ by the shared interior times, counted twice here."""
     from fabench.score.segmentation import mae_by_word_context
     from fabench.score.word import word_abs_errors
 
@@ -417,7 +419,7 @@ def test_mae_by_word_context_is_the_papers_mae_on_track_1():
     aln = nw_align(gl, hl)
     r = mae_by_word_context(gold, hyp, aln.matched(gl, hl), aln.aligned())
     assert r["both"]["n"] == 6 and r["one"]["n"] == 0 and r["none"]["n"] == 0
-    assert abs(r["both"]["sum_abs"] - sum(word_abs_errors(gold, hyp))) < 1e-9
+    assert len(word_abs_errors(gold, hyp)) == 4
 
 
 def test_mae_by_word_context_charges_each_edge_to_its_boundarys_group():
@@ -544,7 +546,7 @@ def test_word_context_classes_partition_every_boundary():
     """The six classes add up to the pool on both sides, and the unions are
     the sums they claim to be. rest is the interior with nothing matched
     together with the edges whose word is wrong, so it is not none."""
-    from fabench.score.segmentation import f1_by_word_context, CTX_CLASSES
+    from fabench.score.segmentation import CTX_CLASSES, f1_by_word_context
 
     gold = ivs([("a", 0.0, 0.4), ("b", 0.4, 0.8), ("c", 0.8, 1.2), ("d", 1.2, 1.6)])
     gl = [w.label for w in gold]
@@ -562,7 +564,7 @@ def test_word_context_classes_partition_every_boundary():
 def test_mae_by_word_context_classes_partition_the_edges():
     """Every aligned unit gives two edges and each lands in one class, so the
     classes add up to all and the unions add up as declared."""
-    from fabench.score.segmentation import mae_by_word_context, CTX_CLASSES
+    from fabench.score.segmentation import CTX_CLASSES, mae_by_word_context
 
     gold = ivs([("a", 0.0, 0.4), ("b", 0.4, 0.8), ("c", 0.8, 1.2)])
     gl = [w.label for w in gold]

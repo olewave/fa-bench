@@ -48,12 +48,13 @@ from __future__ import annotations
 
 import argparse
 import collections
-import statistics
 import glob
 import json
 import os
 import pathlib
+import statistics
 import sys
+from itertools import pairwise
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -173,7 +174,7 @@ MIN_HALFMS_STEP = 10
 
 def _residue_mass_near(us: list[int], p: int, phase_ms: float) -> float:
     """Share of offsets within half a millisecond of `phase_ms` modulo `p`."""
-    r = int(round(phase_ms * 1000))
+    r = round(phase_ms * 1000)
     n = sum(1 for v in us
             if min((v % p - r) % p, (r - v % p) % p) <= HALF_MS)
     return n / len(us)
@@ -210,7 +211,7 @@ def _per_utt_frame(utts: list[list[float]]) -> tuple[float | None, float]:
     frames = []
     fitted = 0
     for ts in utts:
-        d = [(b - a) * 1000 for a, b in zip(ts, ts[1:]) if b - a > 0.0005]
+        d = [(b - a) * 1000 for a, b in pairwise(ts) if b - a > 0.0005]
         if len(d) < 3:
             continue
         best = (0.0, None)
@@ -252,7 +253,7 @@ def _min_gap_frame(utts: list[list[float]]) -> float | None:
     the drift breaks the fit long before the frame does. What rounding cannot
     hide is that no two boundaries are ever closer than one frame.
     """
-    gaps = [(b - a) * 1000 for ts in utts for a, b in zip(ts, ts[1:])
+    gaps = [(b - a) * 1000 for ts in utts for a, b in pairwise(ts)
             if (b - a) * 1000 > 1e-6]
     if len(gaps) < 50:
         return None

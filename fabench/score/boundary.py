@@ -104,9 +104,10 @@ def build_boundary_errors(
     """
     errs: list[BoundaryError] = []
     n_gold = len(gold_phones)
+    pair = dict(matched)
 
-    def manner_at(idx: int) -> str:
-        if idx < 0 or idx >= n_gold:
+    def manner_at(idx) -> str:
+        if idx is None or idx < 0 or idx >= n_gold:
             return "silence"  # utterance edge behaves like silence
         return manner_fn(gold_phones[idx].label)
 
@@ -115,15 +116,74 @@ def build_boundary_errors(
             return
         errs.append(BoundaryError(edge, gt, ht, lm, rm, conf, gi))
 
-    for gi, hj in matched:
-        g = gold_phones[gi]
-        h = hyp_phones[hj]
-        conf = h.conf
-        # onset: boundary between gold[gi-1] and gold[gi]
-        add("onset", g.start, h.start, manner_at(gi - 1), manner_at(gi), conf, gi)
-        # offset: boundary between gold[gi] and gold[gi+1]
-        add("offset", g.end, h.end, manner_at(gi), manner_at(gi + 1), conf, gi)
+    # ONE ENTRY PER REFERENCE BOUNDARY. This used to walk the matched units and
+    # charge each one's onset and its offset, so a boundary two contiguous
+    # units share went in twice with the same error. TIMIT's phone tier tiles
+    # the utterance, so that was every interior boundary; on the word tier it
+    # is 90 to 95 percent of them. The duplicate gave the easy interior twice
+    # the weight of the two utterance edges, which are the hardest boundaries
+    # the benchmark has, and pulled the reported mean below the truth.
+    #
+    # A boundary is scored when EVERY unit beside it matched. An utterance edge
+    # and a boundary beside an interior gap have one unit beside them, so that
+    # one decides; silence is not a unit and matches trivially. This is the
+    # rule Boundary F1 uses, so the two metrics now select the same boundaries
+    # and differ only in what they do with them.
+    #
+    # `edge` says which side of its own unit the boundary sits on, and after
+    # deduplication that is the left unit's offset wherever a left unit exists.
+    # It is NOT the onset/offset decomposition any more: that is a property of
+    # units rather than boundaries and is built by `unit_edge_errors`.
+    sides: dict[float, list] = {}
+    for i, g in enumerate(gold_phones):
+        sides.setdefault(round(g.start, 9), [None, None])[1] = i
+        sides.setdefault(round(g.end, 9), [None, None])[0] = i
+    for left, right in sides.values():
+        near = [i for i in (left, right) if i is not None]
+        if not all(i in pair for i in near):
+            continue
+        if left is not None:
+            g, h, gi, edge = gold_phones[left], hyp_phones[pair[left]], left, "offset"
+            gt, ht = g.end, h.end
+            lm, rm = manner_at(left), manner_at(right if right is not None else left + 1)
+        else:
+            g, h, gi, edge = gold_phones[right], hyp_phones[pair[right]], right, "onset"
+            gt, ht = g.start, h.start
+            lm, rm = manner_at(right - 1), manner_at(right)
+        add(edge, gt, ht, lm, rm, h.conf, gi)
     return errs
+
+
+def unit_edge_errors(
+    matched: Sequence[tuple[int, int]],
+    gold_phones: Sequence[Interval],
+    hyp_phones: Sequence[Interval],
+    manner_fn: Callable[[str], str],
+) -> list[BoundaryError]:
+    """Each matched unit's start and end error, tagged onset and offset.
+
+    This is what `build_boundary_errors` did before it began counting
+    boundaries. It answers a different question and keeps its own pool: how a
+    system places the START of a unit against how it places the END, which is
+    a property of units and survives two of them sharing a time. On the phone
+    tier that split runs 5 to 10 ms wide, so it is worth keeping apart from
+    MAE rather than folding into it.
+    """
+    out: list[BoundaryError] = []
+    n_gold = len(gold_phones)
+
+    def manner_at(idx: int) -> str:
+        if idx < 0 or idx >= n_gold:
+            return "silence"
+        return manner_fn(gold_phones[idx].label)
+
+    for gi, hj in matched:
+        g, h = gold_phones[gi], hyp_phones[hj]
+        out.append(BoundaryError("onset", g.start, h.start,
+                                 manner_at(gi - 1), manner_at(gi), h.conf, gi))
+        out.append(BoundaryError("offset", g.end, h.end,
+                                 manner_at(gi), manner_at(gi + 1), h.conf, gi))
+    return out
 
 
 # --------------------------------------------------------------------------

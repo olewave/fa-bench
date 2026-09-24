@@ -37,7 +37,6 @@ import argparse
 import functools
 import glob
 import json
-import os
 import pathlib
 import statistics
 import sys
@@ -45,10 +44,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from fabench.normalize import make_canon                    # noqa: E402
-from fabench.schema import Interval                         # noqa: E402
-from fabench.score.core import _SILENCE_WORDS, _prep_phones  # noqa: E402
-from fabench.score.matched import nw_align                  # noqa: E402
+from fabench.normalize import make_canon
+from fabench.schema import Interval
+from fabench.score.core import _SILENCE_WORDS, _prep_phones
+from fabench.score.matched import nw_align
 
 #: The two development splits, which is where a supplement table belongs. The
 #: test splits carry the same story and are in records/.
@@ -78,7 +77,7 @@ def _ivs(rec, key):
     return out
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def gold_of(pattern: str, key: str) -> dict:
     out = {}
     for f in glob.glob(str(ROOT / "data/work/canonical" / pattern)):

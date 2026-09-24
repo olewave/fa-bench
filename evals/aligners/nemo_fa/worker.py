@@ -99,7 +99,9 @@ def run_align(tools: Path, model: str, manifest: Path, outdir: Path,
     env = dict(os.environ)
     env["PYTHONPATH"] = str(tools) + os.pathsep + env.get("PYTHONPATH", "")
     env.setdefault("HYDRA_FULL_ERROR", "1")
-    return subprocess.run(cmd, cwd=str(tools), env=env,
+    # check=False on purpose. The caller reads returncode and stderr and
+    # reports the cell as failed; raising here would abort the sweep.
+    return subprocess.run(cmd, cwd=str(tools), env=env, check=False,
                           capture_output=True, text=True)
 
 

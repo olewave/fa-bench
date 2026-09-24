@@ -1,13 +1,18 @@
-import sys, json, glob, pathlib, statistics
+import json
+import pathlib
+import statistics
+import sys
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.argv = ["x"]
 import importlib.util
+
 spec = importlib.util.spec_from_file_location("mob", ROOT/"evals/measure_onset_bias.py")
 mob = importlib.util.module_from_spec(spec); spec.loader.exec_module(mob)
-from fabench.normalize import make_canon
 from fabench.score.core import _SILENCE_WORDS
 from fabench.score.matched import nw_align
+
 
 def errs(hyp, pattern):
     gold = mob.gold_of(pattern, "words"); out=[]
