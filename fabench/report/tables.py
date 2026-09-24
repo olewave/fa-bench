@@ -52,11 +52,16 @@ def leaderboard_table(rows: Iterable[dict], corpus: str, condition: str = "clean
     if not sel:
         return f"_(no rows for {corpus} / {condition})_"
     ta_ms = _ta_thresholds(sel[0])  # e.g. [10, 25, 50]
+    f1_ms = _f1_thresholds(sel[0])  # the F1 sweep, same widths as TA
     header = (
         ["aligner", "mode", "MAE ms (mean) [95% CI]", "median", "signed"]
         + [f"t≤{t}" for t in ta_ms]
         # "word MAE", not "WBE": same measure as the phone MAE, on the word
         # tier -- the benchmark coins no terms. Internal key stays `wbe`.
+        # Word tolerance accuracy, at the same widths as the phone t<= columns
+        # above. A word-only system has no phone t<= at all, so without these
+        # its tolerance behaviour was simply missing from every report.
+        + [f"w-t\u2264{t}" for t in ta_ms]
         + ["word MAE", "ARR",
            # Why a gold phone left the matched path. ARR + Sub% + Del% = 100%.
            "Sub%", "Del%", "Ins%", "PER%", "Ins",
@@ -64,6 +69,11 @@ def leaderboard_table(rows: Iterable[dict], corpus: str, condition: str = "clean
            # charge for over/under-segmentation, which a matched-path MAE
            # cannot. R-value separates the two failure modes F1 conflates.
            "B-P", "B-R", "B-F1", "OS", "R-val",
+           ]
+        # F1 at every swept width, phone tier. B-F1 above is the 20 ms entry
+        # and stays for the readers that already key on it.
+        + [f"B-F1@{t}" for t in f1_ms]
+        + [
            # WORD-level boundary detection. Computed all along (aggregate.py
            # emits wbnd_precision/recall/f1 from score.core's n_*_wbnd counts)
            # but never surfaced, so the public word table fell back to the
@@ -75,6 +85,9 @@ def leaderboard_table(rows: Iterable[dict], corpus: str, condition: str = "clean
            # report, so the word tier looked like it had no segmentation
            # balance at all rather than an unsurfaced one.
            "W-P", "W-R", "W-F1", "W-OS", "W-R-val",
+           ]
+        + [f"W-F1@{t}" for t in f1_ms]
+        + [
            # WER and its decomposition. Near-zero for a forced aligner,
            # which is handed the reference; the number that matters for a
            # timestamped ASR, where a bad word MAE is otherwise
@@ -95,6 +108,7 @@ def leaderboard_table(rows: Iterable[dict], corpus: str, condition: str = "clean
             [r["aligner"], r["mode"], mae + ci,
              _f(r.get("median_ms")), _f(r.get("signed_ms"))]
             + [_pct(r.get(f"ta_{t}ms")) for t in ta_ms]
+            + [_pct(r.get(f"wta_{t}ms")) for t in ta_ms]
             + [_f(r.get("wbe_ms")),
                _pct(r.get("arr")),
                _f(r.get("sub_pct"), 1), _f(r.get("del_pct"), 1),
@@ -102,16 +116,30 @@ def leaderboard_table(rows: Iterable[dict], corpus: str, condition: str = "clean
                _pct(r.get("insert_rate")),
                _f(r.get("bnd_precision"), 3), _f(r.get("bnd_recall"), 3),
                _f(r.get("bnd_f1"), 3), _f(r.get("bnd_os"), 3),
-               _f(r.get("r_value"), 3),
+               _f(r.get("r_value"), 3)]
+            + [_f(r.get(f"bnd_f1_{t}ms"), 3) for t in f1_ms]
+            + [
                _f(r.get("wbnd_precision"), 3), _f(r.get("wbnd_recall"), 3),
                _f(r.get("wbnd_f1"), 3), _f(r.get("wbnd_os"), 3),
-               _f(r.get("w_r_value"), 3),
+               _f(r.get("w_r_value"), 3)]
+            + [_f(r.get(f"wbnd_f1_{t}ms"), 3) for t in f1_ms]
+            + [
                _f(r.get("err_gt100_pct"), 1),
                _f(r.get("w_sub_pct"), 1), _f(r.get("w_del_pct"), 1),
                _f(r.get("w_ins_pct"), 1), _f(r.get("wer"), 1),
                _f(r.get("rtf_mean"), 3), str(r.get("n_boundaries", 0))]
         )
     return _md_table(header, table_rows)
+
+
+def _f1_thresholds(row: dict) -> list[int]:
+    """Widths the F1 sweep produced, read off the row like the TA widths."""
+    import re as _re
+    return sorted(
+        int(m.group(1))
+        for k in row
+        if (m := _re.fullmatch(r"bnd_f1_(\d+)ms", k))
+    )
 
 
 def _ta_thresholds(row: dict) -> list[int]:

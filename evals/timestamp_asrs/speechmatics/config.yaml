@@ -1,0 +1,42 @@
+# Speechmatics batch v2. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# CREDENTIAL: SPEECHMATICS_STT_API_KEY (or SPEECHMATICS_API_KEY), from the
+# environment or .fabench.env.
+#
+# ASYNCHRONOUS, and in three steps rather than AssemblyAI's two. A job is
+# created with a multipart body carrying a JSON config beside the audio, polled
+# until status is "done", and then the transcript is fetched as a THIRD
+# request. Only format=json-v2 carries per-word times; the plain text format
+# drops them entirely.
+#
+# Like every other Track 2 row here it is OFFLINE, not streaming. Speechmatics
+# sells a realtime WebSocket endpoint; we do not use it, for the reason given
+# in evals/timestamp_asrs/google_stt/exps/chirp2/config.yaml -- a causal
+# recognizer's word times are a different measurement, not a faster route to
+# the same one.
+#
+# `model` selects the operating point rather than a named checkpoint, which is
+# how Speechmatics exposes its model tiers.
+name: speechmatics
+adapter: speechmatics
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  # MEASURED 2026-09-17. The API serves exactly two operating points and
+  # nothing else -- ursa, ursa-2 and broadcast are all rejected. Both are on a
+  # 40 ms grid and both transcribed the probe utterance exactly, including
+  # "tape recorder", which Deepgram nova-3 heard as "taper car". enhanced is
+  # the accurate tier, so it is the row.
+  model: enhanced
+  language: en
+  # The results stream interleaves punctuation with words; the parser keeps
+  # type == "word" only. There is no raw-vs-formatted switch to set.
+  enable_entities: false
+  poll_interval_s: 1.0
+  concurrency: 8
+  timeout_s: 300
+  retries: 8
+  cache: true

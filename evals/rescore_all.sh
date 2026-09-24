@@ -32,6 +32,10 @@
 #
 # Run this after any sweep.
 set -uo pipefail
+# Detach stdin. This script needs none, but it spawns `fabench score` per cell,
+# and a child that reads stdin drains the parent's -- under nohup that ends the
+# sweep partway through while still exiting 0, which looks exactly like success.
+exec < /dev/null
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ROOT=$(dirname "$HERE")
@@ -73,7 +77,12 @@ for cell in "${CELLS[@]}"; do
   # tool list and scored into one leaderboard -- whose system column is even
   # called `aligner` -- leaving a hand-written section in the curated pages as
   # the only thing separating them.
-  for kind in aligners timestamp_asrs; do
+  # Both tracks by default. FABENCH_KINDS narrows it, which matters because
+  # the two are scored independently: adding one Track 2 cascade changes every
+  # timestamp_asrs leaderboard and no aligners one, so rescoring both doubles
+  # the wall clock to rewrite 20 files with identical content.
+  #   FABENCH_KINDS=timestamp_asrs ./evals/rescore_all.sh
+  for kind in ${FABENCH_KINDS:-aligners timestamp_asrs}; do
     tools=""
     # Any depth: <tool>/, <tool>/exps/<name>/, <tool>/v<version>/. The tool NAME
     # is the one the recipe declares, not the directory name -- nested recipes

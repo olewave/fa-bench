@@ -58,6 +58,16 @@ class Alignment:
                 out.append((gi, hj))
         return out
 
+    def aligned(self) -> list[tuple[int, int]]:
+        """Every aligned pair, INCLUDING substitutions -- the positional set.
+
+        `matched` says two units are the same unit; this says only that the
+        alignment put them opposite each other. The difference is a
+        substitution, which is exactly what separates the label-checked
+        boundary score from its positional variant.
+        """
+        return [(gi, hj) for gi, hj in self.pairs if gi is not None and hj is not None]
+
 
 def nw_align(a: Sequence[str], b: Sequence[str]) -> Alignment:
     """Needleman-Wunsch global alignment maximizing match score.

@@ -1,0 +1,27 @@
+# whisperx END TO END -- Whisper decodes, wav2vec2 CTC re-aligns. Track 2.
+#
+# NOT the same row as `whisperx` in track 1. That one is handed the reference
+# transcript and exercises the alignment stage alone; this one is given audio
+# and nothing else, so it carries recognition error like every track-2 system.
+# Same package, two configurations, both scored -- neither stands for the other.
+#
+# It shares the track-1 tool's venv rather than installing a second 7.2 GB copy
+# of the same package. The venv is a build artefact of `whisperx`, so that
+# recipe must be installed first; download_and_install.sh checks and says so.
+name: whisperx_asr
+adapter: whisperx_asr
+enabled: true
+modes: [A]
+granularity: [word]          # wav2vec2 CTC word spans; no phone tier
+emits_confidence: false
+params:
+  venv: evals/aligners/whisperx/venv
+  # MUST be explicit. The worker is found by searching UP from the venv, and
+  # this venv belongs to the track-1 whisperx tool -- so the search finds
+  # evals/aligners/whisperx/worker.py, the alignment-only worker, and this row
+  # silently becomes track 1 again. Sharing an environment means the worker can
+  # no longer be located by proximity to it.
+  worker: evals/timestamp_asrs/whisperx_asr/worker.py
+  model: large-v3            # faster-whisper's name, not the HF repo id
+  device: cuda
+  timeout_s: 21600

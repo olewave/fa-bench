@@ -1,6 +1,17 @@
 # MAPS -- Mason-Alberta Phonetic Segmentor, TensorFlow, phone-level.
-# LEAKAGE: models are 'timbuck' = TIMIT + Buckeye. Trained on both benchmark
-# corpora; every number is train=test here and must be reported as such.
+#
+# PARTIAL OVERLAP, AND NOT THROUGH ANY FAULT OF THEIRS. The timbuck model is
+# trained on TIMIT + Buckeye, and its model card states the split exactly:
+# Buckeye speaker 4 held out for validation, speakers 27, 38, 39 and 40 for
+# test, plus the TIMIT test set. Buckeye ships no official split, so FA-Bench
+# picked a different one, and the two disagree:
+#   TIMIT        -- no overlap. Our dev and core test are both carved from
+#                   TIMIT TEST, which MAPS did not train on.
+#   Buckeye dev  -- 7 of our 8 speakers are in its training set (s40 is not).
+#   Buckeye test -- 7 of our 8 (s04 was their validation speaker).
+# So the Buckeye rows are not held out and must be reported as such, and the
+# TIMIT rows are clean. Verify with the model card at
+# repo/MAPS/timbuck_eng_model_card.md.
 name: maps
 adapter: maps
 enabled: true

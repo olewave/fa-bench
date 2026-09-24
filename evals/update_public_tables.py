@@ -71,17 +71,54 @@ END = "<!-- END GENERATED: {} -->"
 #: that under the same symbol as train==test collapsed two different situations
 #: into one glyph. The overlap section of the methodology page is where the
 #: finer distinction belongs, not a warning marker.
-FLAGGED = {"maps": "⚠"}
+class _FlagMap(dict):
+    """``name in FLAGGED`` / ``FLAGGED[name]`` also answer for cascade rows.
+
+    A cascade inherits its base aligner's caveat -- MAPS trained on TIMIT, so
+    "Qwen3-ASR -> MAPS" carries the same warning MAPS does. Resolving it here
+    keeps the seven label sites that consult FLAGGED unchanged.
+    """
+
+    def _resolve(self, key: str) -> str | None:
+        if dict.__contains__(self, key):
+            return key
+        parts = cascade_parts(key)
+        if parts and dict.__contains__(self, parts[0]):
+            return parts[0]
+        return None
+
+    def __contains__(self, key: object) -> bool:
+        return isinstance(key, str) and self._resolve(key) is not None
+
+    def __getitem__(self, key: str) -> str:
+        hit = self._resolve(key)
+        if hit is None:
+            raise KeyError(key)
+        return dict.__getitem__(self, hit)
+
+
+FLAGGED = _FlagMap({"maps": "⚠"})
 
 #: What each flag means, appended under any generated table that carries it.
 #: The marker used to be explained only on the methodology page, so a reader on
 #: a corpus page met a bare warning glyph in thirteen cells with nothing to say
 #: what it warned about. Emitted with the table rather than written into the
 #: page, so the note cannot outlive -- or go missing from -- the flag itself.
+#:
+#: The note used to read "trained on TIMIT and Buckeye, so it is scored on its
+#: own training data", which overstated it in both directions. MAPS states its
+#: split precisely in its model card, and against OUR split the overlap is
+#: Buckeye only: 7 of our 8 speakers in each Buckeye split are in its training
+#: set, while both TIMIT splits are carved from TIMIT TEST, which it did not
+#: train on. Buckeye ships no official split, so the overlap is two projects
+#: choosing differently rather than anything undisclosed, and the note says so.
 FLAG_NOTE = {
-    "⚠": "⚠ **MAPS** was trained on TIMIT and Buckeye, so it is scored on its "
-         "own training data. Its row is not a held-out result — see "
-         "[training data and overlap](../README.md#training-data-and-overlap).",
+    "⚠": "⚠ **MAPS** trained on Buckeye, holding out only speakers 4, 27, 38, "
+         "39 and 40. FA-Bench splits Buckeye differently, so 7 of the 8 "
+         "speakers in each of our Buckeye splits are in its training set and "
+         "those rows are not held-out results. Its TIMIT rows are: both our "
+         "TIMIT splits come from TIMIT `TEST/`, which it did not train on — "
+         "see [training data and overlap](../../../README.md#training-data-and-overlap).",
 }
 
 #: Systems published under a vendor's name, and the one variant that is.
@@ -95,8 +132,13 @@ FLAG_NOTE = {
 #: Expressed as a RULE rather than a list, so this file does not itself publish
 #: the names it exists to withhold. Anything matching a prefix is suppressed
 #: unless it is the declared shipped row.
+#: A CASCADE of the shipped row is not an internal variant. "<shipped>_on_<asr>"
+#: says only that the published system was given another tool's transcript --
+#: it encodes no tunable axis -- so it is a keeper. Without this the prefix rule
+#: swallows it and the row is computed, scored, and silently never published.
 SUPPRESS_PREFIX = {"olign"}
-SUPPRESS_KEEP = {"olign_noisy"}
+SUPPRESS_KEEP = {"olign_noisy", "olign_on_qwen3asr", "olign_on_parakeettdt",
+                 "olign_on_chirp2"}
 
 
 def _suppressed(name: str) -> bool:
@@ -168,6 +210,49 @@ def drop_phone_tier(collected: dict) -> dict:
 #: summary/timestamp_asrs/, so no block can contain both and the suffix has
 #: nothing left to disambiguate from.
 DISPLAY = {
+    # Meta writes it UnitY2, capital Y. "UnitY" is Unit plus the Y of the
+    # two-pass architecture, so Unity2 reads as the game engine.
+    "unity2": "UnitY2",
+    "falcon": "FALCON",
+    # torchaudio ships this as the MMS_FA bundle; the upstream project
+    # calls it the MMS forced aligner. "MMS-FA" is the short form both
+    # use and it sits at the same width as the other rows.
+    "mms_fa": "MMS-FA",
+    # NVIDIA's own abbreviation for the tool, and the one its paper uses. The
+    # two rows are one aligner over two checkpoints, so they are named by the
+    # thing that differs. A frame rate says more here than "FastConformer" and
+    # "Conformer" would, and it is the property the pair exists to isolate.
+    "nemo_fa": "NeMo-FA 80 ms",
+    "nemo_fa_conformer": "NeMo-FA 40 ms",
+    # Lowercase, like stable-ts: it is the package name, not a product.
+    "whisper_ts": "Whisper-timestamped",
+
+    # COMMERCIAL endpoints. Named product-then-model where the model is itself
+    # a product (Nova-3, Universal, Scribe); Google's `latest_long` is a
+    # selector rather than a name, so its row carries the service and the
+    # recipe carries the model.
+    # Every commercial row names the MODEL it ran, not just the vendor. These
+    # are endpoints whose contents can change, so the configuration is the only
+    # thing a row can honestly claim -- and Deepgram and Google were already
+    # named that way, so the other three were the inconsistent ones.
+    "deepgram": "Deepgram Nova-3",
+    # Named by the checkpoint, as Deepgram names them. What differs
+    # besides accuracy is the timestamp grid, 80 ms against 10 ms.
+    "deepgram_nova2": "Deepgram Nova-2",
+    "assemblyai": "AssemblyAI Universal 3.5",
+    "elevenlabs": "ElevenLabs Scribe v2",
+    "google_stt": "Google Cloud STT",
+    "speechmatics": "Speechmatics enhanced",
+    "ibm": "IBM Watson Large",
+    # Transcribe selects by language code, not by a named checkpoint, so
+    # there is no model name to carry here the way the others have one.
+    "aws": "Amazon Transcribe",
+    # Azure selects by locale, not by a named checkpoint, so like Amazon
+    # there is no model name to carry here.
+    "azure": "Azure AI Speech",
+    # The pair is named by what differs, as the two NeMo-FA rows are.
+    "google_stt_chirp2": "Google Chirp 2",
+
     "bfa": "BFA",
     "charsiu": "Charsiu",
     "crisperwhisper": "CrisperWhisper",
@@ -185,7 +270,18 @@ DISPLAY = {
     "olign_noisy": "Olign 1.0",
     "olign_t": "Olign 1.0",
     "parakeet_tdt": "Parakeet-TDT",
-    "qwen3_fa": "Qwen3",
+    "whisper3": "Whisper large-v3",
+    # The row IS a cascade: Qwen3-ASR decodes, Qwen3-ForcedAligner-0.6B times
+    # the words it produced. Naming the pair says so on the page instead of
+    # only in the recipe, and puts it in the same form as the other two-step
+    # rows so a reader can see what differs between them.
+    "qwen3_asr": "Qwen3 \u2192 Qwen3-FA",
+    "torchaudio_asr": "TorchAudio (ASR)",
+    # Same package as the track-1 `whisperx` row, run end to end. Named for what
+    # it does rather than reusing "WhisperX", so the two rows cannot be read as
+    # one system measured twice.
+    "whisperx_asr": "Whisper \u2192 WhisperX",
+    "qwen3_fa": "Qwen3-FA",   # the aligner checkpoint, scored on the reference
     "stable_ts": "stable-ts",
     "torchaudio_fa": "TorchAudio",
     "whisperx": "WhisperX",
@@ -199,14 +295,54 @@ FAMILY = {
     "charsiu": "frame",         # wav2vec2 frame classifier + DP, 10 ms grid
     "maps": "frame",            # neural phone segmentor + interpolation
     "parakeet_tdt": "transducer",   # Token-and-Duration Transducer
+    "whisper3": "attention",    # Whisper large-v3, cross-attention DTW times
+    "qwen3_asr": "attention",   # Qwen3-ASR, timed by Qwen3-ForcedAligner-0.6B
+    "torchaudio_asr": "ctc",    # wav2vec2 CTC greedy decode; spans are CTC frames
+    "whisperx_asr": "ctc",      # Whisper decodes, but wav2vec2 CTC sets the times
     "crisperwhisper": "attention",  # Whisper encoder-decoder cross-attention
     "crisperwhisper_fa": "attention",
     "qwen3_fa": "attention",    # Qwen3 transformer
     "stable_ts": "attention",  # Whisper cross-attention + DTW
+    # Same mechanism as stable-ts: DTW on Whisper cross-attention heads.
+    "whisper_ts": "attention",
+    # COMMERCIAL endpoints, all "Closed" for the same reason Olign is: this
+    # column names the mechanism that places the boundary, and for these it is
+    # not published. Guessing from a vendor blog post would put a label in the
+    # table that nothing in the run can support.
+    "deepgram": "proprietary",
+    "deepgram_nova2": "proprietary",
+    "assemblyai": "proprietary",
+    "elevenlabs": "proprietary",
+    "google_stt": "proprietary",
+    "speechmatics": "proprietary",
+    "ibm": "proprietary",
+    "aws": "proprietary",
+    "azure": "proprietary",
+    "google_stt_chirp2": "proprietary",
     "neufa": "attention",       # bidirectional attention (not evaluated)
     "bfa": "ctc",               # CUPE + CTC
     "torchaudio_fa": "ctc",     # CTC forced alignment
+    # wav2vec2 CTC forced alignment, same mechanism as torchaudio_fa. The
+    # difference is the checkpoint: MMS is trained on 1000+ languages over a
+    # romanised character vocabulary, which is why it has no phone tier here.
+    "mms_fa": "ctc",
+    # Viterbi over a NeMo ASR model's CTC posteriors. The encoder is a
+    # FastConformer or a Conformer, but what places the boundary is the CTC path.
+    "nemo_fa": "ctc",
+    "nemo_fa_conformer": "ctc",
     "whisperx": "ctc",          # wav2vec2 phoneme CTC for the ALIGNMENT stage
+    # NOT attention, despite the upstream naming. The whole aligner is four
+    # nn.Conv1d layers with ReLU and dropout over text and unit embeddings,
+    # then a negative L2 distance between every frame and every token,
+    # log-softmaxed over the text axis, then Viterbi. There is no attention
+    # module in the boundary path at all. That is a per-frame emission decoded
+    # by DP, the same shape the charsiu entry above describes. The 1B
+    # transformer in UnitY2 runs earlier and only turns audio into units, and
+    # the rule above is about what decides boundaries.
+    "unity2": "frame",
+    # A frame-level boundary scorer with peak detection, differentiable DP in
+    # place of a hard argmax. Same mechanism class as charsiu and maps.
+    "falcon": "frame",
     "mfa": "hmm",               # Kaldi GMM-HMM + SAT/fMLLR/LDA
     "mfa2": "hmm",
     "olign": "proprietary",
@@ -221,21 +357,151 @@ FAMILY_ORDER = ["transducer", "ctc", "attention", "frame", "hmm", "proprietary"]
 #: Displayed family names. Capitalised across the board -- "Frame" beside a
 #: lowercase "transducer" reads as a typo, not a distinction.
 #:
-#: "proprietary" becomes "Closed", not "Prpri.". This column names an
-#: ARCHITECTURE -- CTC, Frame, HMM, Attention, Transducer -- so answering it
-#: with a licence was a category error as well as an awkward contraction. The
-#: architecture is simply not public, and "Closed" says that in the same
-#: register as its neighbours, at a width the column already carries.
+#: "proprietary" renders as "API", not "Closed" and certainly not "Prpri.".
+#: This column names an ARCHITECTURE -- CTC, Frame, HMM, Attention,
+#: Transducer -- so answering it with a licence was a category error. Every
+#: member reaches its answer the same way, over a network endpoint whose
+#: mechanism is not published: Olign, Deepgram, Google, AssemblyAI,
+#: ElevenLabs, Speechmatics. "API" states that as a fact about how the row was
+#: produced rather than as a judgement about the vendor, and it puts Olign in
+#: exactly the same category as the five commercial services rather than in a
+#: category of its own -- which is the honest arrangement and also what a
+#: reader asking about conflict of interest needs to see.
 FAMILY_LABEL = {"frame": "Frame", "transducer": "Transducer",
                 "attention": "Attention", "ctc": "CTC", "hmm": "HMM",
-                "proprietary": "Closed"}
+                "proprietary": "API"}
+
+
+def upstream_name(tool: str) -> str:
+    """The recogniser's name as it reads on the LEFT of an arrow.
+
+    Step one of a two-step row is a recogniser by definition, so spelling that
+    out again in the name is redundant: "Qwen3-ASR -> MFA 3.4" says ASR twice.
+    The suffix is dropped in this position only -- the standalone row keeps it
+    wherever the tool is named on its own.
+    """
+    name = DISPLAY.get(tool, tool)
+    for suffix in ("-ASR", " (ASR)", " ASR"):
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return name.split(" \u2192 ")[0]      # already a pair: keep its first half
 
 
 def disp(tool: str) -> str:
+    parts = cascade_parts(tool)
+    if parts:
+        base, asr = parts
+        return f"{upstream_name(asr)} \u2192 {disp(base)}"   # decode, then align
     return DISPLAY.get(tool, tool)
 
 
+#: How a track-2 system gets its timestamps. This is NOT a directory axis: both
+#: kinds decode their own words and are scored identically, so they are a fair
+#: comparison and belong on one page. It is a column because it explains the
+#: numbers -- notably that the best-timed ASR here is the one that is secretly
+#: two-step (Qwen3-ASR loads Qwen3-ForcedAligner-0.6B and aligns its own
+#: transcript), which is the hypothesis the explicit cascades test.
+PIPELINE = {
+    "parakeet_tdt": "one-step",     # TDT duration head, times fall out of decoding
+    "crisperwhisper": "one-step",   # cross-attention
+    "whisper3": "one-step",         # cross-attention DTW
+    "whisper_ts": "one-step",       # cross-attention DTW, same decode
+    "torchaudio_asr": "one-step",   # CTC frame spans from the same decode
+    "whisperx_asr": "two-step",     # Whisper decodes, wav2vec2 re-aligns its words
+    "qwen3_asr": "two-step",        # decodes, then aligns with Qwen3-ForcedAligner
+    # The commercial endpoints return words and times from one request. Whether
+    # a second stage runs server-side is not observable, so "one-step" here
+    # means what the interface offers, which is also what a user gets.
+    "deepgram": "one-step",
+    "deepgram_nova2": "one-step",
+    "assemblyai": "one-step",
+    "elevenlabs": "one-step",
+    "google_stt": "one-step",
+    "speechmatics": "one-step",
+    "ibm": "one-step",
+    "aws": "one-step",
+    "azure": "one-step",
+    "google_stt_chirp2": "one-step",
+}
+
+
+#: A cascade recipe is named "<base>_on_<asr>" -- the base aligner run on the
+#: words that ASR decoded. Its properties are not restated per pair: display
+#: name, boundary family and any train-on-test flag are inherited from the two
+#: halves, so adding a cascade needs no edit here. These aliases bridge the two
+#: places a short form is used in a recipe name but not as the recipe's own
+#: name.
+CASCADE_ALIAS = {"mfa3": "mfa", "qwen3asr": "qwen3_asr",
+                 "parakeettdt": "parakeet_tdt",
+                 # The recipe is named for the model, not the endpoint: the
+                 # tool id google_stt_chirp2 would read as "google stt chirp2"
+                 # on the left of an arrow.
+                 "chirp2": "google_stt_chirp2"}
+
+
+def cascade_parts(tool: str) -> tuple[str, str] | None:
+    """``("mfa", "qwen3_asr")`` for ``mfa3_on_qwen3asr``; None if not a cascade."""
+    if "_on_" not in tool:
+        return None
+    base, _, asr = tool.partition("_on_")
+    return CASCADE_ALIAS.get(base, base), CASCADE_ALIAS.get(asr, asr)
+
+
+def pipe(tool: str) -> str:
+    """one-step / two-step, or '' for a gold-transcript system (always one-step
+    by definition: it is handed the words and aligns once)."""
+    if cascade_parts(tool):
+        return "two-step"          # decode, then align: two models by construction
+    return PIPELINE.get(tool, "")
+
+
+#: Rows that ARE two-step but are not named like one, because the vendor ships
+#: both halves as a single product. (aligner, recogniser), matching
+#: cascade_parts. Qwen3-ASR loads Qwen3-ForcedAligner to time what it decoded,
+#: and WhisperX is Whisper plus its own CTC re-alignment.
+INTERNAL_CASCADE = {"qwen3_asr": ("qwen3_fa", "qwen3_asr"),
+                    "whisperx_asr": ("whisperx", "whisper3")}
+
+
+def cascade_halves(tool: str) -> tuple[str, str] | None:
+    """``(aligner, recogniser)`` for any two-step row, named like one or not."""
+    return cascade_parts(tool) or INTERNAL_CASCADE.get(tool)
+
+
+def fam_label(tool: str, arrow: str = "\u2192", label: dict | None = None,
+              right: dict | None = None) -> str:
+    """The Family cell.
+
+    A two-step row names BOTH halves, because one label cannot describe two
+    models and the aligner's family alone hid the thing a reader most wants:
+    whether the words came from something they can download. So the left of
+    the arrow is availability, Open or API, and the right is the aligner's
+    architecture -- Open->CTC, Open->API, API->API. The arrow reads the same
+    way as in the system name, recogniser then aligner.
+    """
+    lab = label or FAMILY_LABEL
+    h = cascade_halves(tool)
+    if h:
+        aligner, asr = h
+        left = "API" if FAMILY.get(asr) == "proprietary" else "Open"
+        rfam = FAMILY.get(aligner, "other")
+        # `right` abbreviates the aligner half only. A composite is the widest
+        # entry in the column and in the paper it sets the column's width, so
+        # "Open -> Attention" can be shortened there without touching the
+        # Track 1 rows that simply read "Attention".
+        rl = right or lab
+        return (f"{left} {arrow} "
+                f"{rl.get(rfam) or lab.get(rfam) or FAMILY_LABEL.get(rfam, rfam)}")
+    f = fam(tool)
+    return lab.get(f, FAMILY_LABEL.get(f, f))
+
+
 def fam(tool: str) -> str:
+    # The ALIGNER decides boundaries, so a cascade sits in its base's family --
+    # what the upstream ASR is shows in the name and the Pipeline column.
+    parts = cascade_parts(tool)
+    if parts:
+        return FAMILY.get(parts[0], "other")
     return FAMILY.get(tool, "other")
 
 
@@ -629,7 +895,7 @@ def phone_table_concise(corpus: str, bysub: dict[str, list[dict]]) -> str:
                   _sep(i, j))
                  for i, s in enumerate(subs)
                  for j, (_m, get) in enumerate(CONCISE_METRICS)]
-        L.append(f"<tr><td>{FAMILY_LABEL.get(fam(name), fam(name))}</td>"
+        L.append(f"<tr><td>{fam_label(name)}</td>"
                  f"<td>{_esc(label)}</td>"
                  + "".join(f"<td{sep}>{_esc(c)}</td>" for c, sep in cells)
                  + "</tr>")
@@ -715,7 +981,7 @@ def phone_table(corpus: str, bysub: dict[str, list[dict]],
                       sep(i, j))
                      for i, s in enumerate(present)
                      for j, (_m, get) in enumerate(metrics)]
-            out.append(f"<tr><td>{FAMILY_LABEL.get(fam(name), fam(name))}</td>"
+            out.append(f"<tr><td>{fam_label(name)}</td>"
                        f"<td>{_esc(label)}</td>"
                        + "".join(f"<td{s2}>{_esc(c)}</td>" for c, s2 in cells)
                        + "</tr>")
@@ -835,8 +1101,9 @@ def word_table_corpus(corpus: str, bysub: dict, detailed: bool = False,
     subs, omitted = present, []
     n = len(metrics)
     RULE = ' style="border-left:1px solid rgba(128,128,128,.35)"'
+    pipe_col = '<th rowspan="2">Pipeline</th>' if track == 2 else ""
     L = [TABLE_TAG, '<thead>',
-         '<tr><th rowspan="2">Family</th><th rowspan="2">System</th>'
+         '<tr><th rowspan="2">Family</th>' + pipe_col + '<th rowspan="2">System</th>'
          + "".join(f'<th colspan="{n}"{RULE}>'
                    f'{_esc(sub_disp(s, corpus))}</th>'
                    for i, s in enumerate(subs)) + '</tr>',
@@ -864,8 +1131,10 @@ def word_table_corpus(corpus: str, bysub: dict, detailed: bool = False,
                   RULE if j == 0 else "")
                  for i, s in enumerate(subs)
                  for j, (_m, get) in enumerate(metrics)]
-        L.append(f"<tr><td>{FAMILY_LABEL.get(fam(name), fam(name))}</td>"
-                 f"<td>{_esc(label)}</td>"
+        pipe_cell = f"<td>{_esc(pipe(name))}</td>" if track == 2 else ""
+        L.append(f"<tr><td>{fam_label(name)}</td>"
+                 + pipe_cell
+                 + f"<td>{_esc(label)}</td>"
                  + "".join(f"<td{sep}>{_esc(c)}</td>" for c, sep in cells)
                  + "</tr>")
     L += ["</tbody>", "</table>"]
@@ -904,7 +1173,7 @@ def word_table(data: dict) -> str:
                 # a phone metric under a word heading, and blank for every
                 # word-only tool.
                 L.append(f"| {corpus} | {sub_disp(sub)} | "
-                         f"{FAMILY_LABEL.get(fam(name), fam(name))} | {label} | "
+                         f"{fam_label(name)} | {label} | "
                          f"{_fmt(r.get('wbe'))} | {_fmt(r.get('wbnd_f1'))} |")
     return "\n".join(L)
 
@@ -1131,7 +1400,7 @@ def noise_table(clean: dict, noisy: dict, key: str = "mae",
                 f"{(v if isinstance(v, str) else fmt.format(v)) if v is not None else '—'}"
                 "</td>"
                 for s in subs for j, v in enumerate(per_sys[t][s]))
-            L.append(f"<tr><td>{FAMILY_LABEL.get(fam(t), fam(t))}</td>"
+            L.append(f"<tr><td>{fam_label(t)}</td>"
                      f"<td>{_esc(label)}</td>" + tds + "</tr>")
         L += ["</tbody>", "</table>"]
     return "\n".join(L)
@@ -1157,7 +1426,8 @@ WORD_SUMMARY_METRICS = [
 def noise_summary_table(clean: dict, noisy: dict, corpus_only: str,
                         metrics=NOISE_SUMMARY_METRICS,
                         rank_key: str = "mae",
-                        suppress: set | None = None) -> str:
+                        suppress: set | None = None,
+                        pipeline: bool = False) -> str:
     """Clean vs Noisy for SEVERAL metrics, in one table.
 
     MAE and F1 were two tables reading "the same conditions" -- the same rows
@@ -1182,7 +1452,13 @@ def noise_summary_table(clean: dict, noisy: dict, corpus_only: str,
                 continue
             try:
                 return float(str(r[key]).split(" [")[0])
-            except (ValueError, IndexError):
+            except (KeyError, ValueError, IndexError):
+                # KeyError: a report holds SEVERAL tables and parse_report
+                # returns every row from all of them, so a tool appears once per
+                # table. Only one of those rows carries this metric -- the
+                # degradation table has no MAE column at all -- and a row that
+                # does not carry it is not an error, it is the wrong row. Keep
+                # looking, exactly as for a value that will not parse.
                 continue
         return None
 
@@ -1228,8 +1504,12 @@ def noise_summary_table(clean: dict, noisy: dict, corpus_only: str,
         """Heavy rule opens a split; light rule opens each metric within it."""
         return SPLIT_RULE if j == 0 else (GROUP_RULE if j % 2 == 0 else "")
 
+    # Track 2 mixes systems that time their own decode with cascades that hand
+    # the words to a separate aligner. Without the column those read as one kind
+    # of system, and the spread between them is the point of the table.
+    pipe_col = '<th rowspan="3">Pipeline</th>' if pipeline else ""
     L = [TABLE_TAG, '<thead>',
-         '<tr><th rowspan="3">Family</th><th rowspan="3">System</th>'
+         '<tr><th rowspan="3">Family</th>' + pipe_col + '<th rowspan="3">System</th>'
          + "".join(f'<th colspan="{n}"{SPLIT_RULE}>{_esc(sub_disp(s, corpus))}</th>'
                    for s in subs) + '</tr>',
          '<tr>' + "".join(f'<th colspan="2"{SPLIT_RULE if k == 0 else GROUP_RULE}>'
@@ -1246,8 +1526,9 @@ def noise_summary_table(clean: dict, noisy: dict, corpus_only: str,
             for j, v in enumerate(per_sys[t][s]):
                 f = metrics[j // 2][2]
                 tds += f"<td{sep(j)}>{f.format(v) if v is not None else '—'}</td>"
-        L.append(f"<tr><td>{FAMILY_LABEL.get(fam(t), fam(t))}</td>"
-                 f"<td>{_esc(label)}</td>" + tds + "</tr>")
+        pipe_cell = f"<td>{_esc(pipe(t))}</td>" if pipeline else ""
+        L.append(f"<tr><td>{fam_label(t)}</td>" + pipe_cell
+                 + f"<td>{_esc(label)}</td>" + tds + "</tr>")
     L += ["</tbody>", "</table>"]
     also = sorted(disp(a) for a in hide
                   if any(a in {r["aligner"] for r in clean[corpus].get(s, [])}
@@ -1285,8 +1566,33 @@ WORD_OSR_METRICS = [("OS", "wbnd_os"), ("R-val", "w_r_value")]
 DIST_METRICS = [("x̃ (ms)", "median", "{:.1f}"),
                 ("δ̄ (ms)", "signed", "{:.1f}")]
 TA_METRICS = [("t=10", "ta_10", "{:.1f}"),
+              ("t=20", "ta_20", "{:.1f}"),
+              ("t=25", "ta_25", "{:.1f}"),
               ("t=50", "ta_50", "{:.1f}"),
               ("t=100", "ta_100", "{:.1f}")]
+#: The same widths on the word tier. Published because the paper reports one
+#: tolerance and points here for the rest, and until now "the rest" meant the
+#: phone tier only, which left every word-only system out of the sweep.
+WORD_TA_METRICS = [("t=10", "wta_10", "{:.1f}"),
+                   ("t=20", "wta_20", "{:.1f}"),
+                   ("t=25", "wta_25", "{:.1f}"),
+                   ("t=50", "wta_50", "{:.1f}"),
+                   ("t=100", "wta_100", "{:.1f}")]
+#: F1 at the same widths. Published beside the tolerance-accuracy grid rather
+#: than instead of it, because the pair is the point: they share a numerator
+#: and differ in what they are allowed to charge for, so the gap between the
+#: two curves at one width IS the insertion and deletion cost that a
+#: matched-path metric cannot show.
+F1_SWEEP_METRICS = [("t=10", "bnd_f1_10", "{:.3f}"),
+                    ("t=20", "bnd_f1_20", "{:.3f}"),
+                    ("t=25", "bnd_f1_25", "{:.3f}"),
+                    ("t=50", "bnd_f1_50", "{:.3f}"),
+                    ("t=100", "bnd_f1_100", "{:.3f}")]
+WORD_F1_SWEEP_METRICS = [("t=10", "wbnd_f1_10", "{:.3f}"),
+                         ("t=20", "wbnd_f1_20", "{:.3f}"),
+                         ("t=25", "wbnd_f1_25", "{:.3f}"),
+                         ("t=50", "wbnd_f1_50", "{:.3f}"),
+                         ("t=100", "wbnd_f1_100", "{:.3f}")]
 #: The interval is carried INSIDE the MAE string ("43.1 [41.1,45.1]"), not in a
 #: column of its own, so it is pulled out with a callable rather than a key.
 CI_METRICS = [("95% CI",
@@ -1398,7 +1704,7 @@ def detection_grid(clean: dict, noisy: dict, corpus: str,
             f"{'—' if v is None else (v if isinstance(v, str) else fmts[j % m].format(v))}"
             "</td>"
             for s in subs for j, v in enumerate(per_sys[t][s]))
-        L.append(f"<tr><td>{FAMILY_LABEL.get(fam(t), fam(t))}</td>"
+        L.append(f"<tr><td>{fam_label(t)}</td>"
                  f"<td>{_esc(label)}</td>" + tds + "</tr>")
     L += ["</tbody>", "</table>"]
     return "\n".join(L)
@@ -1429,10 +1735,16 @@ def detection_by_condition(clean: dict, noisy: dict, corpus: str,
     """
     prf, osr, rank = ((PRF_METRICS, OSR_METRICS, "mae") if tier == "phone"
                       else (WORD_PRF_METRICS, WORD_OSR_METRICS, "wbe"))
-    return _captioned_grids(clean, noisy, corpus, (
-        ("Precision / Recall / F1 (0–1)", prf),
-        ("Over-segmentation and R-value (ratio)", osr),
-    ), rank_key=rank)
+    grids = [("Precision / Recall / F1 (0–1)", prf),
+             ("Over-segmentation and R-value (ratio)", osr)]
+    # The phone tier gets its sweep from distribution_by_condition. The word
+    # tier had no such page, so it goes here, into a block that already exists.
+    if tier == "word":
+        grids.append(("Tolerance accuracy — share of word boundaries "
+                      "within t ms (%)", WORD_TA_METRICS))
+        grids.append(("Word boundary F1 at the same widths (0–1)",
+                      WORD_F1_SWEEP_METRICS))
+    return _captioned_grids(clean, noisy, corpus, tuple(grids), rank_key=rank)
 
 
 #: Track 2 in full. The comparison page carries MAE, WER and F1; the two
@@ -1450,6 +1762,9 @@ def track2_by_condition(clean: dict, noisy: dict, corpus: str) -> str:
         ("Word detection @20 ms — precision / recall and F1 (0–1)",
          WORD_PRF_METRICS),
         ("Over-segmentation and R-value (ratio)", WORD_OSR_METRICS),
+        ("Tolerance accuracy — share of word boundaries within t ms (%)",
+         WORD_TA_METRICS),
+        ("Word boundary F1 at the same widths (0–1)", WORD_F1_SWEEP_METRICS),
     ), rank_key="wbe")
 
 
@@ -1458,6 +1773,7 @@ def distribution_by_condition(clean: dict, noisy: dict, corpus: str) -> str:
         ("Median x̃ and mean signed error δ̄ (ms)", DIST_METRICS),
         ("Tolerance accuracy — share of boundaries within t ms (%)",
          TA_METRICS),
+        ("Boundary F1 at the same widths (0–1)", F1_SWEEP_METRICS),
         ("95% CI on the mean MAE (ms)", CI_METRICS),
     ))
 
@@ -1508,32 +1824,52 @@ def replace_block(text: str, ident: str, body: str) -> tuple[str, bool]:
 #: provenance table, and the word/noise tables, which exist precisely to put the
 #: two corpora side by side.
 BLOCK_DOC = {
-    "coverage": "records/aligners/en/README.md",
-    "provenance": "records/aligners/en/README.md",         # written by gen_provenance.py
-    "word-timit-detailed": "records/aligners/en/timit/Details.md",
-    "word-buckeye-detailed": "records/aligners/en/buckeye/Details.md",
-    "noise-timit-detailed": "records/aligners/en/timit/Details.md",
-    "noise-buckeye-detailed": "records/aligners/en/buckeye/Details.md",
-    "noise-f1-timit-detailed": "records/aligners/en/timit/Details.md",
-    "noise-f1-buckeye-detailed": "records/aligners/en/buckeye/Details.md",
-    "noise-word-timit-detailed": "records/aligners/en/timit/Details.md",
-    "noise-word-buckeye-detailed": "records/aligners/en/buckeye/Details.md",
-    "phone-timit": "records/aligners/en/timit/README.md",
-    "dist-timit-detailed": "records/aligners/en/timit/Details.md",
-    "track2-timit-detailed": "records/aligners/en/timit/Details.md",
-    "edit-timit-detailed": "records/aligners/en/timit/Details.md",
-    "phone-buckeye": "records/aligners/en/buckeye/README.md",
-    "caption-timit": "records/aligners/en/timit/Details.md",
-    "caption-buckeye": "records/aligners/en/buckeye/Details.md",
-    "completion-timit": "records/aligners/en/timit/README.md",
-    "completion-buckeye": "records/aligners/en/buckeye/README.md",
-    "word-timit": "records/aligners/en/timit/README.md",
-    "word-buckeye": "records/aligners/en/buckeye/README.md",
-    "word2-timit": "records/aligners/en/timit/README.md",
-    "word2-buckeye": "records/aligners/en/buckeye/README.md",
-    "dist-buckeye-detailed": "records/aligners/en/buckeye/Details.md",
-    "track2-buckeye-detailed": "records/aligners/en/buckeye/Details.md",
-    "edit-buckeye-detailed": "records/aligners/en/buckeye/Details.md",
+    # Paths are relative to a snapshot root, records/<yyyymm>/en/. The layout is
+    #     <kind>/<tier>/<corpus>/{README,Details}.md
+    # so a page never mixes a tier a system cannot reach with one it can, and a
+    # kind that decodes its own words never shares a page with one handed the
+    # transcript. Combinations with no systems are simply absent -- there is no
+    # timestamp_asrs/phone/, because no timestamped ASR emits phones.
+    "coverage": "README.md",
+    "provenance": "README.md",                    # written by gen_provenance.py
+
+    # aligners, word tier -- every track-1 system reaches this
+    "word-timit": "gold/word/timit/README.md",
+    "word-buckeye": "gold/word/buckeye/README.md",
+    "word-timit-detailed": "gold/word/timit/Details.md",
+    "word-buckeye-detailed": "gold/word/buckeye/Details.md",
+    "noise-word-timit-detailed": "gold/word/timit/Details.md",
+    "noise-word-buckeye-detailed": "gold/word/buckeye/Details.md",
+
+    # aligners, phone tier -- only systems that emit phone labels
+    "phone-timit": "gold/phone/timit/README.md",
+    "phone-buckeye": "gold/phone/buckeye/README.md",
+    "completion-timit": "gold/phone/timit/README.md",
+    "completion-buckeye": "gold/phone/buckeye/README.md",
+    "caption-timit": "gold/phone/timit/Details.md",
+    "caption-buckeye": "gold/phone/buckeye/Details.md",
+    "noise-timit-detailed": "gold/phone/timit/Details.md",
+    "noise-buckeye-detailed": "gold/phone/buckeye/Details.md",
+    "noise-f1-timit-detailed": "gold/phone/timit/Details.md",
+    "noise-f1-buckeye-detailed": "gold/phone/buckeye/Details.md",
+    "dist-timit-detailed": "gold/phone/timit/Details.md",
+    "dist-buckeye-detailed": "gold/phone/buckeye/Details.md",
+    "edit-timit-detailed": "gold/phone/timit/Details.md",
+    "edit-buckeye-detailed": "gold/phone/buckeye/Details.md",
+
+    # track 2, word tier -- every track-2 system reaches this
+    "word2-timit": "asr/word/timit/README.md",
+    "word2-buckeye": "asr/word/buckeye/README.md",
+    "track2-timit-detailed": "asr/word/timit/Details.md",
+    "track2-buckeye-detailed": "asr/word/buckeye/Details.md",
+
+    # track 2, phone tier -- only the CASCADES reach it. A one-step timestamped
+    # ASR emits words and no phones, so this tier was empty and had no page
+    # until an aligner was put behind a recogniser. It is a genuinely different
+    # measurement from the gold phone tier: the phones come from the words the
+    # ASR decoded, so a misrecognised word takes its phones with it.
+    "phone2-timit": "asr/phone/timit/README.md",
+    "phone2-buckeye": "asr/phone/buckeye/README.md",
 }
 
 
@@ -1543,7 +1879,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="directory the BLOCK_DOC paths are relative to")
     ap.add_argument("--records-dir", default=None,
                     help="write the record pages here instead of "
-                         "records/aligners/en/ -- used by publish_records.py to "
+                         "a snapshot root, records/<yyyymm>/en -- used by publish_records.py to "
                          "fill a dated snapshot")
     ap.add_argument("--check", action="store_true",
                     help="exit 1 if any file would change (for CI)")
@@ -1552,10 +1888,10 @@ def main(argv: list[str] | None = None) -> int:
     # Every record page can be redirected at a dated snapshot. summary/ holds no
     # published page any more -- it is script output, gitignored.
     def _doc(rel: str) -> str:
-        if a.records_dir and rel.startswith("records/aligners/en/"):
-            return str(pathlib.Path(a.records_dir)
-                       / rel[len("records/aligners/en/"):])
-        return rel
+        # BLOCK_DOC holds paths relative to a snapshot root; --records-dir names
+        # that root (records/<yyyymm>/en). Without it nothing resolves, because
+        # there is no longer one default snapshot to write into.
+        return str(pathlib.Path(a.records_dir) / rel) if a.records_dir else rel
 
     data = drop_phone_tier(collect())
     noisy = drop_phone_tier(collect(include_noisy=True))
@@ -1625,17 +1961,30 @@ def main(argv: list[str] | None = None) -> int:
         "caption-buckeye": caption(),
         "completion-timit": completion_note("timit"),
         "completion-buckeye": completion_note("buckeye"),
-        "word2-timit":
-            word_table_corpus("timit", asr.get("timit", {}), track=2),
-        "word2-buckeye":
-            word_table_corpus("buckeye", asr.get("buckeye", {}), track=2),
+        # Clean AND the mean of the four degradations, the same grid the gold
+        # word page uses. The clean-only pivot this replaces could not show that
+        # a system's ranking changes under noise -- the benchmark's central
+        # claim, which applies to track 2 no less than to track 1.
+        "word2-timit": noise_summary_table(asr, asr_noisy, "timit",
+                                           metrics=WORD_SUMMARY_METRICS,
+                                           rank_key="wbe", pipeline=True),
+        "word2-buckeye": noise_summary_table(asr, asr_noisy, "buckeye",
+                                             metrics=WORD_SUMMARY_METRICS,
+                                             rank_key="wbe", pipeline=True),
+        # Same grid as the gold phone tier, over the track-2 roster: clean
+        # against the four degradations, so the two tiers read alike even though
+        # their inputs differ.
+        "phone2-timit": noise_summary_table(asr, asr_noisy, "timit",
+                                            pipeline=True),
+        "phone2-buckeye": noise_summary_table(asr, asr_noisy, "buckeye",
+                                              pipeline=True),
     }
 
     docs_root = Path(a.docs_root)
     # group by target file so each page is read and written exactly once
     by_doc: dict[str, list[str]] = {}
     for ident in blocks:
-        by_doc.setdefault(_doc(BLOCK_DOC.get(ident, "records/aligners/en/README.md")),
+        by_doc.setdefault(_doc(BLOCK_DOC.get(ident, "README.md")),
                           []).append(ident)
 
     missing, stale = [], []

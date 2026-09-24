@@ -45,10 +45,20 @@ mfa_paper:
   include_utterance_edge_boundaries: false
   include_gap_adjacent_boundaries: false
 
-# Tolerance-accuracy thresholds reported in the tables (TA@10/50/100 ms).
+# Tolerance-accuracy thresholds reported in the tables (TA@10/25/50/100 ms).
 # The MFA-2026 paper's Table 5 uses 10/25/50; set that per run when
 # reproducing it exactly.
-ta_thresholds_ms: [10, 50, 100]
+#
+# 25 HAS TO BE IN THIS LIST. It is the primary tolerance below, and the primary
+# is what ta_primary_ci_lo/hi bracket -- but the interval was the only thing
+# written, because the point estimate comes from this loop and 25 was not in
+# it. Every published cell carried a confidence interval around a number the
+# file did not contain.
+# Matches segmentation.SWEEP_TOL_S, so tolerance accuracy and F1 exist at the
+# same widths and can be read against each other. 20 is F1's convention and
+# 25 is TA's primary; both are in so neither metric has a width the other
+# lacks.
+ta_thresholds_ms: [10, 20, 25, 50, 100]
 primary_tolerance_ms: 25     # used for the CI, per-type, and calibration within-tau
 bootstrap_iters: 1000
 bootstrap_ci: 0.95

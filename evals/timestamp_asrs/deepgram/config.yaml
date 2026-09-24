@@ -1,0 +1,41 @@
+# Deepgram Nova. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# It decodes its own words and returns its own word times, so its row mixes
+# recognition with timing error and is not comparable with a Track 1 aligner.
+#
+# CREDENTIAL: DEEPGRAM_STT_API_KEY (or DEEPGRAM_API_KEY), from the
+# environment or .fabench.env
+# (gitignored). Never put a key in this file -- it is tracked and public.
+#
+# NOT REPRODUCIBLE THE WAY AN OPEN CHECKPOINT IS. "nova-3" names a service, not
+# a artefact anyone can pin, and it can change under the same name. The row
+# records what the endpoint returned on the date of the run. That is why
+# `access: commercial` is declared here and why these systems are reported
+# apart from the open-weight track.
+name: deepgram
+adapter: deepgram
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true      # per-word recognition confidence
+params:
+  model: nova-3
+  language: en
+  # RAW WORDS, NOT DISPLAY TEXT. Left on, these turn "twenty one" into "21" and
+  # add capitals and punctuation, which scores as recognition error against a
+  # gold transcript that spells numbers out. Turning them off measures the
+  # recognizer instead of its formatter.
+  punctuate: false
+  smart_format: false
+  numerals: false
+  filler_words: true        # Buckeye transcribes um and uh; dropping them is a deletion
+  concurrency: 8
+  timeout_s: 120
+  retries: 5
+  # Responses are cached under evals/timestamp_asrs/deepgram/cache/, keyed by
+  # audio bytes + model + every option above, so a rescore or a restart costs
+  # nothing. Set `cache: false` only to force a re-bill on purpose.
+  cache: true
+  # Uncomment to cap spend while testing a new key.
+  # max_calls: 50

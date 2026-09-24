@@ -110,7 +110,10 @@ def align_one(neufa, id2symbol, transcript: str, x, sr: float) -> dict:
 
 def main(argv: list[str]) -> int:
     jobs_path = argv[0]
-    repo = Path(argv[2])
+    # RESOLVED. The shadow guard below compares the imported module's file
+    # against this, and a relative "repo" never prefixes an absolute path, so
+    # the guard fired on every correct invocation.
+    repo = Path(argv[2]).resolve()
     model_path = Path(argv[3])
     device = argv[4] if len(argv) > 4 else "cuda"
 
@@ -118,6 +121,19 @@ def main(argv: list[str]) -> int:
 
     if device.startswith("cuda") and not torch.cuda.is_available():
         device = "cpu"
+    # NeuFA SHIPS A PICKLED MODULE, not a state dict, and torch 2.6 flipped
+    # torch.load's weights_only default to True, which refuses it. The repo
+    # predates that change and calls torch.load with no argument, so the
+    # default is restored here rather than by editing a third-party checkout
+    # the install script clones fresh. The checkpoint is therefore executed as
+    # code at load time, which is what a whole-model pickle always is.
+    _torch_load = torch.load
+
+    def _load_full(*a, **kw):
+        kw.setdefault("weights_only", False)
+        return _torch_load(*a, **kw)
+
+    torch.load = _load_full
     sys.path.insert(0, str(repo))
     import importlib
 

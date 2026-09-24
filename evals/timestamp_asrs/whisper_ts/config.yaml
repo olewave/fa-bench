@@ -1,0 +1,19 @@
+# whisper-timestamped (linto-ai). TRACK 2, ONE STEP, WORD TIER.
+#
+# Whisper decodes and cross-attention DTW times the words it decoded. It has no
+# entry point that accepts a supplied transcript, so there is no Track 1 row and
+# no cascade. large-v3 to match whisper3 and whisperx_asr.
+name: whisper_ts
+adapter: whisper_ts
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  venv: evals/timestamp_asrs/whisper_ts/venv
+  worker: evals/timestamp_asrs/whisper_ts/worker.py
+  model: large-v3
+  device: cuda
+  timeout_s: null
+  env:
+    HF_HOME: /ndata/hf

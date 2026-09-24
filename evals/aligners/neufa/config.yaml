@@ -34,12 +34,13 @@
 # taking torch from the shared .venv.
 name: neufa
 adapter: neufa
-enabled: false
+enabled: true
 modes: [A]
 granularity: [word, phone]
 emits_confidence: false
 params:
   venv: venv
   repo_path: repo
-  # Supply this yourself: there is no published checkpoint.
-  model_path: repo/neufa.pt
+  # Supplied by the authors, not published upstream. A whole pickled
+  # NeuFA_TeMP, 17.6M parameters, so loading it runs its own code.
+  model_path: ../../../model/neufa/neufa_en.pt

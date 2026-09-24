@@ -1,0 +1,128 @@
+# Amazon Transcribe, batch. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# CREDENTIAL: two parts, unlike every other row here. AWS_ACCESS_KEY_ID and
+# AWS_SECRET_ACCESS_KEY, plus AWS_SESSION_TOKEN if the credentials are
+# temporary. Put all of them in .fabench.env. The signature covers the method,
+# the path, the headers and the body, so there is no key to paste into a header
+# and the signing is in fabench/timestamp_asrs/cloud/awssig.py, checked against
+# Amazon's own published SigV4 test vector.
+#
+# AN S3 BUCKET IS REQUIRED. Transcribe batch reads its audio from S3 and will
+# not accept bytes in the request, so each utterance is four signed calls: PUT
+# the object, start the job, poll it, then GET the transcript from the
+# presigned URL the job returns. The object is deleted once the transcript is
+# in hand. Set AWS_S3_BUCKET in .fabench.env, or s3_bucket below. THE BUCKET
+# MUST BE IN THE SAME REGION as the Transcribe endpoint, or the job fails with
+# a permissions error that never mentions regions.
+#
+# THE IAM POLICY THIS NEEDS, which is the usual place an AWS row stalls. The
+# calling identity needs S3 on the staging bucket AND Transcribe, and it needs
+# s3:GetObject as well as s3:PutObject because the service reads the object
+# back through the caller's own permissions:
+#
+#   {"Version": "2012-10-17", "Statement": [
+#     {"Effect": "Allow",
+#      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+#      "Resource": "arn:aws:s3:::YOUR-BUCKET/*"},
+#     {"Effect": "Allow",
+#      "Action": ["transcribe:StartTranscriptionJob",
+#                 "transcribe:GetTranscriptionJob"],
+#      "Resource": "*"}]}
+#
+# A missing s3:GetObject fails the JOB rather than the upload, so it surfaces
+# as a job failure whose reason mentions access, several seconds after the
+# call that actually looked fine.
+#
+# WHY NOT STREAMING. Transcribe streaming takes the audio directly and would
+# skip S3 entirely, but it speaks HTTP/2 or WebSocket wrapped in Amazon's own
+# event-stream binary framing and the standard library has no client for
+# either. Batch is plain signed HTTPS and JSON. Streaming is also not offered
+# in this region at all, only batch is.
+#
+# WHAT THE LATENCY COLUMNS MEAN FOR THIS ROW, and it is not what they mean for
+# the others. A batch job carries tens of seconds of queue and scheduling
+# overhead whatever the clip length, so lat_p50 here measures the AWS job queue
+# rather than the recognizer. It is reported as measured and it is the real
+# cost of using the service this way, but it is not comparable to the
+# synchronous endpoints in the same column.
+#
+# COST. $0.006 per minute for standard batch, billed in one-second increments
+# WITH NO MINIMUM PER REQUEST. The no-minimum part is what decides this row. A
+# 15 s minimum, which several AWS speech features do carry, would turn 47,805
+# short utterances from about $12 into about $287.
+#
+# RE-VERIFIED 2026-09-20 before the first sweep, against the machine-readable
+# price list rather than the rendered page, which hides the rate behind a
+# region selector:
+#   pricing.us-east-1.amazonaws.com/offers/v1.0/aws/transcribe/current/index.json
+# SKU USW1-TranscribeAudio is $0.0001 per SECOND, one price dimension from
+# beginRange 0, so there is no volume tiering to model. $0.0001 x 60 = $0.006.
+# The no-minimum wording is the pricing page's own: "Usage is billed in
+# one-second increments, with no minimum applied."
+#
+# Note for anyone carrying an older number: $0.024/min was the long-standing
+# tier-1 rate and is no longer current. Take the price list, not memory.
+#
+# THE SWEEP IS 2,055 MINUTES, 9,561 utterances across four splits times five
+# conditions, so about $12.33 in total and 7 cents for TIMIT test clean.
+#
+# 45 UTTERANCES WILL FAIL AND SHOULD. Transcribe rejects any file under 500 ms
+# and 45 of our 47,805 are shorter, the briefest being 346 ms. That is 0.09% of
+# the sweep, so the cells land just short of full rather than damaged, and the
+# driver's completeness threshold is nowhere near it. Documented here so a
+# short cell is not mistaken for a lost one, exactly as NeMo-FA's 32 dropped
+# Buckeye utterances are.
+#
+# FORMATTING CAVEAT, the same one ElevenLabs has. Batch Transcribe offers no
+# switch for raw words. Punctuation arrives as separate items and is dropped by
+# the parser, so it never reaches the transcript, but inverse text
+# normalisation is always on and numbers come back as digits. Against a gold
+# transcript that spells them out that scores as a substitution, so this row's
+# WER carries a formatting penalty the rows with a raw-text switch do not.
+name: aws
+adapter: aws
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  # Transcribe selects behaviour by LanguageCode rather than by a named
+  # checkpoint. There is no model to pin and no version in the response, so
+  # this row reports the endpoint and the date and nothing finer. That is
+  # weaker provenance than Deepgram, which names the served build, and it is
+  # recorded here rather than glossed.
+  model: en-US
+  language: en-US
+  # US West (N. California). CONFIRMED 2026-09-17 against Amazon's endpoint
+  # table: batch Transcribe is served here at transcribe.us-west-1.amazonaws.com
+  # and streaming is not, which costs us nothing because this row is batch.
+  #
+  # Region is part of the CACHE KEY, not just routing, because Amazon rolls
+  # models out by region and the same request to two regions is not guaranteed
+  # the same answer. Moving region is therefore a re-bill, deliberately.
+  region: us-west-1
+  # Empty means read AWS_S3_BUCKET from the environment. Staging only, and the
+  # object is deleted after the transcript is fetched. Must be us-west-1.
+  s3_bucket: ""
+  s3_prefix: fabench
+  keep_s3_object: false
+  # Batch jobs take tens of seconds, so polling faster only spends quota.
+  # GetTranscriptionJob is limited to 30 requests per second per region.
+  poll_interval_s: 3
+  # MEASURED AGAINST THE PUBLISHED QUOTAS, not guessed: 250 concurrent
+  # transcription jobs per region and 25 StartTranscriptionJob per second.
+  # Concurrency here is one job per worker thread, so 16 leaves the start rate
+  # far under its ceiling and the job count at 6% of its own. Raise it only
+  # after watching a cell, because the throttle that bites first is the start
+  # rate and it returns 400, not 429.
+  #
+  # RAISED TO 48 after watching the first cell. TIMIT core_test clean ran 192
+  # calls at 16 with zero retries and zero throttles, so 48 is 19% of the job
+  # ceiling and, at the ~20 s a batch job takes, about 4 starts a second
+  # against a limit of 25. Concurrency is in neither _OPT_KEYS nor the cache
+  # key, so raising it cannot invalidate a cached response.
+  concurrency: 48
+  timeout_s: 900
+  retries: 8
+  cache: true

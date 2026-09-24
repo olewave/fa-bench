@@ -1,0 +1,39 @@
+# ElevenLabs Scribe. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# CREDENTIAL: ELEVENLABS_STT_API_KEY, or ELEVENLABS_API_KEY, or XI_API_KEY,
+# from the environment or .fabench.env. The STT spelling is preferred because
+# ElevenLabs issues one key for speech-to-text and text-to-speech alike.
+#
+# TWO CAVEATS THAT BELONG ON ITS ROW.
+#  1. Scribe has no switch for raw versus formatted text, so unlike the other
+#     three its WER carries whatever normalisation it chooses -- digits for
+#     spelled-out numbers above all. Read its WER against the others knowing
+#     that, and read its timing, which the formatting does not touch, straight.
+#  2. Its word list interleaves "spacing" and "audio_event" entries with the
+#     words. The adapter keeps type == "word" only; keeping the rest would
+#     invent a boundary at every space.
+#
+# Confidence is exp(logprob), a recognition confidence rather than a boundary
+# one, which is true of all four commercial rows.
+name: elevenlabs
+adapter: elevenlabs
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  # scribe_v2, not v1. The API lists scribe_v1, scribe_v1_experimental,
+  # scribe_v2 and scribe_v2_medical; v2 is the current general model and there
+  # is no reason to publish a row on the older one. Measured 2026-09-17: v1 and
+  # v2 return byte-identical transcripts and the same 20 ms grid on TIMIT
+  # samples, so this is a currency change rather than an accuracy one.
+  model: scribe_v2
+  language: eng             # ISO-639-3 here, not the BCP-47 the others take
+  timestamps_granularity: word
+  diarize: false
+  tag_audio_events: false
+  concurrency: 4            # multipart uploads; keep this modest
+  timeout_s: 180
+  retries: 5
+  cache: true

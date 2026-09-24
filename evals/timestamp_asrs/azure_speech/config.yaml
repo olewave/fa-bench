@@ -1,0 +1,111 @@
+# Azure AI Speech, FAST TRANSCRIPTION. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# CREDENTIAL: AZURE_SPEECH_STT_API_KEY (or AZURE_SPEECH_API_KEY, or
+# AZURE_SPEECH_KEY) from .fabench.env, sent as Ocp-Apim-Subscription-Key.
+#
+# ENDPOINT IS PER RESOURCE and must be set. Azure issues one host per Speech
+# resource, and the portal shows it on the resource's Keys and Endpoint page:
+#   https://<resource-name>.cognitiveservices.azure.com
+# Put it in .fabench.env as AZURE_SPEECH_ENDPOINT. Setting AZURE_SPEECH_REGION
+# instead also works and routes through the regional gateway, but naming the
+# resource says which one the numbers were billed to and cannot silently
+# resolve somewhere else, which is the same reason the IBM recipe names its
+# instance.
+#
+# WHY FAST TRANSCRIPTION AND NOT THE OTHER TWO. Azure sells three ways to get a
+# transcript. Batch transcription reads from Blob Storage, which would repeat
+# the staging problem AWS has. The Speech SDK is a dependency tree this repo
+# cannot take and the sweep machine cannot reach. Fast transcription is one
+# synchronous multipart POST that carries the audio in the request, which is
+# how every other row here works, and it returns word times by default with no
+# flag to set.
+#
+# PUNCTUATION AND NUMBERS. This applies to api: fast, which this recipe no
+# longer uses by default but keeps available for audio over 60 s. Deepgram and AssemblyAI have a switch for raw words. AWS and
+# ElevenLabs send punctuation as its own entry, which the parser drops. Azure
+# returns "afternoon." as a single word, and the scorer lowercases but does not
+# strip, so every clause-final word would score as a substitution. The parser
+# strips leading and trailing marks and keeps internal ones, so "don't" and
+# "well-known" survive. That is a parser decision because Azure exposes no
+# option, and it is safe to revisit because the cache holds the raw response.
+#
+# Numbers were called an unfixable caveat when this recipe ran fast
+# transcription. They are fixable, just not on that endpoint: short_audio
+# returns the lexical form and neither problem arises, so this row carries no
+# formatting penalty at all, unlike ElevenLabs and Amazon which have no such
+# alternative.
+name: azure
+adapter: azure
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  # Azure selects by locale, not by a named checkpoint. There is no model to
+  # pin and the response names none, so this row reports the endpoint, the
+  # api-version and the date, and nothing finer. Weaker provenance than
+  # Deepgram, which names the served build, and recorded rather than glossed.
+  model: en-US
+  language: en-US
+  # WHICH ENDPOINT ANSWERS, and the two return different text for the same
+  # audio, so this is part of the cache key.
+  #
+  # short_audio is the v1 recognition endpoint with wordLevelTimestamps, and
+  # it returns the LEXICAL form. The reference spells its numbers out and
+  # carries no punctuation, and only this endpoint matches that. Measured on
+  # the same utterance:
+  #   gold                and then i've been married ... for twenty one years
+  #   short_audio         and then i've been married ... for twenty one years
+  #   fast                And then I've been married ... for twenty-one years
+  # Fast applies inverse text normalisation with no switch, returning 5 and
+  # 7.30 for five and seven thirty, and hyphenating twenty-one into ONE token
+  # where the reference has two. That second one costs more than the word
+  # error, because one token is one fewer boundary and so moves recall too.
+  #
+  # The price is a 60 s cap on the request. The longest utterance in this
+  # benchmark is 23.6 s, so nothing here reaches it. Use api: fast for audio
+  # that would.
+  api: short_audio
+  # raw keeps profanity unmasked. Masking rewrites the word to asterisks,
+  # which scores as a substitution against a corpus that transcribes it.
+  profanity: raw
+  # Used only by api: fast. PINNED there, because Azure dates its
+  # api-version and has changed the response shape
+  # across them, so a floating version would silently change what this row
+  # measured. It is part of the cache key for that reason.
+  #
+  # MEASURED 2026-09-17 against the newer 2025-10-15 on the same 12 TIMIT
+  # utterances: identical word counts and the same 10 ms grid. Checked because
+  # newer has meant COARSER at two other vendors, Deepgram nova-2 10 ms to
+  # nova-3 80 ms and IBM BroadbandModel 10 ms to 20 ms. Not so here, so the
+  # older and more widely documented version is kept.
+  api_version: "2024-11-15"
+  # Empty means read AZURE_SPEECH_ENDPOINT from the environment.
+  endpoint: ""
+  # Confidence is reported per phrase, not per word, so every word in a phrase
+  # carries its phrase's score. Recorded here because the confidence column
+  # for this row is coarser than it looks.
+  profanity_filter_mode: None
+  diarize: false
+  # MEASURED THE HARD WAY. At concurrency 8 and no cap, the first attempt at
+  # TIMIT core-test put 46 calls through and then lost 146 of 192 to
+  # throttling, which this endpoint reports as 401 with an empty body. The
+  # throttle is now retried with backoff, so the cap is a courtesy rather than
+  # the only defence, but running under it means the retries are rare instead
+  # of routine.
+  concurrency: 16
+  max_rpm: 600
+  # 30 s, not 300. MEASURED: median call 0.69 s and p90 0.98 s, so 30 is
+  # thirty times the headroom any real call needs. The old 300 was not slack,
+  # it was a trap. One request in the timit/dev/music cell hung for 301.9 s
+  # while every other call in it finished in about a second, and because the
+  # batch cannot close until its last thread returns, that single straggler
+  # turned an 80 s cell into 327 s. On a 4,456-utterance Buckeye cell the same
+  # thing costs the same five minutes every time it happens. Cutting a hung
+  # call at 30 s and retrying it is far cheaper than waiting for it, and with
+  # 8 retries behind it nothing is lost. The longest utterance in the
+  # benchmark is 23.6 s, so no legitimate call comes close.
+  timeout_s: 30
+  retries: 8
+  cache: true

@@ -1,0 +1,51 @@
+# AssemblyAI Universal. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# CREDENTIAL: ASSEMBLYAI_STT_API_KEY (or ASSEMBLYAI_API_KEY), from the
+# environment or .fabench.env.
+#
+# The only asynchronous provider of the four: upload, submit, then poll until
+# the job completes. The poll deadline is params.timeout_s, so a wedged job
+# cannot hold a worker thread for the length of a sweep. Cost is per audio
+# hour either way, so the extra round trips are latency, not money.
+#
+# See evals/timestamp_asrs/deepgram/config.yaml for why `access: commercial`.
+name: assemblyai
+adapter: assemblyai
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  # universal-3-5-pro. MEASURED 2026-09-17, both models this account serves:
+  #
+  #   universal-3-5-pro   CONTINUOUS times (0.016, 0.132, 0.181, 0.281 ...)
+  #   universal-2         40 ms grid, and it misheard the test utterance
+  #
+  # The pro model is the only commercial system measured here whose word times
+  # are not quantised at all, which puts it in the precision class of MFA and
+  # Olign rather than of the other endpoints (Deepgram nova-3 80 ms, Google
+  # chirp_2 40 ms, ElevenLabs scribe 20 ms). It is also the newer of the two,
+  # so AssemblyAI is the counter-example to Deepgram, whose grid grew coarser
+  # with each generation -- the trend is per-vendor, not an industry direction.
+  #
+  # Likely the dearer tier. Check the dashboard after the first cell; the rate
+  # in evals/timestamp_asrs/cloud_cost.py assumes the standard Universal price.
+  model: universal-3-5-pro
+  language: en_us
+  # Raw words. See the deepgram recipe for why.
+  punctuate: false
+  format_text: false
+  disfluencies: true        # Buckeye transcribes them; dropping them is a deletion
+  concurrency: 8
+  timeout_s: 300            # covers upload + queue + poll for one utterance
+  # How long to sleep between "is it done yet?" GETs. OURS, not the vendor's:
+  # a job finishing in 0.6 s is not noticed for up to one interval, so 2.0 s
+  # put 2.0 s of our own sleep into a 2.62 s measured latency. The polls are
+  # free -- billing is by audio -- so the only cost of shortening it is a few
+  # more GETs. At 0.5 s the floor stops dominating and the latency figure
+  # describes the service. poll_sleep_s and n_polls are recorded per call, so
+  # whatever remains can still be subtracted.
+  poll_interval_s: 0.5
+  retries: 5
+  cache: true

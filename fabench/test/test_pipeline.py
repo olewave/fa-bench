@@ -64,3 +64,53 @@ def test_run_no_gold_does_not_construct_provider(tmp_path, monkeypatch):
     assert rc == 1              # nothing staged
     assert called["n"] == 0     # provider never constructed
     assert (Path(cfg.results_dir()) / "report.md").exists()
+
+
+def _staged_run(monkeypatch, tmp_path, align_result):
+    """`fabench run` with one staged corpus and one aligner whose align_items
+    behaves as `align_result` (a callable: raise, or return records)."""
+    import fabench.aligners.runner as arunner
+    import fabench.dataprep.datasets as ds
+    import fabench.noise.manifest as nmanifest
+    import fabench.noise.provider as prov
+    from fabench import pipeline
+    from fabench.config import load_config
+
+    cfg = load_config(CONFIG)
+    monkeypatch.setattr(cfg, "raw", {**cfg.raw,
+                                     "paths": {"work_dir": str(tmp_path / "w"),
+                                               "results_dir": str(tmp_path / "r")}})
+    monkeypatch.setattr(cfg, "enabled_gold", lambda: [("timit", {})])
+    spec = types.SimpleNamespace(name="toy", modes=["A"], params={})
+    monkeypatch.setattr(cfg, "aligners", lambda enabled_only=False: [spec])
+
+    utts = [types.SimpleNamespace(utt_id="u1", words=[], phones=[])]
+    monkeypatch.setattr(ds, "ingest_corpus", lambda c, cf, limit=None: utts)
+    monkeypatch.setattr(prov.NoiseProvider, "from_config", staticmethod(lambda cf: object()))
+    monkeypatch.setattr(nmanifest, "build_manifest", lambda u, cf, p, d: [
+        {"utt_id": "u1", "item_id": "i1", "condition": "clean",
+         "mixed_audio_path": str(tmp_path / "u1.wav")}])
+    monkeypatch.setattr(arunner, "align_items", align_result)
+    monkeypatch.setattr(pipeline, "load_config", lambda _p: cfg)
+
+    return pipeline.cmd_run(types.SimpleNamespace(config=str(CONFIG), limit=None))
+
+
+def test_run_exits_nonzero_when_an_aligner_raises(tmp_path, monkeypatch):
+    """A failing aligner must not finish green.
+
+    The run deliberately continues past a broken tool -- a missing optional
+    dependency costs that aligner its rows, not the whole sweep -- but the exit
+    code has to carry the failure. It did not, so an overnight sweep in which
+    every aligner died reported success.
+    """
+    def boom(*a, **k):
+        raise RuntimeError("adapter.load() failed")
+
+    assert _staged_run(monkeypatch, tmp_path, boom) == 1
+
+
+def test_run_exits_nonzero_when_an_aligner_emits_nothing(tmp_path, monkeypatch):
+    """"Ran but wrote nothing" is the failure that looks like success: an empty
+    hyp scores as an absent cell rather than a wrong one."""
+    assert _staged_run(monkeypatch, tmp_path, lambda *a, **k: iter([])) == 1

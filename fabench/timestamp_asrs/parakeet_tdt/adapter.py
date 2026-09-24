@@ -29,13 +29,13 @@ operationally relevant row here.
 NOT a forced aligner — it ignores the reference transcript. See
 fabench/timestamp_asrs/subprocess_asr.py.
 
-frame_s left None: the TDT duration head predicts in encoder frames, and the
-effective resolution is not a single documented constant. Measure it rather than
-assume one.
+frame_s MEASURED at 80 ms. The TDT duration head predicts in encoder frames
+and the effective resolution is not documented, so it was read off the
+hypotheses rather than assumed. See evals/measure_grid.py.
 """
 from fabench.timestamp_asrs.subprocess_asr import SubprocessTimestampASR
 
 
 class ParakeetTDT(SubprocessTimestampASR):
     default_model = "nvidia/parakeet-tdt-0.6b-v3"
-    frame_s = None
+    frame_s = 0.080

@@ -1,0 +1,76 @@
+# TIMIT — timestamped ASR results
+
+**September 2026.** Systems that **decode their own words** and emit their own
+word timestamps, scored on TIMIT (read US English) under clean audio and four
+degradations.
+
+These are **track 2**. They are not comparable head to head with the forced
+aligners in
+[the gold-transcript results](../../../../../202608/en/gold/word/timit/README.md), which are
+handed the reference transcript and measured on timing alone. A system here has
+to recognise the word before it can place it, so its error mixes recognition
+with alignment — which is why `WER (%)` sits beside the timing columns rather
+than in a footnote. Without it a poor MAE cannot be attributed between the two.
+
+Read WER first, then the timing. A system can post a flattering MAE by
+recognising few words and placing those well, and a system can recognise almost
+perfectly while placing every boundary early.
+
+## Word-level
+
+Not every system here reaches the phone tier. A one-step timestamped ASR emits
+words and their times and nothing below; a two-step cascade inherits its
+aligner's phones. The phone-level results for the systems that have them are on
+[their own page](../../phone/timit/README.md), kept separate because a phone
+derived from a decoded word is not the same measurement as one derived from the
+reference.
+
+<!-- BEGIN GENERATED: word2-timit -->
+<table style="margin-bottom:1.5rem">
+<thead>
+<tr><th rowspan="3">Family</th><th rowspan="3">Pipeline</th><th rowspan="3">System</th><th colspan="4" style="border-left:2px solid rgba(128,128,128,.55)">TIMIT Dev</th><th colspan="4" style="border-left:2px solid rgba(128,128,128,.55)">TIMIT Core-test</th></tr>
+<tr><th colspan="2" style="border-left:2px solid rgba(128,128,128,.55)">MAE (ms)</th><th colspan="2" style="border-left:1px solid rgba(128,128,128,.25)">F1 @20 ms</th><th colspan="2" style="border-left:2px solid rgba(128,128,128,.55)">MAE (ms)</th><th colspan="2" style="border-left:1px solid rgba(128,128,128,.25)">F1 @20 ms</th></tr>
+<tr><th style="border-left:2px solid rgba(128,128,128,.55)">Clean</th><th>Noisy</th><th style="border-left:1px solid rgba(128,128,128,.25)">Clean</th><th>Noisy</th><th style="border-left:2px solid rgba(128,128,128,.55)">Clean</th><th>Noisy</th><th style="border-left:1px solid rgba(128,128,128,.25)">Clean</th><th>Noisy</th></tr>
+</thead>
+<tbody>
+<tr><td>Transducer</td><td>one-step</td><td>Parakeet-TDT</td><td style="border-left:2px solid rgba(128,128,128,.55)">74.5</td><td>88.6</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.223</td><td>0.188</td><td style="border-left:2px solid rgba(128,128,128,.55)">73.9</td><td>85.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.212</td><td>0.196</td></tr>
+<tr><td>Open → CTC</td><td>two-step</td><td>Qwen3 → NeMo-FA 80 ms</td><td style="border-left:2px solid rgba(128,128,128,.55)">77.4</td><td>84.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.191</td><td>0.168</td><td style="border-left:2px solid rgba(128,128,128,.55)">79.2</td><td>85.2</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.184</td><td>0.168</td></tr>
+<tr><td>Open → CTC</td><td>two-step</td><td>Qwen3 → NeMo-FA 40 ms</td><td style="border-left:2px solid rgba(128,128,128,.55)">60.2</td><td>60.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.129</td><td>0.142</td><td style="border-left:2px solid rgba(128,128,128,.55)">60.4</td><td>60.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.148</td><td>0.155</td></tr>
+<tr><td>Open → CTC</td><td>two-step</td><td>Qwen3 → BFA</td><td style="border-left:2px solid rgba(128,128,128,.55)">49.3</td><td>69.7</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.269</td><td>0.245</td><td style="border-left:2px solid rgba(128,128,128,.55)">50.6</td><td>77.7</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.279</td><td>0.263</td></tr>
+<tr><td>Open → CTC</td><td>two-step</td><td>Qwen3 → TorchAudio</td><td style="border-left:2px solid rgba(128,128,128,.55)">48.5</td><td>51.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.143</td><td>0.144</td><td style="border-left:2px solid rgba(128,128,128,.55)">47.3</td><td>51.2</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.164</td><td>0.161</td></tr>
+<tr><td>CTC</td><td>one-step</td><td>TorchAudio (ASR)</td><td style="border-left:2px solid rgba(128,128,128,.55)">47.6</td><td>48.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.133</td><td>0.128</td><td style="border-left:2px solid rgba(128,128,128,.55)">46.5</td><td>48.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.146</td><td>0.138</td></tr>
+<tr><td>Open → CTC</td><td>two-step</td><td>Qwen3 → WhisperX</td><td style="border-left:2px solid rgba(128,128,128,.55)">46.6</td><td>48.8</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.129</td><td>0.131</td><td style="border-left:2px solid rgba(128,128,128,.55)">47.0</td><td>48.8</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.139</td><td>0.144</td></tr>
+<tr><td>Open → CTC</td><td>two-step</td><td>Whisper → WhisperX</td><td style="border-left:2px solid rgba(128,128,128,.55)">45.8</td><td>48.7</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.130</td><td>0.126</td><td style="border-left:2px solid rgba(128,128,128,.55)">45.6</td><td>48.6</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.134</td><td>0.129</td></tr>
+<tr><td>Open → CTC</td><td>two-step</td><td>Qwen3 → MMS-FA</td><td style="border-left:2px solid rgba(128,128,128,.55)">37.1</td><td>37.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.214</td><td>0.215</td><td style="border-left:2px solid rgba(128,128,128,.55)">36.5</td><td>36.9</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.226</td><td>0.227</td></tr>
+<tr><td>Attention</td><td>one-step</td><td>Whisper-timestamped</td><td style="border-left:2px solid rgba(128,128,128,.55)">155.6</td><td>156.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.118</td><td>0.116</td><td style="border-left:2px solid rgba(128,128,128,.55)">150.1</td><td>151.8</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.124</td><td>0.124</td></tr>
+<tr><td>Attention</td><td>one-step</td><td>Whisper large-v3</td><td style="border-left:2px solid rgba(128,128,128,.55)">151.9</td><td>150.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.097</td><td>0.094</td><td style="border-left:2px solid rgba(128,128,128,.55)">143.2</td><td>143.8</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.102</td><td>0.102</td></tr>
+<tr><td>Open → Attention</td><td>two-step</td><td>Qwen3 → stable-ts</td><td style="border-left:2px solid rgba(128,128,128,.55)">91.9</td><td>86.9</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.165</td><td>0.180</td><td style="border-left:2px solid rgba(128,128,128,.55)">89.1</td><td>84.8</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.176</td><td>0.199</td></tr>
+<tr><td>Open → Attention</td><td>two-step</td><td>Qwen3 → Qwen3-FA</td><td style="border-left:2px solid rgba(128,128,128,.55)">30.5</td><td>36.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.425</td><td>0.399</td><td style="border-left:2px solid rgba(128,128,128,.55)">29.9</td><td>35.6</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.432</td><td>0.403</td></tr>
+<tr><td>Open → Attention</td><td>two-step</td><td>Qwen3 → CrisperWhisper</td><td style="border-left:2px solid rgba(128,128,128,.55)">28.4</td><td>29.1</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.550</td><td>0.528</td><td style="border-left:2px solid rgba(128,128,128,.55)">28.4</td><td>28.9</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.533</td><td>0.525</td></tr>
+<tr><td>Attention</td><td>one-step</td><td>CrisperWhisper</td><td style="border-left:2px solid rgba(128,128,128,.55)">28.3</td><td>28.9</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.552</td><td>0.528</td><td style="border-left:2px solid rgba(128,128,128,.55)">28.1</td><td>28.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.534</td><td>0.527</td></tr>
+<tr><td>Open → Frame</td><td>two-step</td><td>Qwen3 → UnitY2</td><td style="border-left:2px solid rgba(128,128,128,.55)">44.1</td><td>45.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.391</td><td>0.394</td><td style="border-left:2px solid rgba(128,128,128,.55)">42.8</td><td>43.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.399</td><td>0.419</td></tr>
+<tr><td>Open → Frame</td><td>two-step</td><td>Qwen3 → Charsiu</td><td style="border-left:2px solid rgba(128,128,128,.55)">26.1</td><td>55.1</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.539</td><td>0.472</td><td style="border-left:2px solid rgba(128,128,128,.55)">24.6</td><td>56.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.555</td><td>0.484</td></tr>
+<tr><td>Open → Frame</td><td>two-step</td><td>Qwen3 → MAPS ⚠</td><td style="border-left:2px solid rgba(128,128,128,.55)">22.6</td><td>142.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.614</td><td>0.395</td><td style="border-left:2px solid rgba(128,128,128,.55)">22.3</td><td>157.8</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.624</td><td>0.390</td></tr>
+<tr><td>Open → HMM</td><td>two-step</td><td>Qwen3 → MFA 2.0</td><td style="border-left:2px solid rgba(128,128,128,.55)">24.8</td><td>34.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.667</td><td>0.623</td><td style="border-left:2px solid rgba(128,128,128,.55)">23.2</td><td>32.2</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.681</td><td>0.642</td></tr>
+<tr><td>Open → HMM</td><td>two-step</td><td>Parakeet-TDT → MFA 3.4</td><td style="border-left:2px solid rgba(128,128,128,.55)">19.2</td><td>31.2</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.726</td><td>0.673</td><td style="border-left:2px solid rgba(128,128,128,.55)">18.6</td><td>32.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.727</td><td>0.674</td></tr>
+<tr><td>Open → HMM</td><td>two-step</td><td>Qwen3 → MFA 3.4</td><td style="border-left:2px solid rgba(128,128,128,.55)">19.2</td><td>31.2</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.725</td><td>0.671</td><td style="border-left:2px solid rgba(128,128,128,.55)">18.7</td><td>32.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.727</td><td>0.679</td></tr>
+<tr><td>API</td><td>one-step</td><td>Speechmatics enhanced</td><td style="border-left:2px solid rgba(128,128,128,.55)">79.1</td><td>91.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.120</td><td>0.107</td><td style="border-left:2px solid rgba(128,128,128,.55)">79.4</td><td>91.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.146</td><td>0.118</td></tr>
+<tr><td>API</td><td>one-step</td><td>IBM Watson Large</td><td style="border-left:2px solid rgba(128,128,128,.55)">69.8</td><td>97.9</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.179</td><td>0.168</td><td style="border-left:2px solid rgba(128,128,128,.55)">68.4</td><td>97.2</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.169</td><td>0.160</td></tr>
+<tr><td>API</td><td>one-step</td><td>Deepgram Nova-3</td><td style="border-left:2px solid rgba(128,128,128,.55)">64.8</td><td>66.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.242</td><td>0.236</td><td style="border-left:2px solid rgba(128,128,128,.55)">64.6</td><td>65.8</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.236</td><td>0.230</td></tr>
+<tr><td>API</td><td>one-step</td><td>Azure AI Speech</td><td style="border-left:2px solid rgba(128,128,128,.55)">62.1</td><td>73.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.152</td><td>0.146</td><td style="border-left:2px solid rgba(128,128,128,.55)">61.4</td><td>69.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.163</td><td>0.157</td></tr>
+<tr><td>API</td><td>one-step</td><td>Amazon Transcribe</td><td style="border-left:2px solid rgba(128,128,128,.55)">56.6</td><td>62.1</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.271</td><td>0.269</td><td style="border-left:2px solid rgba(128,128,128,.55)">54.9</td><td>60.2</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.275</td><td>0.280</td></tr>
+<tr><td>API</td><td>one-step</td><td>AssemblyAI Universal 3.5</td><td style="border-left:2px solid rgba(128,128,128,.55)">51.5</td><td>57.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.212</td><td>0.197</td><td style="border-left:2px solid rgba(128,128,128,.55)">50.6</td><td>56.6</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.236</td><td>0.222</td></tr>
+<tr><td>API</td><td>one-step</td><td>ElevenLabs Scribe v2</td><td style="border-left:2px solid rgba(128,128,128,.55)">45.3</td><td>—</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.112</td><td>—</td><td style="border-left:2px solid rgba(128,128,128,.55)">45.3</td><td>—</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.119</td><td>—</td></tr>
+<tr><td>API</td><td>one-step</td><td>Google Chirp 2</td><td style="border-left:2px solid rgba(128,128,128,.55)">28.7</td><td>29.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.527</td><td>0.541</td><td style="border-left:2px solid rgba(128,128,128,.55)">28.1</td><td>28.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.544</td><td>0.563</td></tr>
+<tr><td>API → API</td><td>two-step</td><td>Google Chirp 2 → Olign 1.0</td><td style="border-left:2px solid rgba(128,128,128,.55)">16.5</td><td>33.8</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.783</td><td>0.694</td><td style="border-left:2px solid rgba(128,128,128,.55)">14.6</td><td>33.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.806</td><td>0.701</td></tr>
+<tr><td>Open → API</td><td>two-step</td><td>Qwen3 → Olign 1.0</td><td style="border-left:2px solid rgba(128,128,128,.55)">16.4</td><td>33.6</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.788</td><td>0.697</td><td style="border-left:2px solid rgba(128,128,128,.55)">14.6</td><td>33.7</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.813</td><td>0.708</td></tr>
+<tr><td>Open → API</td><td>two-step</td><td>Parakeet-TDT → Olign 1.0</td><td style="border-left:2px solid rgba(128,128,128,.55)">16.3</td><td>33.2</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.790</td><td>0.697</td><td style="border-left:2px solid rgba(128,128,128,.55)">14.5</td><td>33.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.812</td><td>0.702</td></tr>
+</tbody>
+</table>
+
+⚠ **MAPS** trained on Buckeye, holding out only speakers 4, 27, 38, 39 and 40. FA-Bench splits Buckeye differently, so 7 of the 8 speakers in each of our Buckeye splits are in its training set and those rows are not held-out results. Its TIMIT rows are: both our TIMIT splits come from TIMIT `TEST/`, which it did not train on — see [training data and overlap](../../../README.md#training-data-and-overlap).
+
+<!-- END GENERATED: word2-timit -->
+
+Per-condition breakdowns, including the decompositions behind these columns, are
+in [Details.md](Details.md).
