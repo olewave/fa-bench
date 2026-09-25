@@ -214,6 +214,15 @@ F1_WORD = "wbnd_f1_all_20ms"
 F1_PHONE = "bnd_f1_all_20ms"
 
 
+#: NEUFA'S OUTPUT COMES FROM ITS FIRST AUTHOR. The hyp.jsonl files under
+#: evals/aligners/neufa/ were produced by NeuFA's first author, a co-author of
+#: this paper, with the checkpoint neufa-fabench-220k.pt (SHA-256 68b163eb...),
+#: which is not released, and are scored here like every other system. An
+#: earlier sweep here used a checkpoint its authors say is wrong. The rows
+#: the authors computed with FA-Bench at 1f0e7b6 match this tree's scoring of
+#: the same files in every cell of Tables 1 and 2.
+
+
 def collect(kind: str, metric: str) -> dict:
     """``{tool: {cell: (clean, noisy_mean)}}`` for one metric, from summary/."""
     out: dict[str, dict] = {}
@@ -309,6 +318,10 @@ PAPER_AVAIL_ORDER = ["opens", "openw", "api"]
 #: weights. _fam_rank merges the two the same way, so a block sorts worst to
 #: best across all of Open.
 PAPER_AVAIL_LABEL = {"opens": "Open", "openw": "Open", "api": "API"}
+#: Open rows whose weights are not released although the code that trained
+#: them is. The access note leaves them out of its list, since "also
+#: publish" would say the weights are out, and Table 1 gives them a sentence.
+NOT_RELEASED = {"neufa"}
 
 #: Shorter family labels for the paper only. "Attention" and "Transducer" set
 #: the width of the family column on their own, and that column is pure
@@ -602,10 +615,6 @@ PAPER_SUPPRESS = {"mfa2", "mfa2_on_qwen3asr",
                   # google_stt is the v1 recipe that google_stt_chirp2
                   # supersedes.
                   "deepgram_nova2", "google_stt",
-                  # NeuFA is held out while its checkpoint is in question. The
-                  # cells are swept and stay in records/, so restoring the row
-                  # is deleting this line and regenerating.
-                  "neufa",
                   # TWO-STEP CASCADES, all but five. Sixteen of them mostly
                   # restate their own Track 1 row -- the transcript swap moves
                   # a median 0.5 ms, which the Results section already reports
@@ -1497,6 +1506,8 @@ def _access_note(m, rows) -> str:
             openw = True
             continue
         parts = m.cascade_parts(t)
+        if (parts[0] if parts else t) in NOT_RELEASED:
+            continue
         name = disp_paper(m, parts[0] if parts else t)
         name = name.partition(" \u2192 ")[-1] or name
         if name not in opens:
@@ -2028,11 +2039,15 @@ def class_table(m, tier: str = "word") -> str:
     L = [r"\begin{tabular*}{\columnwidth}{@{}l@{\hspace{2pt}}lc@{\extracolsep{\fill}}"
          + ("r" * len(CTX_COLS) + "|") * (len(T3) - 1)
          + "r" * len(CTX_COLS) + "@{}}", r"\toprule",
-         "& " * lead + " & ".join(r"\multicolumn{" + str(len(CTX_COLS)) + "}{c}{"
-                                  + lab + "}" for _, _, lab in T3) + r"\\",
+         # Grid sits on the corpus row and its unit on the class row, so the
+         # two-line header reads Grid / (ms) and the column head is no taller
+         # than the ones beside it.
+         "& & " + r"\scalebox{0.8}[1]{Grid}" + " & "
+         + " & ".join(r"\multicolumn{" + str(len(CTX_COLS)) + "}{c}{"
+                      + lab + "}" for _, _, lab in T3) + r"\\",
          "".join(r"\cmidrule(lr){" + f"{1+lead+len(CTX_COLS)*i}-{lead+len(CTX_COLS)*(i+1)}" + "}"
                  for i in range(len(T3))),
-         "& & " + r"\scalebox{0.8}[1]{Grid}" + " & "
+         "& & " + r"\scalebox{0.8}[1]{(ms)}" + " & "
          + " & ".join(" & ".join(CTX_HEAD[c] for c in CTX_COLS)
                       for _ in T3) + r"\\",
          r"\midrule"]
@@ -2102,7 +2117,15 @@ def class_table(m, tier: str = "word") -> str:
                     out.append(r"\cmidrule(lr){1-" + str(ncol + 2) + "}")
             else:
                 tag = ""
-            out.append(tag + " & " + disp_paper(m, t) + " & " + grid_label(t, "words")
+            # The arrow as math, the way Tables 1 and 2 set it. disp_paper()
+            # returns a Unicode arrow, which pdflatex draws from a bitmap
+            # Type 3 font that is neither embedded as Type 1 nor subset, and
+            # the ICASSP paper kit requires every font to be both.
+            nm = disp_paper(m, t)
+            if " \u2192 " in nm:
+                left, right = nm.split(" \u2192 ", 1)
+                nm = left + "$\\to$" + right
+            out.append(tag + " & " + nm + " & " + grid_label(t, "words")
                        + " & " + " & ".join(cells) + r"\\")
         return out
 
@@ -2128,10 +2151,9 @@ def class_table(m, tier: str = "word") -> str:
         r"words. We use $\mathrm{M2}_{I}$ to denote both words are matched "
         r"and $\mathrm{M1}_{I}$ to denote one label is matched, where M "
         r"denotes matched. $\mathrm{M1}_{B}$ and $\mathrm{M1}_{E}$ denote "
-        r"the beginning ($B$) and the ending ($E$) boundary of an utterance "
-        r"respectively, each with only one adjacent word. $\mathrm{M0}$ "
-        r"denotes the remaining boundaries. Grid is the step of boundaries "
-        r"in ms. The first row is the share of reference boundaries in each "
+        r"the beginning ($B$) and the ending ($E$) boundary of an utterance, "
+        r"each with only one adjacent word. $\mathrm{M0}$ "
+        r"denotes the remaining boundaries. The first row is the share of reference boundaries in each "
         r"category, averaged over the rows.}",
         r"\label{tab:class}", body, r"\end{table}",
     ])
@@ -2165,13 +2187,17 @@ def combined_table(m) -> str:
         r"\caption{\small Word-tier boundary error on the test split of each "
         r"corpus, on clean audio and under degradation, \emph{noisy} being the "
         r"mean of the four. The dev splits are in \texttt{records/}\recfn. Every "
-        r"number here comes from our own run of the system rather than from its "
-        r"paper. MAE is over word boundaries in ms. $F_1$ is over every word "
-        r"boundary of the utterance, the two utterance edges included. A "
+        r"number here comes from our own run of the system. "
+        r"MAE is over word boundaries in ms. $F_1$ is over every word "
+        r"boundary, the two utterance edges included. A "
         r"boundary is a hit only when the words on each side of it are the words "
         r"the reference has there and the time falls within the tolerance of the "
         r"reference boundary. The superscript on $F_1$ is that tolerance in ms. "
-        + _access_note(m, _TABLE_ROWS["word"]) + r" \textbf{W} is Whisper "
+        r"The step size of a word boundary of each system is shown in the Grid "
+        r"column of Table~\ref{tab:class}. "
+        + _access_note(m, _TABLE_ROWS["word"])
+        + r" NeuFA model is trained with its GitHub code and not released."
+        + r" \textbf{W} is Whisper "
         r"large-v3, \textbf{P} and Parakeet are Parakeet-TDT, \textbf{Q} and "
         r"Qwen3 are Qwen3-ASR, and \textbf{G} is Google Chirp~2. Whisper-ts is "
         r"Whisper-timestamped and NeMo-FA its conformer checkpoint. The APIs are "
@@ -2197,8 +2223,7 @@ def combined_table(m) -> str:
         r"We use the FALCON released model and did not retrain it. No "
         r"one-step ASR in Table~\ref{tab:main} emits phone timestamps, so "
         r"Track~2 has only the two-step rows whose aligner does, and their "
-        r"PER carries the recognizer's word errors too. The granularity of "
-        r"a phone boundary is the Grid column of Table~\ref{tab:class}.}",
+        r"PER carries the recognizer's word errors too.}",
         r"\label{tab:phone}",
         phone,
         r"\end{table}",
