@@ -183,7 +183,7 @@ SUPPRESS_PHONE_TIER: set[str] = set()
 #: skips a row whose MAE does not parse, so none of them needs to know.
 _PHONE_FIELDS = ("mae", "median", "signed", "arr", "ins", "n_bnd",
                  "sub_pct", "del_pct", "ins_pct", "per", "err_gt100_pct",
-                 "bnd_p", "bnd_r", "bnd_f1", "os", "r_value",
+                 "bnd_p", "bnd_r", "bnd_f1", "bnd_f1_all_20", "os", "r_value",
                  "ta_10", "ta_25", "ta_50", "ta_100")
 
 
@@ -788,8 +788,13 @@ def _rows_of(bysub: dict[str, list[dict]], sub: str) -> list[dict]:
 #: how "Charsiu emits no word tier" survived in this repo for months.
 CAPTION = [
     ("MAE", "mean absolute boundary error, on the matched path only"),
-    ("P/R, F1", ("boundary detection at 20 ms, paired by TIME and ignoring "
-                "labels — a substitution at the right time is free here")),
+    ("F1", ("the F1 of the comparison page and of the sweep: a boundary counts "
+           "only when the units on both sides of it match the reference and its "
+           "time is within the width, the utterance edges included against "
+           "silence")),
+    ("P/R, F1 (time only)", ("boundary detection at 20 ms, paired by TIME and "
+                            "ignoring labels — a substitution at the right time "
+                            "is free here")),
     ("OS", ("over-segmentation, n_hyp/n_gold − 1: positive means more boundaries "
            "proposed than exist")),
     ("R-val", ("R-value (Räsänen et al. 2009), which separates the over- from "
@@ -1413,13 +1418,16 @@ NOISE_SUMMARY_METRICS = [
     # boundaries a system kept, so a system that copes with noise by dropping
     # phones improves its own MAE while PER records the phones it lost.
     ("PER (%)", "per", "{:.1f}"),
-    ("F1 @20 ms", "bnd_f1", "{:.3f}"),
+    # The F1 the paper reports: a boundary is a hit only when the phones on
+    # both sides match the reference and its time is within 20 ms, utterance
+    # edges included. The time-paired F1 that ignores labels is on Details.
+    ("F1 @20 ms", "bnd_f1_all_20", "{:.3f}"),
 ]
 #: The same two questions on the word tier. Pre/Rec move to Details with their
 #: phone counterparts; what a comparison page needs is placement and detection.
 WORD_SUMMARY_METRICS = [
     ("MAE (ms)", "wbe", "{:.1f}"),
-    ("F1 @20 ms", "wbnd_f1", "{:.3f}"),
+    ("F1 @20 ms", "wbnd_f1_all_20", "{:.3f}"),
 ]
 
 
@@ -1583,16 +1591,18 @@ WORD_TA_METRICS = [("t=10", "wta_10", "{:.1f}"),
 #: and differ in what they are allowed to charge for, so the gap between the
 #: two curves at one width IS the insertion and deletion cost that a
 #: matched-path metric cannot show.
-F1_SWEEP_METRICS = [("t=10", "bnd_f1_10", "{:.3f}"),
-                    ("t=20", "bnd_f1_20", "{:.3f}"),
-                    ("t=25", "bnd_f1_25", "{:.3f}"),
-                    ("t=50", "bnd_f1_50", "{:.3f}"),
-                    ("t=100", "bnd_f1_100", "{:.3f}")]
-WORD_F1_SWEEP_METRICS = [("t=10", "wbnd_f1_10", "{:.3f}"),
-                         ("t=20", "wbnd_f1_20", "{:.3f}"),
-                         ("t=25", "wbnd_f1_25", "{:.3f}"),
-                         ("t=50", "wbnd_f1_50", "{:.3f}"),
-                         ("t=100", "wbnd_f1_100", "{:.3f}")]
+#: The sweep is of the F1 with the labels checked, the one the comparison page
+#: and the paper report, so its t=20 column is the comparison page's F1.
+F1_SWEEP_METRICS = [("t=10", "bnd_f1_all_10", "{:.3f}"),
+                    ("t=20", "bnd_f1_all_20", "{:.3f}"),
+                    ("t=25", "bnd_f1_all_25", "{:.3f}"),
+                    ("t=50", "bnd_f1_all_50", "{:.3f}"),
+                    ("t=100", "bnd_f1_all_100", "{:.3f}")]
+WORD_F1_SWEEP_METRICS = [("t=10", "wbnd_f1_all_10", "{:.3f}"),
+                         ("t=20", "wbnd_f1_all_20", "{:.3f}"),
+                         ("t=25", "wbnd_f1_all_25", "{:.3f}"),
+                         ("t=50", "wbnd_f1_all_50", "{:.3f}"),
+                         ("t=100", "wbnd_f1_all_100", "{:.3f}")]
 #: The interval is carried INSIDE the MAE string ("43.1 [41.1,45.1]"), not in a
 #: column of its own, so it is pulled out with a callable rather than a key.
 CI_METRICS = [("95% CI",
@@ -1735,15 +1745,15 @@ def detection_by_condition(clean: dict, noisy: dict, corpus: str,
     """
     prf, osr, rank = ((PRF_METRICS, OSR_METRICS, "mae") if tier == "phone"
                       else (WORD_PRF_METRICS, WORD_OSR_METRICS, "wbe"))
-    grids = [("Precision / Recall / F1 (0–1)", prf),
+    grids = [("Precision / Recall / F1 at 20 ms, time only (0–1)", prf),
              ("Over-segmentation and R-value (ratio)", osr)]
     # The phone tier gets its sweep from distribution_by_condition. The word
     # tier had no such page, so it goes here, into a block that already exists.
     if tier == "word":
         grids.append(("Tolerance accuracy — share of word boundaries "
                       "within t ms (%)", WORD_TA_METRICS))
-        grids.append(("Word boundary F1 at the same widths (0–1)",
-                      WORD_F1_SWEEP_METRICS))
+        grids.append(("Word boundary F1 at the same widths, labels checked "
+                      "(0–1)", WORD_F1_SWEEP_METRICS))
     return _captioned_grids(clean, noisy, corpus, tuple(grids), rank_key=rank)
 
 
@@ -1759,12 +1769,13 @@ def track2_by_condition(clean: dict, noisy: dict, corpus: str) -> str:
     return _captioned_grids(clean, noisy, corpus, (
         ("Word MAE (ms)", T2_MAE),
         ("Recognition — WER, and the edits behind it (%)", T2_WER),
-        ("Word detection @20 ms — precision / recall and F1 (0–1)",
+        ("Word detection @20 ms, time only — precision / recall and F1 (0–1)",
          WORD_PRF_METRICS),
         ("Over-segmentation and R-value (ratio)", WORD_OSR_METRICS),
         ("Tolerance accuracy — share of word boundaries within t ms (%)",
          WORD_TA_METRICS),
-        ("Word boundary F1 at the same widths (0–1)", WORD_F1_SWEEP_METRICS),
+        ("Word boundary F1 at the same widths, labels checked (0–1)",
+         WORD_F1_SWEEP_METRICS),
     ), rank_key="wbe")
 
 
@@ -1773,7 +1784,8 @@ def distribution_by_condition(clean: dict, noisy: dict, corpus: str) -> str:
         ("Median x̃ and mean signed error δ̄ (ms)", DIST_METRICS),
         ("Tolerance accuracy — share of boundaries within t ms (%)",
          TA_METRICS),
-        ("Boundary F1 at the same widths (0–1)", F1_SWEEP_METRICS),
+        ("Boundary F1 at the same widths, labels checked (0–1)",
+         F1_SWEEP_METRICS),
         ("95% CI on the mean MAE (ms)", CI_METRICS),
     ))
 

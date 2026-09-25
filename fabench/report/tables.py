@@ -87,6 +87,14 @@ def leaderboard_table(rows: Iterable[dict], corpus: str, condition: str = "clean
            "W-P", "W-R", "W-F1", "W-OS", "W-R-val",
            ]
         + [f"W-F1@{t}" for t in f1_ms]
+        # F1 WITH THE LABELS CHECKED, at the same widths, phone tier then word.
+        # A boundary is a hit only when the units on both sides of it match the
+        # reference and its time is within the width; the utterance edges count,
+        # against silence. This is the F1 the paper and the comparison pages
+        # report. The time-paired B-F1/W-F1 above stay as the diagnostic that
+        # ignores labels.
+        + [f"B-F1all@{t}" for t in f1_ms]
+        + [f"W-F1all@{t}" for t in f1_ms]
         + [
            # WER and its decomposition. Near-zero for a forced aligner,
            # which is handed the reference; the number that matters for a
@@ -123,6 +131,8 @@ def leaderboard_table(rows: Iterable[dict], corpus: str, condition: str = "clean
                _f(r.get("wbnd_f1"), 3), _f(r.get("wbnd_os"), 3),
                _f(r.get("w_r_value"), 3)]
             + [_f(r.get(f"wbnd_f1_{t}ms"), 3) for t in f1_ms]
+            + [_f(r.get(f"bnd_f1_all_{t}ms"), 3) for t in f1_ms]
+            + [_f(r.get(f"wbnd_f1_all_{t}ms"), 3) for t in f1_ms]
             + [
                _f(r.get("err_gt100_pct"), 1),
                _f(r.get("w_sub_pct"), 1), _f(r.get("w_del_pct"), 1),
