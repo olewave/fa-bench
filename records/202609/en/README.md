@@ -32,13 +32,13 @@ Word results live with their corpus, next to the phone tables:
 Every split is in that one table — the word tier has four metrics, so it needs no
 separate detailed view.
 
-The word tier uses the same two matching rules as the phone tables below, with
-the same opposite blind spots:
+The word tier uses the same matching rules as the phone tables below:
 
 | Metrics | Matched to gold by | What that rule cannot charge for |
 |---|---|---|
 | `MAE (ms)` | **label first** — the same monotonic aligner as the phone tier, then times | a dropped or misrecognised word. It matches nothing, so it exits the average rather than worsening it |
-| `P/R`, `F1` | **time only** — within 20 ms, labels ignored | the wrong word. A boundary at the right moment on the wrong word is free |
+| `F1` and the F1 sweep | **label and time** — a boundary counts only when the words on both sides of it match the reference and it lies within the width. The two utterance edges count, against silence | nothing either rule alone lets through. A dropped word costs the boundaries beside it, and a boundary at the right moment on the wrong word scores nothing |
+| `P/R` and the time-only `F1`, on Details | **time only** — within 20 ms, labels ignored | the wrong word. A boundary at the right moment on the wrong word is free |
 
 **No one-step Track 2 system emits a phone tier**, and neither do WhisperX,
 Parakeet-TDT or Qwen3-ASR, so the word table is the only one those can appear in
@@ -77,19 +77,21 @@ between them is what the recognition step costs. See `evals/README.md`.
 ## Phone-level: two metrics, two blind spots — read both
 
 Nothing can be measured until each phone the system produced is matched to a
-phone in the gold. The tables use **two different matching rules**, and they
-fail in opposite directions:
+phone in the gold. The tables use **two different matching rules**, which
+fail in opposite directions, and an F1 that applies both:
 
 | Metrics | Matched to gold by | What that rule cannot charge for |
 |---|---|---|
 | `MAE (ms)`, `t=10`, `S`/`D`/`PER` | **label first** — Levenshtein over phone labels, then the times of whichever pairs it found | a phone the system never emitted. It matches nothing, so it leaves the average entirely instead of worsening it |
-| `P/R`, `F1`, `OS`, `R-val` | **time only** — a gold boundary counts as found if some hypothesis boundary lands within 20 ms, whatever it is labelled | a wrong label. A substitution at the right moment is free here |
+| `F1` and the F1 sweep | **label and time** — a boundary counts only when the phones on both sides of it match the reference and it lies within the width. The two utterance edges count, against silence | nothing either rule alone lets through. A skipped phone costs the boundaries beside it, and a substitution at the right moment scores nothing |
+| `P/R`, time-only `F1`, `OS`, `R-val`, on Details | **time only** — a gold boundary counts as found if some hypothesis boundary lands within 20 ms, whatever it is labelled | a wrong label. A substitution at the right moment is free here |
 
 **MAE is computed on the matched path only**, so skipped phones leave a
 system's average rather than being charged for; `Del%` charges for exactly what
 MAE drops. **A lower MAE at a higher `Del%` is not necessarily better.**
 
-`P/R`/`F1` use **strict** matching, one hypothesis boundary per reference
+The comparison pages report the label-checked `F1`, the one the paper uses. The
+time-only `P/R`/`F1` use **strict** matching, one hypothesis boundary per reference
 boundary (Strgar & Harwath, SLT 2022 — the lenient variant moves precision 3–7
 points). `R-val` (Räsänen et al. 2009) separates the over- from
 under-segmentation F1 scores identically.
@@ -217,9 +219,9 @@ impulse responses and adds nothing.
 previous version of this page.
 
 <!-- BEGIN GENERATED: coverage -->
-All **16** aligner-track systems are scored on all **4** splits (Buckeye Dev, Buckeye Test, TIMIT Dev, TIMIT Core-test):
+All **17** aligner-track systems are scored on all **4** splits (Buckeye Dev, Buckeye Test, TIMIT Dev, TIMIT Core-test):
 
-BFA, Charsiu, CrisperWhisper, FALCON, MAPS, MFA 2.0, MFA 3.4, MMS-FA, NeMo-FA 40 ms, NeMo-FA 80 ms, Olign 1.0, Qwen3-FA, stable-ts, TorchAudio, UnitY2, WhisperX.
+BFA, Charsiu, CrisperWhisper, FALCON, MAPS, MFA 2.0, MFA 3.4, MMS-FA, NeMo-FA 40 ms, NeMo-FA 80 ms, NeuFA, Olign 1.0, Qwen3-FA, stable-ts, TorchAudio, UnitY2, WhisperX.
 
 Scored separately in **track 2** — timestamped ASRs, which decode their own words rather than being given the transcript, so the two tracks never share a leaderboard: Amazon Transcribe, AssemblyAI Universal 3.5, Azure AI Speech, CrisperWhisper, Deepgram Nova-3, ElevenLabs Scribe v2, Google Chirp 2, Google Chirp 2 → Olign 1.0, IBM Watson Large, Parakeet-TDT, Parakeet-TDT → MFA 3.4, Parakeet-TDT → Olign 1.0, Qwen3 → BFA, Qwen3 → Charsiu, Qwen3 → CrisperWhisper, Qwen3 → MAPS, Qwen3 → MFA 2.0, Qwen3 → MFA 3.4, Qwen3 → MMS-FA, Qwen3 → NeMo-FA 40 ms, Qwen3 → NeMo-FA 80 ms, Qwen3 → Olign 1.0, Qwen3 → Qwen3-FA, Qwen3 → stable-ts, Qwen3 → TorchAudio, Qwen3 → UnitY2, Qwen3 → WhisperX, Speechmatics enhanced, TorchAudio (ASR), Whisper large-v3, Whisper → WhisperX, Whisper-timestamped.
 <!-- END GENERATED: coverage -->
@@ -248,7 +250,7 @@ exact pinned version, or the commit date for git-installed tools. Regenerate
 with `evals/gen_provenance.py`.
 
 <!-- BEGIN GENERATED: provenance -->
-**FA-Bench release:** commit `ed5306da44a3`, branch `paper` (2026-09-16) + uncommitted changes
+**FA-Bench release:** commit `19da467bcb4a`, branch `paper` (2026-09-24) + uncommitted changes
 
 | System | Version | Commit | Released |
 |---|---|---|---|
