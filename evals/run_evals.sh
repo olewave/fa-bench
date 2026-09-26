@@ -170,9 +170,15 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ] && [ "${use_noisy_dataset}" = t
   # regenerated the TEST configs, found them already done and skipped --
   # yielding clean dev results and no noisy ones, with no error anywhere.
   _subs=(); for _c in "${CELLS[@]}"; do set -- $_c; _subs+=("$1:$2"); done
-  "$PY" "$HERE/gen_noisy_configs.py" --tools "${TOOLS[@]}" --subsets "${_subs[@]}" || \
-    echo "[SKIP] stage 2 -- no noisy configs generated"
-  "$HERE/run_noisy_evals.sh" "${TOOLS[@]}"
+  # Asked for noisy runs and got no config: stop. Carrying on reported a
+  # finished sweep with no noisy result in it.
+  if ! "$PY" "$HERE/gen_noisy_configs.py" --tools "${TOOLS[@]}" --subsets "${_subs[@]}"; then
+    echo "ERROR: --use-noisy-dataset, but no noisy config could be written." >&2
+    echo "       Build the four conditions and their shadow roots first:" >&2
+    echo "       datasets/prep/augment.sh (see datasets/prep/README.md)." >&2
+    exit 1
+  fi
+  "$HERE/run_noisy_evals.sh" "${TOOLS[@]}" || exit 1
 elif [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   echo "=== stage 2: skipped (pass --use-noisy-dataset to include noisy audio) ==="
 fi

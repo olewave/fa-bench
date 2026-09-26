@@ -160,20 +160,36 @@ def score_all(cfg):
                     continue
                 uttscores.extend(cell_scores)
                 continue
+            # WHAT EACH MODE OF THIS FILE EMITS. A tier is scored for every record
+            # of a mode that emits it anywhere in the file, so an EMPTY record is
+            # charged for what it missed. Reading the flags off each record
+            # switched an empty record's own tiers off, and it counted for nothing.
+            emits: dict[str, list[bool]] = {}
+            first: dict[str, dict] = {}
+            for rec in hyp_recs:
+                m = rec["mode"]
+                e = emits.setdefault(m, [False, False])
+                e[0] = e[0] or bool(rec.get("words"))
+                e[1] = e[1] or bool(rec.get("phones"))
+                first.setdefault(m, rec)
+
+            def _tokens(utt_id, gold):
+                if _asr_in:
+                    return _asr_in.get(utt_id, "").split()
+                if _is_asr_tool:
+                    return None          # decoded its own words
+                return [w.label for w in gold.words]
+
+            seen: dict[str, set[str]] = {}
             for rec in hyp_recs:
                 gold = gold_by_id.get(rec["utt_id"])
                 if gold is None:
                     continue
-                if _asr_in:
-                    _in_tok = _asr_in.get(rec["utt_id"], "").split()
-                elif _is_asr_tool:
-                    _in_tok = None          # decoded its own words
-                else:
-                    _in_tok = [w.label for w in gold.words]
+                seen.setdefault(rec["mode"], set()).add(rec["utt_id"])
                 us = score_pair(
                     gold,
                     _hyp_utt(rec),
-                    input_tokens=_in_tok,
+                    input_tokens=_tokens(rec["utt_id"], gold),
                     # The run config's tag wins over the hyp record's own
                     # field: hypotheses aligned before the shadow-root labelling
                     # fix all carry "clean" regardless of the audio they saw, so
@@ -186,8 +202,8 @@ def score_all(cfg):
                     gold_canon=gold_canon,
                     hyp_canon=make_canon(rec.get("source", "arpabet")),
                     manner_of_canonical=manner_of,
-                    score_phones=bool(rec.get("phones")),
-                    score_words=bool(rec.get("words")),
+                    score_phones=emits[rec["mode"]][1],
+                    score_words=emits[rec["mode"]][0],
                     manner_match=manner_match,
                     matcher=matcher,
                     matcher_lambda=matcher_lambda,
@@ -200,6 +216,41 @@ def score_all(cfg):
                     n_gold_utts=len(gold_by_id),
                 )
                 uttscores.append(us)
+
+            # ABSENT UTTERANCES. A reference utterance the tool returned no
+            # record for, in a mode it ran, is scored against an empty
+            # hypothesis: its boundaries count against F1 recall and its units
+            # as deletions. Leaving it out scored the tool only where it
+            # produced something, the survivor bias F1 exists to catch.
+            # Coverage and MAE still see only the records that exist.
+            for m, (w_on, p_on) in emits.items():
+                if not (w_on or p_on):
+                    continue
+                r0 = first[m]
+                for utt_id, gold in gold_by_id.items():
+                    if utt_id in seen.get(m, ()):
+                        continue
+                    us = score_pair(
+                        gold,
+                        _hyp_utt({"utt_id": utt_id}),
+                        input_tokens=_tokens(utt_id, gold),
+                        condition=cfg.condition_tag() or r0["condition"],
+                        aligner=r0["aligner"],
+                        mode=m,
+                        gold_canon=gold_canon,
+                        hyp_canon=make_canon(r0.get("source", "arpabet")),
+                        manner_of_canonical=manner_of,
+                        score_phones=p_on,
+                        score_words=w_on,
+                        manner_match=manner_match,
+                        matcher=matcher,
+                        matcher_lambda=matcher_lambda,
+                        exclude_silence_boundaries=exclude_silence,
+                        boundary_unit=boundary_unit,
+                        n_gold_utts=len(gold_by_id),
+                    )
+                    us.absent = True
+                    uttscores.append(us)
     return aggregate(
         uttscores,
         ta_thresholds_s=[t / 1000 for t in scoring.get("ta_thresholds_ms", [10, 20, 50])],

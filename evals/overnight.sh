@@ -92,7 +92,7 @@ while pgrep -f "make_noisy.sh" >/dev/null; do sleep 300; done
 say "noise build finished: $(grep -c 'ok, 0 failed' fabench/dataprep/noisemix/build.log) clean stages, $(grep -c 'failed' fabench/dataprep/noisemix/build.log) lines mentioning failure"
 for c in TIMIT Buckeye; do
   for t in reverb noise music babble; do
-    say "  $c/$t: $(ls /scratch/data/speech/english/$c/noisy/$t 2>/dev/null | wc -l) files"
+    say "  $c/$t: $(ls ${FABENCH_NOISY_ROOT:-data/noisy}/$c/noisy/$t 2>/dev/null | wc -l) files"
   done
 done
 say "=== overnight (with noise) done ==="

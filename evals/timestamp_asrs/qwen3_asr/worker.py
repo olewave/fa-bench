@@ -86,6 +86,15 @@ def _words(ts, dur_hint=None):
     return [[w[0], w[1] / scale, w[2] / scale] for w in flat]
 
 
+def _one(model, job):
+    """One item on its own, or the exception it raised."""
+    try:
+        return model.transcribe(audio=[job["audio_path"]], language=["English"],
+                                return_time_stamps=True)[0]
+    except Exception as e:
+        return e
+
+
 def main(argv: list[str]) -> int:
     jobs_path = argv[0]
     name = argv[1] if len(argv) > 1 else "Qwen/Qwen3-ASR-1.7B"
@@ -119,12 +128,17 @@ def main(argv: list[str]) -> int:
                 language=["English"] * len(batch),
                 return_time_stamps=True,
             )
-        except Exception as e:
-            for j in batch:
-                out.write(json.dumps({"item_id": j["item_id"],
-                                      "error": f"{type(e).__name__}: {e}"[:300]}) + "\n")
-            out.flush(); continue
+        except Exception:
+            # A failed batch is retried an item at a time, so it costs only
+            # the items that fail alone. Writing the whole batch off lost 48
+            # and 32 Buckeye test utterances under noise and babble, three and
+            # two batches, all of which aligned when run again.
+            res = [_one(model, j) for j in batch]
         for j, r in zip(batch, res):
+            if isinstance(r, Exception):
+                out.write(json.dumps({"item_id": j["item_id"],
+                                      "error": f"{type(r).__name__}: {r}"[:300]}) + "\n")
+                continue
             try:
                 ws = _words(getattr(r, "time_stamps", None), j.get("duration_s"))
                 rec = {"item_id": j["item_id"], "words": ws}

@@ -147,6 +147,11 @@ def aggregate(
 
     for key, group in sorted(groups.items()):
         corpus, register, aligner, mode, condition, protocol = key
+        # Records the system returned. `group` also holds the reference
+        # utterances it returned nothing for (UttScore.absent), which count in
+        # every recall and deletion total below; utterance counts, coverage and
+        # the MAE bootstrap see only these.
+        present = [g for g in group if not g.absent]
         row = {
             "corpus": corpus,
             "register": register,
@@ -154,8 +159,10 @@ def aggregate(
             "mode": mode,
             "condition": condition,
             "scoring_protocol": protocol,
-            "n_utts": len(group),
-            "n_speakers": len({g.speaker_id for g in group}),
+            "n_utts": len(present),
+            "n_absent": len(group) - len(present),
+            "n_empty": sum(1 for g in present if g.empty),
+            "n_speakers": len({g.speaker_id for g in present}),
         }
 
         # ---- phone boundary metrics ----
@@ -194,14 +201,14 @@ def aggregate(
             row["offset_mae_ms"] = float(np.mean(off)) * MS if off else float("nan")
 
             # bootstrap CI over utterances (MAE and TA20)
-            per_sum = np.array([sum(e.abs for e in g.boundary_errors) for g in group])
-            per_cnt = np.array([len(g.boundary_errors) for g in group], float)
+            per_sum = np.array([sum(e.abs for e in g.boundary_errors) for g in present])
+            per_cnt = np.array([len(g.boundary_errors) for g in present], float)
             lo, hi = bootstrap_mean_ci(per_sum, per_cnt, bootstrap_iters, ci, seed)
             row["mae_ci_lo_ms"], row["mae_ci_hi_ms"] = lo * MS, hi * MS
             row["primary_tol_ms"] = round(primary_tol_s * MS)
             tau_p = primary_tol_s + B.TA_TOL_S
             per_sump = np.array(
-                [sum(1 for e in g.boundary_errors if e.abs <= tau_p) for g in group],
+                [sum(1 for e in g.boundary_errors if e.abs <= tau_p) for g in present],
                 float,
             )
             lop, hip = bootstrap_mean_ci(per_sump, per_cnt, bootstrap_iters, ci, seed)
@@ -397,8 +404,8 @@ def aggregate(
         golds = [g.n_gold_utts for g in group if g.n_gold_utts]
         n_gold_utts = max(golds) if golds else 0
         row["n_gold_utts"] = n_gold_utts
-        row["coverage"] = (len(group) / n_gold_utts) if n_gold_utts else float("nan")
-        row["incomplete"] = bool(n_gold_utts and len(group) < 0.90 * n_gold_utts)
+        row["coverage"] = (len(present) / n_gold_utts) if n_gold_utts else float("nan")
+        row["incomplete"] = bool(n_gold_utts and len(present) < 0.90 * n_gold_utts)
 
         # ---- efficiency ----
         rtfs = [g.rtf for g in group if g.rtf is not None]

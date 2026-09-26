@@ -23,6 +23,4 @@ params:
   worker: evals/aligners/stable_ts/worker.py
   model: base
   timeout_s: null
-  env:
-    HF_HOME: /ndata/hf
   requires_transcript_hyp: true

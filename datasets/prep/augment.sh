@@ -59,6 +59,10 @@ cd "$ROOT"
 
 TYPES=${TYPES:-"reverb noise music babble"}
 SHADOW=${FABENCH_SHADOW:-data/shadow}
+# ONE place for the raw noisy audio, written by step 2 and read by step 3. They
+# used to take it from different variables (OUT and FABENCH_NOISY_ROOT), so
+# setting only the one the template documents sent step 3 to an empty folder.
+NOISY=${OUT:-${FABENCH_NOISY_ROOT:-data/noisy}}
 shadow_only=false
 [ "${1:-}" = "--shadow-only" ] && shadow_only=true
 
@@ -67,7 +71,7 @@ shadow_only=false
 # both are seeded, so a re-run is byte-identical rather than a new draw.
 if [ "$shadow_only" = false ]; then
   echo "=== step 2: build noisy audio ($TYPES) ==="
-  "$PY" -m fabench.dataprep.noisemix.make_noisy --types "$TYPES"
+  "$PY" -m fabench.dataprep.noisemix.make_noisy --types "$TYPES" --out "$NOISY" || exit 1
 fi
 
 # --- step 3: shadow roots, one per (corpus, type) -------------------------
@@ -88,7 +92,7 @@ for corpus in $CORPORA; do
   for type in $TYPES; do
     out="$SHADOW/${corpus}_${type}"
     if "$PY" -m fabench.dataprep.noisemix.shadow_root \
-         --corpus "$corpus" --type "$type" --out "$out"; then
+         --corpus "$corpus" --type "$type" --out "$out" --noisy-root "$NOISY"; then
       echo "  $corpus/$type -> $out"
     else
       echo "  [SKIP] $corpus/$type -- shadow_root.py does not handle $corpus"

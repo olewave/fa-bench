@@ -14,5 +14,3 @@ params:
   model: nar_t2u_aligner
   device: cpu
   timeout_s: null
-  env:
-    HF_HOME: /ndata/hf

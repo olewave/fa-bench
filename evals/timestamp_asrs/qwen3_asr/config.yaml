@@ -17,5 +17,3 @@ params:
   worker: worker.py
   model: Qwen/Qwen3-ASR-1.7B
   timeout_s: 14400
-  env:
-    HF_HOME: /ndata/hf

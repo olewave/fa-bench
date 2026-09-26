@@ -48,7 +48,8 @@ numbers. This makes a faithful aligner score zero, not every aligner.
 from __future__ import annotations
 
 #: Word-tier tokens belonging to an aligner's own topology rather than the
-#: transcript. Kept in step with ``_WSIL`` in :mod:`fabench.score.core`.
+#: transcript. The scorer imports this set (``fabench.score.core._SILENCE_WORDS``),
+#: so relabelling, word matching and WER drop the same tokens.
 SILENCE = {"sil", "[sil]", "<sil>", "sp", "spn", "<eps>", "!sil",
            "silence", "", "<unk>"}
 

@@ -147,6 +147,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="snapshot to write (YYYYMM); default is this month")
     ap.add_argument("--check", action="store_true",
                     help="exit 1 if the snapshot would change (for CI)")
+    ap.add_argument("--release", default=None,
+                    help="public tag or commit the snapshot's release line names "
+                         "(e.g. v1.2.0). Required unless --check: without it the "
+                         "line names this checkout's private commit and branch")
     ap.add_argument("--force", action="store_true",
                     help="allow writing a month that is not the newest "
                          "(published snapshots are immutable by default)")
@@ -165,10 +169,10 @@ def main(argv: list[str] | None = None) -> int:
     # writes the newest month, and --force exists for the one legitimate case,
     # repairing a snapshot the same day it was cut.
     existing = month_dirs()
-    older = [m for m in existing if m > a.month]
-    if older and not a.force:
+    newer = [m for m in existing if m > a.month]
+    if newer and not a.force:
         print(f"refusing to publish {a.month}: it is not the newest snapshot "
-              f"(found {', '.join(older)}). A published month is immutable; "
+              f"(found {', '.join(newer)}). A published month is immutable; "
               f"pass --force only to repair one you have just cut.",
               file=sys.stderr)
         return 2
@@ -186,8 +190,22 @@ def main(argv: list[str] | None = None) -> int:
     # snapshot silently keep whatever they had. That is not hypothetical: an
     # olign version fix landed in gen_provenance.py and never reached the page.
     if not a.check:
+        if not a.release:
+            print("publish needs --release <public tag or commit>: the release "
+                  "line must name something a reader can fetch", file=sys.stderr)
+            return 2
         rc = subprocess.call([sys.executable, str(ROOT / "evals" / "gen_provenance.py"),
-                              "--offline", "--doc", str(target / "README.md")], cwd=ROOT)
+                              "--offline", "--doc", str(target / "README.md"),
+                              "--release", a.release], cwd=ROOT)
+        if rc != 0:
+            return rc
+
+    # --check covers the versions table too: a stale provenance block used to
+    # pass, because only the publish path called gen_provenance.py.
+    if a.check:
+        rc = subprocess.call([sys.executable, str(ROOT / "evals" / "gen_provenance.py"),
+                              "--offline", "--doc", str(target / "README.md"),
+                              "--check"], cwd=ROOT)
         if rc != 0:
             return rc
 

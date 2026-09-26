@@ -47,9 +47,24 @@ from fabench.aligners.base import (
 from fabench.schema import Interval
 
 # Machine-specific; override via env or params (micromamba/mamba_root).
-_DEFAULT_MM = os.environ.get(
-    "FABENCH_MICROMAMBA", str(Path.home() / "micromamba" / "bin" / "micromamba"))
 _DEFAULT_ROOT = os.environ.get("FABENCH_MAMBA_ROOT", str(Path.home() / "micromamba"))
+
+
+def find_micromamba(params: dict, mamba_root: str) -> str:
+    """The micromamba MFA runs through: the first of these that exists.
+
+    params.micromamba, then $FABENCH_MICROMAMBA, then ``<mamba_root>/bin/micromamba``
+    -- where evals/aligners/mfa/download_and_install.sh puts it -- then
+    ~/micromamba/bin/micromamba. The recipe's own copy used to be missing from
+    this list, so a machine set up by the recipe alone failed with "MFA not
+    available" unless the environment variable happened to be set. If none
+    exists, the first candidate named is returned for the error message.
+    """
+    cands = [params.get("micromamba"), os.environ.get("FABENCH_MICROMAMBA"),
+             str(Path(mamba_root) / "bin" / "micromamba"),
+             str(Path.home() / "micromamba" / "bin" / "micromamba")]
+    named = [c for c in cands if c]
+    return next((c for c in named if Path(c).exists()), named[0])
 # Default conda env per MFA version, so `version` can select the aligner build
 # without hard-coding an env name. Override with params.env or params.version_envs.
 _VERSION_ENVS = {"3.4": "mfa", "3.0": "mfa30"}
@@ -64,8 +79,8 @@ class MFA(AlignerAdapter):
     def load(self) -> None:
         if self._loaded:
             return
-        self.mm = self.params.get("micromamba", _DEFAULT_MM)
         self.mm_root = self.params.get("mamba_root", _DEFAULT_ROOT)
+        self.mm = find_micromamba(self.params, self.mm_root)
         # MFA version -> conda env. `env` wins if set; otherwise the `version`
         # param (default 3.4) maps through version_envs (default 3.4->mfa, 3.0->mfa30).
         self.version = str(self.params.get("version", "3.4"))

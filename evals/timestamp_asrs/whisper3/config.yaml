@@ -15,5 +15,3 @@ params:
   worker: worker.py
   model: openai/whisper-large-v3
   timeout_s: 14400
-  env:
-    HF_HOME: /ndata/hf

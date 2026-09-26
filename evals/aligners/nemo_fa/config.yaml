@@ -54,8 +54,7 @@ params:
   device: cuda
   batch_size: 4
   timeout_s: null
-  # NeMo breaks if LD_LIBRARY_PATH leaks in from the caller. HF_HOME must be
-  # writable so the checkpoint caches once instead of per cell.
+  # NeMo breaks if LD_LIBRARY_PATH leaks in from the caller. The checkpoint
+  # caches under HF_HOME, which comes from the environment (.fabench.env).
   env:
     LD_LIBRARY_PATH: null
-    HF_HOME: /ndata/hf
