@@ -18,12 +18,10 @@ word runs to the end of the audio -- 5.50s against a 4.71s gold end on the
 utterance this was checked against.
 """
 import json
-import os
 import sys
 
 # The model cache is wherever HF_HOME points (set it in .fabench.env); no
 # machine path is assumed here.
-
 import torch
 from seamless_communication.models.aligner.alignment_extractor import (
     AlignmentExtractor,
