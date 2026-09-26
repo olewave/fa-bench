@@ -35,15 +35,27 @@ them. The code agreement cannot grant what the corpus licence withholds.
 uv venv --python 3.12 .venv && . .venv/bin/activate
 uv pip install -e ".[test]"
 .venv/bin/python -m pytest        # must be green before a PR
+tools/ci.sh                       # the three CI jobs, as the pipelines run them
 ```
 
 ## CI
 
-Every pull or merge request runs three jobs, from `.github/workflows/ci.yml`
-on GitHub and `.gitlab-ci.yml` on GitLab. They are the full `pytest`, the
-synthetic `fabench selftest`, and an advisory `ruff check`. Tests that need an
-optional dependency or staged data skip themselves, so the jobs pass on a
-clean runner. Make them blocking through branch protection, with required
+Every pull or merge request runs three jobs, the full `pytest`, the synthetic
+`fabench selftest`, and an advisory `ruff check`. Both pipelines,
+`.github/workflows/ci.yml` on GitHub and `.gitlab-ci.yml` on GitLab, run them
+through `tools/ci.sh`, so the same script checks your work before you push.
+
+```bash
+tools/ci.sh                 # all three jobs on a clean export of HEAD
+tools/ci.sh lint            # one job
+tools/ci.sh --worktree      # the working tree, uncommitted edits included
+```
+
+It runs them in `.venv-ci`, a Python 3.12 environment holding only what CI
+installs, and exits non-zero when any job fails, lint included. Ruff is pinned
+in the script, so a new ruff release cannot fail an unchanged tree. Tests that
+need an optional dependency or staged data skip themselves, so the jobs pass
+on a clean runner. Make them blocking through branch protection, with required
 status checks on GitHub and "Pipelines must succeed" on GitLab.
 
 ## License
