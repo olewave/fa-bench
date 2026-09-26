@@ -239,7 +239,7 @@ Values come from `.fabench.env`, and an exported variable always wins.
 Options are Kaldi-style (`parse_options.sh`). Each driver declares its knobs
 as shell variables with defaults, `--knob value` assigns them, dashes map to
 underscores, and an unknown option is an error rather than a silently ignored
-flag.
+flag. The top-level `run_all.sh` uses the same parser.
 
 Clean and noisy are stages rather than separate tools. The same recipe runs
 over different audio, so the system list stays a list of systems. Noisy

@@ -13,12 +13,10 @@ supplied transcript, so this cannot be a Track 1 aligner and there is no
 cascade built on it.
 """
 import json
-import os
 import sys
 
 # The model cache is wherever HF_HOME points (set it in .fabench.env); no
 # machine path is assumed here.
-
 import torch
 import whisper_timestamped as wts
 
