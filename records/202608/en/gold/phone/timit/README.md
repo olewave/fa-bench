@@ -1,5 +1,9 @@
 # TIMIT — phone-level, forced aligners
 
+> **Superseded.** This August 2026 snapshot was scored under earlier rules and
+> on different splits, so its numbers cannot be compared with later snapshots.
+> See [September 2026](../../../../../202609/en/README.md#which-subset-the-numbers-cover) for what changed.
+
 Only systems that emit phone labels appear here; the word tier, which every
 system reaches, is at `../../word/timit/README.md`.
 

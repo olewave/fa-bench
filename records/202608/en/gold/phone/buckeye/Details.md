@@ -1,5 +1,9 @@
 # Buckeye — phone-level detail, forced aligners
 
+> **Superseded.** This August 2026 snapshot was scored under earlier rules and
+> on different splits, so its numbers cannot be compared with later snapshots.
+> See [September 2026](../../../../../202609/en/README.md#which-subset-the-numbers-cover) for what changed.
+
 
 <!-- BEGIN GENERATED: caption-buckeye -->
 **MAE**: mean absolute boundary error, on the matched path only.
