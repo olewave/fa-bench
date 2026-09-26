@@ -12,6 +12,8 @@ on:
 
 jobs:
   claude-review:
+    # A pull request from a fork gets no secrets, so the review could only fail there.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
@@ -20,8 +22,8 @@ jobs:
 
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
+      contents: read        # cannot push, so Claude never authors a commit
+      pull-requests: write  # to post the review
       issues: read
       id-token: write
 
@@ -36,6 +38,10 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The workflow's own token, bounded by the permissions above. Without it the
+          # action takes the Claude app's token, which can push commits authored as
+          # Claude's bot, and every commit here must be authored by a person.
+          github_token: ${{ github.token }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'

@@ -19,9 +19,9 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: read        # cannot push, so Claude never authors a commit
+      pull-requests: write  # to answer in pull requests
+      issues: write         # to answer in issues
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
@@ -35,6 +35,10 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The workflow's own token, bounded by the permissions above. Without it the
+          # action takes the Claude app's token, which can push commits authored as
+          # Claude's bot, and every commit here must be authored by a person.
+          github_token: ${{ github.token }}
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
