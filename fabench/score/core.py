@@ -28,6 +28,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from fabench.aligners.relabel import SILENCE as _RELABEL_SILENCE
 from fabench.schema import Utterance
 from fabench.score import boundary, recall, word
 from fabench.score.matched import nw_align
@@ -57,7 +58,10 @@ def _prep_phones(phones, canon_fn):
 # Word-tier silence pseudo-words some aligners emit (charsiu "[sil]", maps "sil",
 # MFA optional "sp"/"spn"). Dropped before word matching so they never count as
 # a real word boundary in the word-boundary benchmark (scoring.boundary_unit).
-_SILENCE_WORDS = frozenset({"[sil]", "sil", "sp", "spn", "<sil>", "silence", ""})
+# ONE set, the relabeller's, for word matching, WER and relabelling alike. There
+# used to be three, and two of them lacked "<eps>", "!sil" and "<unk>"; no word
+# in any reference or hypothesis is one of those, so merging moved no number.
+_SILENCE_WORDS = frozenset(_RELABEL_SILENCE)
 
 
 def _word_boundary_errors(gold_words, hyp_words):
@@ -193,6 +197,15 @@ class UttScore:
     #: WER 19.8 against ~14.7 for the complete ones. Wrong, not merely partial,
     #: and invisible.
     n_gold_utts: int | None = None
+    #: True for a reference utterance the system returned no record for. It is
+    #: scored against an empty hypothesis, so its boundaries count against F1
+    #: recall and its words and phones as deletions, while MAE, coverage and the
+    #: bootstrap still see only the records the system did return.
+    absent: bool = False
+    #: True when the system's record for this utterance holds no words and no
+    #: phones. Scored like an absent one, and counted apart from it, so a
+    #: reader can see how many utterances a MAE was not computed over.
+    empty: bool = False
 
 
 def score_pair(
@@ -249,6 +262,7 @@ def score_pair(
         audio_s=audio_s,
         setup_s=setup_s,
         n_gold_utts=n_gold_utts,
+        empty=not hyp.words and not hyp.phones,
     )
 
     if input_tokens and score_words and hyp.words:
@@ -289,7 +303,12 @@ def score_pair(
     else:
         _c_wmatched = []
 
-    if boundary_unit == "word" and score_words and gold.words and hyp.words:
+    # AN EMPTY HYPOTHESIS IS SCORED, NOT SKIPPED. Each tier below runs whenever
+    # the REFERENCE has units, so a system that returned nothing for an
+    # utterance is charged for every boundary and unit it missed. These gates
+    # used to require hyp units too, and an empty record then counted for
+    # nothing: no recall miss, no deletion, which rewarded giving up.
+    if boundary_unit == "word" and score_words and gold.words:
         # Word-boundary benchmark: us.boundary_errors carries WORD boundaries, so
         # the whole downstream pipeline (aggregate -> leaderboard MAE/median/TA/CI,
         # per-type, speaker-macro) reports word-level numbers unchanged. The count
@@ -300,7 +319,7 @@ def score_pair(
             wmatched, gw, hw, lambda _label: "word")
         us.n_matched_phone, us.n_gold_phone, us.n_hyp_phone = len(wmatched), len(gw), len(hw)
         us.matched_gold_phone_idx = []
-    elif boundary_unit == "phone" and score_phones and gold.phones and hyp.phones:
+    elif boundary_unit == "phone" and score_phones and gold.phones:
         # Canonicalize; drop DELETE phones (e.g. glottal stop, dropped by the
         # standard folding), keep UNMAPPED ones with a unique token so they are
         # counted but never spuriously match (Plan S2).
@@ -396,7 +415,7 @@ def score_pair(
                 _cgw, _chw, _c_wmatched, aln.aligned(), gold_ivs, hyp_ivs,
                 gold_matched=_c_gold_matched, gold_unit_matched=_pg)
 
-    if score_words and gold.words and hyp.words:
+    if score_words and gold.words:
         us.word_abs_errors = word.word_abs_errors(gold.words, hyp.words)
         # Word-boundary detection, same time-based label-agnostic pairing as the
         # phone tier. This is the tier the collar-based literature actually uses
@@ -443,8 +462,7 @@ def score_pair(
         # counting them charged both a ~25% WER made entirely of insertions --
         # for forced aligners, which are handed the reference and cannot
         # misrecognise anything. Drop them on both sides so WER measures words.
-        _WSIL = {"sil", "[sil]", "<sil>", "sp", "spn", "<eps>", "!sil",
-                 "silence", "", "<unk>"}
+        _WSIL = _SILENCE_WORDS
 
         def _words(seq):
             return [w.label.lower() for w in seq

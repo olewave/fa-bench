@@ -1,12 +1,12 @@
 # Buckeye data processor
 
 Hand-labelled English **spontaneous** conversational speech. Speaker folders
-`sNN/` each hold `.words` / `.phones` / `.wav`. Long interview tracks are
+`sNN/` each hold `.words`, `.phones` and `.wav`. Long interview tracks are
 segmented into utterances at silence.
 
-- **Restricted:** registration-gated (buckeyecorpus.osu.edu). Register and
-  download — never fetched by fabench.
-- **Register:** spontaneous.
+- **Restricted.** Registration-gated (buckeyecorpus.osu.edu). Register and
+  download it. fabench never fetches it.
+- **Register.** Spontaneous speech.
 
 ## Config
 
@@ -18,10 +18,10 @@ datasets:
       protocol: paper              # fabench | paper
 ```
 
-- **`protocol`** — `fabench` = fabench's own silence-based segmentation;
-  `paper` = the MFA-2026 (arXiv:2606.18466) segmentation used to reproduce its
-  Table 5 (~22,458 utts). The two are distinct cache variants
+- **`protocol`**. `fabench` is fabench's own silence-based segmentation.
+  `paper` is the MFA-2026 (arXiv:2606.18466) segmentation used to reproduce
+  its Table 5 (about 22,458 utterances). The two are distinct cache variants
   (`buckeye__<protocol>.jsonl`).
 
-Public API: `iter_utterances`, plus `parse_tier`, `segment_track`,
+The public API is `iter_utterances`, plus `parse_tier`, `segment_track` and
 `segment_track_paper` (see `processor.py`).

@@ -1,73 +1,204 @@
 {
+ "_apis": {
+  "assemblyai": {
+   "called": "2026-09-17 to 2026-09-25",
+   "display": "AssemblyAI Universal 3.5",
+   "model": "universal-3-5-pro"
+  },
+  "aws": {
+   "called": "2026-09-20 to 2026-09-25",
+   "display": "Amazon Transcribe",
+   "model": "en-US"
+  },
+  "azure": {
+   "called": "2026-09-18 to 2026-09-25",
+   "display": "Azure AI Speech",
+   "model": "en-US, API 2024-11-15"
+  },
+  "deepgram": {
+   "called": "2026-09-17 to 2026-09-25",
+   "display": "Deepgram Nova-3",
+   "model": "nova-3"
+  },
+  "elevenlabs": {
+   "called": "2026-09-17 to 2026-09-24",
+   "display": "ElevenLabs Scribe v2",
+   "model": "scribe_v2"
+  },
+  "google_stt_chirp2": {
+   "called": "2026-09-17 to 2026-09-25",
+   "display": "Google Chirp 2",
+   "model": "chirp_2"
+  },
+  "ibm": {
+   "called": "2026-09-17 to 2026-09-26",
+   "display": "IBM Watson Large",
+   "model": "en-US"
+  },
+  "speechmatics": {
+   "called": "2026-09-17 to 2026-09-25",
+   "display": "Speechmatics enhanced",
+   "model": "enhanced"
+  }
+ },
  "bfa": {
+  "checkpoint": "Tabahi/CUPE-2i en_libri1000_ua01c_e4 (preset en-us)",
   "commit": null,
   "display": "BFA",
   "released": "2026-06-05",
   "version": "1.1.5"
  },
  "charsiu": {
+  "checkpoint": "charsiu/en_w2v2_fc_10ms",
   "commit": "13a69f2a22ca0c0962b75cc693399b0ae23a12c9",
   "display": "Charsiu",
   "released": "2022-09-18",
   "version": "(git)"
  },
+ "crisperwhisper": {
+  "checkpoint": "nyrahealth/CrisperWhisper",
+  "commit": null,
+  "display": "CrisperWhisper",
+  "released": "2026-08-06",
+  "version": "2.0.2"
+ },
  "crisperwhisper_fa": {
+  "checkpoint": "nyrahealth/CrisperWhisper",
   "commit": null,
   "display": "CrisperWhisper-FA",
   "released": "2026-08-06",
   "version": "2.0.2"
  },
+ "falcon": {
+  "checkpoint": "falcon_joint_multilingual.pt",
+  "commit": "3d6e3d876ebaf2472757720d92222d55dd7410f8",
+  "display": "FALCON",
+  "released": "2026-06-29",
+  "version": "(git)"
+ },
  "maps": {
+  "checkpoint": "timbuck_eng.tf",
   "commit": "bf797f434b83dcb49dac64d575211c4af1253e81",
   "display": "MAPS",
   "released": "2026-02-23",
   "version": "(git)"
  },
  "mfa": {
+  "checkpoint": "english_us_arpa acoustic model and dictionary",
   "commit": null,
   "display": "MFA 3.4",
   "released": "2026-07-11",
   "version": "3.4.1"
  },
  "mfa2": {
+  "checkpoint": "english_us_arpa acoustic model and dictionary",
   "commit": null,
   "display": "MFA 2.0",
   "released": "2022-08-08",
   "version": "2.0.6"
  },
+ "mms_fa": {
+  "checkpoint": "MMS_FA",
+  "commit": null,
+  "display": "MMS-FA",
+  "released": "2025-08-06",
+  "version": "2.8.0"
+ },
+ "nemo_fa": {
+  "checkpoint": "stt_en_fastconformer_hybrid_large_pc (80 ms), stt_en_conformer_ctc_large (40 ms)",
+  "commit": null,
+  "display": "NeMo-FA",
+  "released": "2026-04-23",
+  "version": "2.7.3"
+ },
+ "neufa": {
+  "checkpoint": "neufa-fabench-220k.pt, the authors', not released (SHA-256 `68b163eb3599`)",
+  "commit": "6cacd91cfe0214a3d08d3172106e3f7ac7d33a0b",
+  "display": "NeuFA",
+  "released": "2025-01-17",
+  "version": "(git)"
+ },
  "olign": {
+  "checkpoint": "\u2014",
   "commit": "\u2014",
   "display": "Olign",
   "released": "undisclosed",
   "version": "v1.0.0"
  },
  "parakeet_tdt": {
+  "checkpoint": "nvidia/parakeet-tdt-0.6b-v3",
   "commit": null,
   "display": "Parakeet-TDT",
   "released": "2026-04-23",
   "version": "2.7.3"
  },
- "qwen3_fa": {
+ "qwen3_asr": {
+  "checkpoint": "Qwen/Qwen3-ASR-1.7B, with Qwen/Qwen3-ForcedAligner-0.6B",
   "commit": null,
-  "display": "Qwen3",
+  "display": "Qwen3-ASR",
+  "released": "2026-01-30",
+  "version": "0.0.6"
+ },
+ "qwen3_fa": {
+  "checkpoint": "Qwen/Qwen3-ForcedAligner-0.6B",
+  "commit": null,
+  "display": "Qwen3-FA",
   "released": "2026-01-30",
   "version": "0.0.6"
  },
  "stable_ts": {
+  "checkpoint": "Whisper base",
   "commit": "e312072cc024ae9fceb25b057d7d18524873a02b",
   "display": "stable-ts",
   "released": null,
   "version": "(git)"
  },
+ "torchaudio_asr": {
+  "checkpoint": "WAV2VEC2_ASR_BASE_960H",
+  "commit": null,
+  "display": "TorchAudio (ASR)",
+  "released": "2025-08-06",
+  "version": "2.8.0"
+ },
  "torchaudio_fa": {
+  "checkpoint": "WAV2VEC2_ASR_BASE_960H, facebook/wav2vec2-lv-60-espeak-cv-ft",
   "commit": null,
   "display": "TorchAudio",
   "released": "2025-08-06",
   "version": "2.8.0"
  },
+ "unity2": {
+  "checkpoint": "nar_t2u_aligner",
+  "commit": "9a081e935c29c6b1e0e05bcbf3fcb623ad306524",
+  "display": "UnitY2",
+  "released": "2026-09-08",
+  "version": "(git)"
+ },
+ "whisper3": {
+  "checkpoint": "openai/whisper-large-v3",
+  "commit": null,
+  "display": "Whisper large-v3",
+  "released": "2026-08-26",
+  "version": "5.16.1"
+ },
+ "whisper_ts": {
+  "checkpoint": "Whisper large-v3",
+  "commit": null,
+  "display": "Whisper-timestamped",
+  "released": "2025-09-09",
+  "version": "1.15.9"
+ },
  "whisperx": {
+  "checkpoint": "WAV2VEC2_ASR_BASE_960H",
   "commit": null,
   "display": "WhisperX",
+  "released": "2026-05-25",
+  "version": "3.8.6"
+ },
+ "whisperx_asr": {
+  "checkpoint": "Whisper large-v3, then WAV2VEC2_ASR_BASE_960H",
+  "commit": null,
+  "display": "WhisperX (ASR)",
   "released": "2026-05-25",
   "version": "3.8.6"
  }

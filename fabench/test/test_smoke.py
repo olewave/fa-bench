@@ -80,6 +80,25 @@ def test_aligner_entry_composes_from_its_folder(tmp_path):
     assert spec.params["phoneme_model"] == "facebook/wav2vec2-lv-60-espeak-cv-ft"
 
 
+def test_recipe_relative_paths_resolve_against_the_recipe(tmp_path):
+    """mfa's recipe says `mamba_root: repo/mamba`, relative to its own folder.
+    A plain `fabench run` must read that against evals/aligners/mfa/, as
+    evals/gen_config.py does for the per-cell configs, not against the working
+    directory. The check runs only where the recipe has been installed."""
+    from fabench.config import RECIPE_PATH_PARAMS
+    run = tmp_path / "run.yaml"
+    run.write_text("aligners:\n  - { name: mfa, enabled: true }\n")
+    root = load_config(run).aligner("mfa").params["mamba_root"]
+    recipe = Path(__file__).resolve().parents[2] / "evals" / "aligners" / "mfa"
+    if (recipe / "repo" / "mamba").exists():
+        assert root == str((recipe / "repo" / "mamba").resolve())
+    else:
+        assert root == "repo/mamba"
+    src = (Path(__file__).resolve().parents[2] / "evals" / "gen_config.py").read_text()
+    assert all(f'"{k}"' in src for k in RECIPE_PATH_PARAMS), \
+        "evals/gen_config.py PATH_PARAMS and fabench.config.RECIPE_PATH_PARAMS drifted"
+
+
 def _no_ambient_fabench_env(monkeypatch):
     """Compose the config from FILES ONLY.
 
@@ -219,3 +238,19 @@ def test_a_run_never_writes_the_published_results_tree(tmp_path, monkeypatch):
     # Writing the published tree stays possible — deliberately, by naming it.
     monkeypatch.setenv("FABENCH_RESULTS_DIR", str(REPO / "summary"))
     assert load_config(CONFIG).results_dir() == REPO / "summary"
+
+
+def test_condition_tag_keeps_a_noisy_run_off_the_clean_cell(tmp_path):
+    """A noisy run reads a shadow root whose items all say "clean". The config's
+    condition_tag is what sends its hyp.jsonl, and the scorer's read of it, to
+    <condition>/ instead of onto origin/, the clean cell it is compared with.
+    Both sides resolve the path through fabench.paths.hyp_path."""
+    from fabench.paths import hyp_path
+    run = tmp_path / "run.yaml"
+    run.write_text("condition_tag: noise\n")
+    cfg = load_config(run)
+    assert cfg.condition_tag() == "noise"
+    noisy = hyp_path(REPO, "mfa", "timit", "core_test", condition=cfg.condition_tag())
+    clean = hyp_path(REPO, "mfa", "timit", "core_test", condition=load_config().condition_tag())
+    assert noisy.parent.name == "noise" and clean.parent.name == "origin"
+    assert noisy.parent.parent == clean.parent.parent

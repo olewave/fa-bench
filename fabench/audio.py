@@ -26,7 +26,9 @@ returned as **mono float64 in [-1, 1]** so downstream SNR math is unit-consisten
 
 from __future__ import annotations
 
+import os
 import subprocess
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -116,9 +118,24 @@ def load_resample(path: str | Path, target_sr: int = 16000) -> tuple[np.ndarray,
 
 
 def write_audio(path: str | Path, x: np.ndarray, sr: int, subtype: str = "PCM_16") -> None:
+    """Write `x` to `path` ATOMICALLY: into a temp file beside it, then rename.
+
+    Runs of different tools on the same cell share work/mix/<source>/<utt>/,
+    and each run rewrites every clean.wav there. sf.write truncates the file and
+    fills it in place, so a run whose aligner was reading that file while
+    another run rewrote it could get an empty or half-written one. A rename
+    leaves a reader either the old complete file or the new one, and both hold
+    the same samples.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    sf.write(str(path), np.clip(x, -1.0, 1.0), sr, subtype=subtype)
+    tmp = path.with_name(f".{path.stem}.{os.getpid()}.{threading.get_ident()}.tmp{path.suffix}")
+    try:
+        sf.write(str(tmp), np.clip(x, -1.0, 1.0), sr, subtype=subtype)
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
 
 
 def write_sphere_pcm(path: str | Path, x: np.ndarray, sr: int) -> None:

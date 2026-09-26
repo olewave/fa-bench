@@ -1,5 +1,9 @@
 # Results
 
+> **Superseded.** This August 2026 snapshot was scored under earlier rules and
+> on different splits, so its numbers cannot be compared with later snapshots.
+> See [September 2026](../../202609/en/README.md#which-subset-the-numbers-cover) for what changed.
+
 **August 2026** — 12 systems, TIMIT and Buckeye, phone and word tiers, clean
 plus four degradations. The numbers sit with their corpus below; this page is
 how they were made and how to read them.

@@ -85,6 +85,11 @@ def degradation_table(rows: Iterable[dict], corpus: str, metric: str = "mae_ms")
     if not data:
         return f"_(no degradation data for {corpus})_", []
     snrs = sorted({s for v in data.values() for s in v if isinstance(s, int)}, reverse=True)
+    if not snrs:
+        # A published cell is one condition of one shadow root, with no SNR
+        # sweep and no clean row beside it. The table this used to print had a
+        # dash in every cell and "ok" in every monotonic column.
+        return f"_(no SNR sweep in this cell for {corpus})_", []
     header = ["aligner", "mode", "noise", "clean"] + [f"{s}dB" for s in snrs] + ["robust(→10dB)", "monotonic?"]
     rows_out = []
     flags = []

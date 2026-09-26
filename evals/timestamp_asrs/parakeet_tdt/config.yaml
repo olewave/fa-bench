@@ -33,7 +33,7 @@ params:
   model: nvidia/parakeet-tdt-0.6b-v3
   timeout_s: 14400
   # NeMo breaks if LD_LIBRARY_PATH leaks in from the caller, so it is run as
-  # `env -u LD_LIBRARY_PATH`. HF_HOME must be writable for model caching.
+  # `env -u LD_LIBRARY_PATH`. The model caches under HF_HOME, from the
+  # environment (.fabench.env).
   env:
     LD_LIBRARY_PATH: null
-    HF_HOME: /ndata/hf

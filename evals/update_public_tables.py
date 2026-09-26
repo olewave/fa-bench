@@ -97,7 +97,8 @@ class _FlagMap(dict):
         return dict.__getitem__(self, hit)
 
 
-FLAGGED = _FlagMap({"maps": "⚠"})
+FLAGGED = _FlagMap({"maps": "⚠", "neufa": "⚠", "falcon": "⚠", "deepgram": "‡",
+                    "crisperwhisper": "⚠", "crisperwhisper_fa": "⚠"})
 
 #: What each flag means, appended under any generated table that carries it.
 #: The marker used to be explained only on the methodology page, so a reader on
@@ -113,12 +114,35 @@ FLAGGED = _FlagMap({"maps": "⚠"})
 #: train on. Buckeye ships no official split, so the overlap is two projects
 #: choosing differently rather than anything undisclosed, and the note says so.
 FLAG_NOTE = {
-    "⚠": "⚠ **MAPS** trained on Buckeye, holding out only speakers 4, 27, 38, "
-         "39 and 40. FA-Bench splits Buckeye differently, so 7 of the 8 "
-         "speakers in each of our Buckeye splits are in its training set and "
-         "those rows are not held-out results. Its TIMIT rows are: both our "
-         "TIMIT splits come from TIMIT `TEST/`, which it did not train on — "
-         "see [training data and overlap](../../../README.md#training-data-and-overlap).",
+    # Keyed by the label as a table prints it, name and glyph, so a note is
+    # added only under a table that shows that system. A cascade's label ends
+    # in its aligner's, so "Qwen3-ASR → MAPS ⚠" brings the MAPS note.
+    "MAPS ⚠": "⚠ **MAPS** trained on Buckeye, holding out only speakers 4, 27, 38, "
+              "39 and 40. FA-Bench splits Buckeye differently, so 7 of the 8 "
+              "speakers in each of our Buckeye splits are in its training set and "
+              "those rows are not held-out results. Its TIMIT rows are held out, "
+              "because both our TIMIT splits come from TIMIT `TEST/`, which it did "
+              "not train on. See [training data and overlap]"
+              "(../../../README.md#training-data-and-overlap).",
+    "NeuFA ⚠": "⚠ **NeuFA**'s training recipe trains on 36 Buckeye speakers and "
+               "holds out only 10, 20, 30 and 40, so 7 of the 8 speakers in each of "
+               "our Buckeye splits are in its training set and those rows are not "
+               "held-out results. It does not train on TIMIT. See [training data "
+               "and overlap](../../../README.md#training-data-and-overlap).",
+    "FALCON ⚠": "⚠ **FALCON** trains on its own 80/10/10 speaker split of Buckeye, "
+                "so at least 8 of the 16 speakers in our Buckeye dev and test splits "
+                "are in its training set, and it is handed the reference phones. See "
+                "[training data and overlap](../../../README.md#training-data-and-overlap).",
+    "CrisperWhisper ⚠": "⚠ **CrisperWhisper** names TIMIT among the datasets with word "
+                        "timestamps it used, and chose its alignment heads on TIMIT, "
+                        "without saying which part. Both our TIMIT splits come from TIMIT "
+                        "`TEST/`, so its TIMIT rows are held out only if it used the "
+                        "training part. It names no Buckeye data. See [training data "
+                        "and overlap](../../../README.md#training-data-and-overlap).",
+    "Deepgram Nova-3 ‡": "‡ **Deepgram Nova-3** times the last word of 24% of Buckeye "
+                         "test utterances (1,088 of 4,505, clean) to end more than "
+                         "0.3 s after the audio does, by up to 4.1 s. Those times are "
+                         "scored as returned, which raises its word MAE.",
 }
 
 #: Systems published under a vendor's name, and the one variant that is.
@@ -682,7 +706,7 @@ DETAILED_GROUPS = [
     # tier has its own with its own splits. TA@100 replaces the separate
     # >100 ms column -- they were exact complements (TA@100 = 100 - >100ms%),
     # so carrying both printed one number twice.
-    ("Boundary error — label-paired", [
+    ("Boundary error, label-paired", [
         ("MAE (ms)", lambda r: r["mae"].split(" [")[0]),
         ("95% CI", lambda r: f"[{r['mae'].split('[')[1].rstrip(']')}]"
          if "[" in r.get("mae", "") else ""),
@@ -696,7 +720,7 @@ DETAILED_GROUPS = [
     # every row, max deviation 0.1 from rounding), so it is Del% restated.
     # corr(ARR, Del%) = -0.997 on the current results. Carrying both invites
     # reading two independent pieces of evidence where there is one.
-    ("Edit accounting — label-paired", [
+    ("Edit accounting, label-paired", [
         ("Sub (%)", lambda r: r.get("sub_pct")),
         ("Del (%)", lambda r: r.get("del_pct")),
         ("Ins (%)", lambda r: r.get("ins_pct")),
@@ -706,7 +730,7 @@ DETAILED_GROUPS = [
     # the word tables. Which way a system is unbalanced is read from the pair,
     # and one page showing them merged and another split made that a comparison
     # between tables rather than within a cell.
-    ("Boundary detection @20 ms — time-paired", [
+    ("Boundary detection @20 ms, time-paired", [
         ("P/R", lambda r: f"{r.get('bnd_p')}/{r.get('bnd_r')}"
          if r.get("bnd_p") not in (None, "", "\u2014") else None),
         ("F1", lambda r: r.get("bnd_f1")),
@@ -788,25 +812,25 @@ def _rows_of(bysub: dict[str, list[dict]], sub: str) -> list[dict]:
 #: how "Charsiu emits no word tier" survived in this repo for months.
 CAPTION = [
     ("MAE", "mean absolute boundary error, on the matched path only"),
-    ("F1", ("the F1 of the comparison page and of the sweep: a boundary counts "
+    ("F1", ("the F1 of the comparison page and of the sweep. A boundary counts "
            "only when the units on both sides of it match the reference and its "
            "time is within the width, the utterance edges included against "
            "silence")),
     ("P/R, F1 (time only)", ("boundary detection at 20 ms, paired by TIME and "
-                            "ignoring labels — a substitution at the right time "
+                            "ignoring labels, so a substitution at the right time "
                             "is free here")),
-    ("OS", ("over-segmentation, n_hyp/n_gold − 1: positive means more boundaries "
+    ("OS", ("over-segmentation, n_hyp/n_gold − 1. Positive means more boundaries "
            "proposed than exist")),
     ("R-val", ("R-value (Räsänen et al. 2009), which separates the over- from "
               "under-segmentation that F1 scores identically")),
-    ("x̃", ("median absolute error — the typical boundary, unmoved by a few "
+    ("x̃", ("median absolute error, the typical boundary, unmoved by a few "
           "catastrophic ones")),
-    ("δ̄", ("mean *signed* error: negative is early, positive late. Direction, "
+    ("δ̄", ("mean *signed* error. Negative is early and positive is late. Direction, "
           "where MAE and x̃ give only magnitude")),
     ("t=N", "share of boundaries within N ms"),
     ("95% CI", "bootstrap confidence interval over utterances"),
-    ("S / D / I", ("substitutions, deletions, insertions: why a unit left the "
-                  "matched path — relabelled, never emitted, or invented. "
+    ("S / D / I", ("substitutions, deletions and insertions, which say why a unit left the "
+                  "matched path. It was relabelled, never emitted, or invented. "
                   "Normalised by gold count. Phones in the phone tables, words "
                   "in the track-2 one")),
     ("PER", "phone error rate, S + D + I"),
@@ -815,7 +839,7 @@ CAPTION = [
 
 def caption() -> str:
     """The abbreviation key, as bolded term-definition lines."""
-    return "\n".join(f"**{k}**: {v}." for k, v in CAPTION)
+    return "\n".join(f"**{k}**. {v[:1].upper()}{v[1:]}." for k, v in CAPTION)
 
 
 def phone_table_concise(corpus: str, bysub: dict[str, list[dict]]) -> str:
@@ -910,7 +934,7 @@ def phone_table_concise(corpus: str, bysub: dict[str, list[dict]]) -> str:
                           for s in present))
     also = omitted + extra
     if also:
-        L += ["", ("Also evaluated, in the detailed view below: "
+        L += ["", ("The detailed view below also has "
                   f"**{', '.join(also)}**.")]
     return "\n".join(L)
 
@@ -1144,7 +1168,7 @@ def word_table_corpus(corpus: str, bysub: dict, detailed: bool = False,
                  + "</tr>")
     L += ["</tbody>", "</table>"]
     if omitted:
-        L += ["", (f"Also evaluated, in the detailed view: "
+        L += ["", ("The detailed view also has "
                   f"**{', '.join(omitted)}**.")]
     return "\n".join(L)
 
@@ -1183,47 +1207,68 @@ def word_table(data: dict) -> str:
     return "\n".join(L)
 
 
-def completion_note(corpus: str) -> str:
-    """Which systems scored FEWER utterances than the cell contains.
+def completion_note(corpus: str, kind: str = "aligners", tier: str = "phone") -> str:
+    """Which systems returned nothing for some utterances, split by condition.
 
-    A tool that dies on some utterances and completes the rest still gets a
-    row, and that row's MAE is computed over whatever survived -- an easier
-    subset than its competitors were scored on. Nothing in the table said so.
-    MFA drops 8 of 4,513 Buckeye test utterances and MFA 2.0 drops 17 of 4,456
-    on dev; small, but it is exactly the survivorship the ARR/Del columns exist
-    to expose at the phone level, one level up.
+    The scorer charges such an utterance, whether the system wrote no record
+    for it or a record with no words and no phones: boundary F1, WER and PER
+    count all of it as missed. MAE cannot, so a row's MAE is over the
+    utterances that came back, and this says how many did not. Counts are the
+    scorer's own, `n_absent` and `n_empty` in leaderboard.csv.
 
-    Silent when every system is complete -- a note that always fires is
-    ignored. Counts come from leaderboard.csv `n_utts`, the scorer's own
-    accounting, not from line-counting hyp files.
+    This used to read summary/en/<corpus>/, a layout the scorer no longer
+    writes, so it found nothing and always said every system scored every
+    utterance, while MFA had returned nothing for 354 of Buckeye test's 4,513
+    utterances under noise.
+
+    `tier` picks the rows a page shows, those with a phone MAE (`mae_ms`) or
+    a word MAE (`wbe_ms`). Silent when nothing is missing.
     """
     import csv
+    import math
 
+    key = "mae_ms" if tier == "phone" else "wbe_ms"
+    conds = ("origin", "reverb", "noise", "music", "babble")
+    miss: dict[str, dict[tuple, tuple[int, int]]] = {}
+    base = ROOT / "summary" / kind / "en" / corpus
+    for lb in sorted(base.glob("*/*/leaderboard.csv")):
+        sub, cond = lb.parent.parent.name, lb.parent.name
+        for r in csv.DictReader(lb.open()):
+            if r.get("aligner") in SUPPRESS_PUBLIC:
+                continue
+            try:
+                if math.isnan(float(r.get(key) or "nan")):
+                    continue
+            except ValueError:
+                continue
+            absent, empty = int(r.get("n_absent") or 0), int(r.get("n_empty") or 0)
+            n, total = absent + empty, int(r["n_utts"]) + absent
+            cells = miss.setdefault(disp(r["aligner"]), {})
+            # a system scored in two modes shows as one row; report its worse
+            if (sub, cond) not in cells or n > cells[(sub, cond)][0]:
+                cells[(sub, cond)] = (n, total)
     lines = []
-    for lb in sorted((ROOT / "summary" / "en" / corpus).glob("*/leaderboard.csv")):
-        sub = lb.parent.name
-        if "__" in sub:                     # noise cells have their own table
+    for name, cells in sorted(miss.items(), key=lambda kv: kv[0].lower()):
+        if not any(n for n, _ in cells.values()):
             continue
-        rows = [r for r in csv.DictReader(lb.open())
-                if r.get("n_utts") and r.get("aligner") not in SUPPRESS_PUBLIC]
-        if not rows:
-            continue
-        full = max(int(r["n_utts"]) for r in rows)
-        short = sorted({(disp(r["aligner"]), int(r["n_utts"])) for r in rows
-                        if int(r["n_utts"]) < full})
-        if not short:
-            continue
-        # two decimals, because one rounds 4,512/4,513 to "100.0%" -- a system
-        # listed as incomplete must not display as complete
-        lines.append(f"- **{sub_disp(sub)}** ({full:,} utterances): "
-                     + "; ".join(f"{a} {n:,} = {100 * n / full:.2f}%, "
-                                 f"{full - n} missing"
-                                 for a, n in short))
+        per_split = []
+        for sub in subsets_of({s for s, _ in cells}):
+            got = [cells.get((sub, c)) for c in conds]
+            if got[0] is None:
+                continue
+            clean, noisy = got[0], got[1:]
+            text = f"{sub_disp(sub)} {clean[0]:,} of {clean[1]:,} clean"
+            if all(x is not None for x in noisy):
+                text += (", then " + ", ".join(f"{x[0]:,}" for x in noisy)
+                         + " under reverb, noise, music and babble")
+            per_split.append(text)
+        lines.append(f"- **{name}**. " + ". ".join(per_split) + ".")
     if not lines:
-        return "Every system scored every utterance in every split."
-    return ("Systems that scored **fewer utterances than the split contains**. "
-            "Their numbers are computed over the subset that survived, which is "
-            "not the same subset as everyone else's:\n\n" + "\n".join(lines))
+        return "Every system returned output for every utterance in every split."
+    return ("Utterances each system returned **nothing** for, with no record or "
+            "an empty one. Boundary F1, WER and PER count everything in them as "
+            "missed. MAE is over the utterances that came back, so it leaves "
+            "these out.\n\n" + "\n".join(lines))
 
 
 def coverage_table(data: dict, asr: dict | None = None) -> str:
@@ -1254,7 +1299,7 @@ def coverage_table(data: dict, asr: dict | None = None) -> str:
         names = next(iter(sets))
         splits = ", ".join(sub_disp(s, c) for c, s in per_split)
         out = (f"All **{len(names)}** aligner-track systems are scored on all "
-               f"**{len(per_split)}** splits ({splits}):\n\n"
+               f"**{len(per_split)}** splits ({splits}).\n\n"
                f"{', '.join(names)}.")
         return out + _track2_sentence(asr)
 
@@ -1279,9 +1324,9 @@ def _track2_sentence(asr: dict | None) -> str:
                    key=str.lower)
     if not names:
         return ""
-    return ("\n\nScored separately in **track 2** — timestamped ASRs, which decode "
-            "their own words rather than being given the transcript, so the two "
-            "tracks never share a leaderboard: " + ", ".join(names) + ".")
+    return ("\n\nScored separately in **track 2** are the timestamped ASRs, which "
+            "decode their own words rather than being given the transcript, so the "
+            "two tracks never share a leaderboard. They are " + ", ".join(names) + ".")
 
 
 def noise_table(clean: dict, noisy: dict, key: str = "mae",
@@ -1431,6 +1476,32 @@ WORD_SUMMARY_METRICS = [
 ]
 
 
+#: report.md key -> leaderboard.csv column, for the metrics the Noisy column
+#: averages. The F1 keys carry their tolerance and gain the unit.
+_LB_COLUMN = {"mae": "mae_ms", "wbe": "wbe_ms", "per": "per", "wer": "wer"}
+_LB_ROWS: dict[str, list] = {}
+
+
+def _exact(kind: str, corpus: str, sub: str, cond: str, tool: str, mode: str | None,
+           key: str) -> float | None:
+    """One cell's value from leaderboard.csv, unrounded, or None."""
+    import csv
+
+    col = _LB_COLUMN.get(key) or (f"{key}ms" if key.endswith("_20") else None)
+    if col is None:
+        return None
+    path = ROOT / "summary" / kind / "en" / corpus / sub / cond / "leaderboard.csv"
+    if str(path) not in _LB_ROWS:
+        _LB_ROWS[str(path)] = list(csv.DictReader(path.open())) if path.is_file() else []
+    for r in _LB_ROWS[str(path)]:
+        if r.get("aligner") == tool and (not mode or r.get("mode") == mode):
+            try:
+                return float(r[col])
+            except (KeyError, ValueError):
+                return None
+    return None
+
+
 def noise_summary_table(clean: dict, noisy: dict, corpus_only: str,
                         metrics=NOISE_SUMMARY_METRICS,
                         rank_key: str = "mae",
@@ -1489,6 +1560,26 @@ def noise_summary_table(clean: dict, noisy: dict, corpus_only: str,
             for _label, key, _fmt in metrics:
                 base = val(clean, corpus, s, t, key)
                 deg = [val(noisy, corpus, f"{s}__{c}", t, key) for c in CONDS]
+                if all(v is not None for v in deg):
+                    # The mean of the UNROUNDED values, as the paper takes it.
+                    # report.md holds each condition already rounded, and
+                    # averaging those moved the last digit of 81 cells
+                    # against the paper.
+                    mode = None
+                    for r in noisy.get(corpus, {}).get(f"{s}__{CONDS[0]}", []):
+                        # the row val() read: the first of this tool's rows
+                        # whose cell parses, as a word-only mode prints a dash
+                        try:
+                            float(str(r[key]).split(" [")[0])
+                        except (KeyError, ValueError, IndexError):
+                            continue
+                        if r["aligner"] == t:
+                            mode = r.get("mode")
+                            break
+                    exact = [_exact("timestamp_asrs" if pipeline else "aligners",
+                                    corpus, s, c, t, mode, key) for c in CONDS]
+                    if all(v is not None for v in exact):
+                        deg = exact
                 row += [base, None if any(v is None for v in deg)
                         else sum(deg) / len(deg)]
             cells[s] = row
@@ -1542,7 +1633,7 @@ def noise_summary_table(clean: dict, noisy: dict, corpus_only: str,
                   if any(a in {r["aligner"] for r in clean[corpus].get(s, [])}
                          for s in subs))
     if also:
-        L += ["", ("Also evaluated, in [Details](Details.md): "
+        L += ["", ("[Details](Details.md) also has "
                   f"**{', '.join(also)}**.")]
     return "\n".join(L)
 
@@ -1750,7 +1841,7 @@ def detection_by_condition(clean: dict, noisy: dict, corpus: str,
     # The phone tier gets its sweep from distribution_by_condition. The word
     # tier had no such page, so it goes here, into a block that already exists.
     if tier == "word":
-        grids.append(("Tolerance accuracy — share of word boundaries "
+        grids.append(("Tolerance accuracy, share of word boundaries "
                       "within t ms (%)", WORD_TA_METRICS))
         grids.append(("Word boundary F1 at the same widths, labels checked "
                       "(0–1)", WORD_F1_SWEEP_METRICS))
@@ -1768,11 +1859,11 @@ T2_WER = [("WER", "wer", "{:.1f}"), ("S", "w_sub_pct", "{:.1f}"),
 def track2_by_condition(clean: dict, noisy: dict, corpus: str) -> str:
     return _captioned_grids(clean, noisy, corpus, (
         ("Word MAE (ms)", T2_MAE),
-        ("Recognition — WER, and the edits behind it (%)", T2_WER),
-        ("Word detection @20 ms, time only — precision / recall and F1 (0–1)",
+        ("Recognition, WER and the edits behind it (%)", T2_WER),
+        ("Word detection @20 ms, time only, precision / recall and F1 (0–1)",
          WORD_PRF_METRICS),
         ("Over-segmentation and R-value (ratio)", WORD_OSR_METRICS),
-        ("Tolerance accuracy — share of word boundaries within t ms (%)",
+        ("Tolerance accuracy, share of word boundaries within t ms (%)",
          WORD_TA_METRICS),
         ("Word boundary F1 at the same widths, labels checked (0–1)",
          WORD_F1_SWEEP_METRICS),
@@ -1782,7 +1873,7 @@ def track2_by_condition(clean: dict, noisy: dict, corpus: str) -> str:
 def distribution_by_condition(clean: dict, noisy: dict, corpus: str) -> str:
     return _captioned_grids(clean, noisy, corpus, (
         ("Median x̃ and mean signed error δ̄ (ms)", DIST_METRICS),
-        ("Tolerance accuracy — share of boundaries within t ms (%)",
+        ("Tolerance accuracy, share of boundaries within t ms (%)",
          TA_METRICS),
         ("Boundary F1 at the same widths, labels checked (0–1)",
          F1_SWEEP_METRICS),
@@ -1813,7 +1904,7 @@ def _space_after_tables(body: str) -> str:
 
 def _flag_notes(body: str) -> str:
     """Append the note for every flag the table actually uses."""
-    notes = [n for glyph, n in FLAG_NOTE.items() if glyph in body]
+    notes = [n for label, n in FLAG_NOTE.items() if label in body]
     return body + ("\n" + "\n\n".join(notes) + "\n" if notes else "")
 
 
@@ -1848,6 +1939,8 @@ BLOCK_DOC = {
     # aligners, word tier -- every track-1 system reaches this
     "word-timit": "gold/word/timit/README.md",
     "word-buckeye": "gold/word/buckeye/README.md",
+    "completion-word-timit": "gold/word/timit/README.md",
+    "completion-word-buckeye": "gold/word/buckeye/README.md",
     "word-timit-detailed": "gold/word/timit/Details.md",
     "word-buckeye-detailed": "gold/word/buckeye/Details.md",
     "noise-word-timit-detailed": "gold/word/timit/Details.md",
@@ -1860,6 +1953,11 @@ BLOCK_DOC = {
     "completion-buckeye": "gold/phone/buckeye/README.md",
     "caption-timit": "gold/phone/timit/Details.md",
     "caption-buckeye": "gold/phone/buckeye/Details.md",
+    # The same key on the track-2 Details pages. A copy sat there unfilled,
+    # because one ident can go to one page, and it drifted from the phone
+    # pages' as the definitions changed.
+    "caption2-timit": "asr/word/timit/Details.md",
+    "caption2-buckeye": "asr/word/buckeye/Details.md",
     "noise-timit-detailed": "gold/phone/timit/Details.md",
     "noise-buckeye-detailed": "gold/phone/buckeye/Details.md",
     "noise-f1-timit-detailed": "gold/phone/timit/Details.md",
@@ -1872,6 +1970,8 @@ BLOCK_DOC = {
     # track 2, word tier -- every track-2 system reaches this
     "word2-timit": "asr/word/timit/README.md",
     "word2-buckeye": "asr/word/buckeye/README.md",
+    "completion-word2-timit": "asr/word/timit/README.md",
+    "completion-word2-buckeye": "asr/word/buckeye/README.md",
     "track2-timit-detailed": "asr/word/timit/Details.md",
     "track2-buckeye-detailed": "asr/word/buckeye/Details.md",
 
@@ -1971,8 +2071,14 @@ def main(argv: list[str] | None = None) -> int:
                                                    corpus_only="buckeye"),
         "caption-timit": caption(),
         "caption-buckeye": caption(),
+        "caption2-timit": caption(),
+        "caption2-buckeye": caption(),
         "completion-timit": completion_note("timit"),
         "completion-buckeye": completion_note("buckeye"),
+        "completion-word-timit": completion_note("timit", tier="word"),
+        "completion-word-buckeye": completion_note("buckeye", tier="word"),
+        "completion-word2-timit": completion_note("timit", "timestamp_asrs", "word"),
+        "completion-word2-buckeye": completion_note("buckeye", "timestamp_asrs", "word"),
         # Clean AND the mean of the four degradations, the same grid the gold
         # word page uses. The clean-only pivot this replaces could not show that
         # a system's ranking changes under noise -- the benchmark's central
@@ -2009,7 +2115,7 @@ def main(argv: list[str] | None = None) -> int:
         for ident in idents:
             text, ok = replace_block(text, ident, blocks[ident])
             if ok:
-                print(f"  filled {ident}: "
+                print(f"  {'checked' if a.check else 'filled'} {ident}: "
                       f"{blocks[ident].count(chr(10)) - 1} rows -> {rel}")
             else:
                 missing.append(f"{ident} (no marker in {rel})")

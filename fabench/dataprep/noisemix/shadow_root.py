@@ -34,8 +34,9 @@ noisy version:
     <shadow>/TRAIN/DR1/FCJF0/SA1.wav  -> symlink to noisy/<type>/<utt>.wav
 
 Ingest, utterance slicing, split lists and gold all then work unmodified, and
-a config only changes ``root:``. This works because the noise pipeline
-preserves duration to the millisecond, so the clean gold stays valid.
+a config only changes ``root:``. This works because, once the recipe's pads
+are cut off (``_trim_audio``), the noisy audio is on the clean timeline sample
+for sample and exactly as long, so the clean gold stays valid.
 
 Two layout problems it solves, which is the whole reason it exists:
 
@@ -78,8 +79,17 @@ def _link(src: Path, dst: Path) -> None:
 PAD_HEAD_S = 0.475
 
 
-def _trim_audio(src: Path, dst: Path, head_s: float = PAD_HEAD_S) -> bool:
-    """Copy `src` to `dst` with the leading pad removed.
+def _clean_wav(gold: Path) -> Path | None:
+    """The clean recording beside a gold file, whatever the case of its suffix."""
+    for ext in (".WAV", ".wav"):
+        p = gold.with_suffix(ext)
+        if p.is_file():
+            return p
+    return None
+
+
+def _trim_audio(src: Path, dst: Path, clean: Path, head_s: float = PAD_HEAD_S) -> bool:
+    """Copy `src` to `dst` on the clean recording's timeline and at its length.
 
     THE NOISY AUDIO IS ON A DIFFERENT TIMELINE FROM FA-Bench's GOLD, and a
     symlink would silently score every boundary `head_s` late.
@@ -94,21 +104,49 @@ def _trim_audio(src: Path, dst: Path, head_s: float = PAD_HEAD_S) -> bool:
 
     Cross-correlating the raw source against the trimmed noisy file gives a
     best lag of 0 samples, so trimming the head restores sample-exact
-    alignment. The tail pad is left alone -- it extends past the last boundary
-    and costs nothing.
+    alignment.
+
+    THE TAIL GOES TOO, so a noisy file is exactly as long as its clean source.
+    This used to cut only the head, on the view that the tail lies past the
+    last boundary and costs nothing. It costs. The noise is mixed over the
+    whole padded length, so the tail is 475 ms of noise with no speech in it,
+    and a TIMIT utterance is a whole file, so the tail follows the last word
+    directly. Any system that runs its last unit to the end of the audio was
+    charged about 475 ms at the utterance end: MAPS, Charsiu, FALCON and NeuFA
+    on nearly every noisy utterance, BFA, MFA, Olign and IBM on some. Clipping
+    the hypotheses at the clean duration alone took MAPS's TIMIT noisy word
+    MAE from 171 to 132 ms. Buckeye was spared only because its utterances are
+    sliced out of the recording at the clean segment bounds and never reach
+    the tail. Measured before cutting: every TIMIT file in all four conditions
+    is the clean length + 15200 samples at 16 kHz, 7600 at each end.
     """
+    import soundfile as sf
+
     dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.exists() and dst.stat().st_size > 0:
         return True
+    sr = sf.info(str(src)).samplerate
+    c = sf.info(str(clean))
+    start = round(head_s * sr)
+    keep = round(c.frames * sr / c.samplerate)      # clean length, in src samples
     r = subprocess.run(
         ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(src),
-         "-af", f"atrim=start={head_s},asetpts=PTS-STARTPTS",
+         "-af", (f"atrim=start_sample={start}:end_sample={start + keep},"
+                 "asetpts=PTS-STARTPTS"),
          "-ar", "16000", "-ac", "1", str(dst)],
         capture_output=True, text=True, check=False)
-    return r.returncode == 0 and dst.exists() and dst.stat().st_size > 0
+    if r.returncode != 0 or not dst.exists() or dst.stat().st_size == 0:
+        return False
+    # A source shorter than head + clean would come out short, and nothing
+    # downstream would notice. Refuse it here, where the count is known.
+    want = round(c.frames * 16000 / c.samplerate)
+    if abs(sf.info(str(dst)).frames - want) > (0 if sr == 16000 else 1):
+        dst.unlink()
+        return False
+    return True
 
 
-def _run_trims(jobs: list[tuple[Path, Path]], nj: int = 16) -> None:
+def _run_trims(jobs: list[tuple[Path, Path, Path]], nj: int = 16) -> None:
     """Trim every queued file. ffmpeg is the bottleneck, so run nj at a time."""
     if not jobs:
         return
@@ -116,14 +154,15 @@ def _run_trims(jobs: list[tuple[Path, Path]], nj: int = 16) -> None:
     with ThreadPoolExecutor(max_workers=nj) as ex:
         for ok in ex.map(lambda j: _trim_audio(*j), jobs):
             bad += 0 if ok else 1
-    print(f"   trimmed {len(jobs) - bad}/{len(jobs)} (head {PAD_HEAD_S}s removed)"
+    print(f"   trimmed {len(jobs) - bad}/{len(jobs)} (head {PAD_HEAD_S}s removed,"
+          " cut to the clean length)"
           + (f", {bad} FAILED" if bad else ""))
 
 
 def timit(clean: Path, noisy: Path, out: Path) -> tuple[int, int, int]:
     """utt-id ``dr1_felc0_si1386`` <-> ``<split>/DR1/FELC0/SI1386.*``."""
     linked = missing = excluded = 0
-    jobs: list[tuple[Path, Path]] = []
+    jobs: list[tuple[Path, Path, Path]] = []
     for phn in sorted(clean.rglob("*.PHN")) or sorted(clean.rglob("*.phn")):
         rel = phn.relative_to(clean)              # TRAIN/DR1/FCJF0/SA1.PHN
         parts = rel.parts
@@ -143,13 +182,18 @@ def timit(clean: Path, noisy: Path, out: Path) -> tuple[int, int, int]:
             else:
                 missing += 1
             continue
+        # the clean recording sets the length the noisy one is cut to
+        cw = _clean_wav(phn)
+        if cw is None:
+            missing += 1
+            continue
         # gold + transcript come from the REAL corpus (symlink, free); audio is
         # TRIMMED, not symlinked -- see _trim_audio for why a symlink is wrong.
         for ext in (".PHN", ".WRD", ".TXT", ".phn", ".wrd", ".txt"):
             s = phn.with_suffix(ext)
             if s.is_file():
                 _link(s, out / rel.with_suffix(ext))
-        jobs.append((wav, out / rel.with_suffix(".wav")))
+        jobs.append((wav, out / rel.with_suffix(".wav"), cw))
         linked += 1
     _run_trims(jobs)
     return linked, missing, excluded
@@ -158,19 +202,20 @@ def timit(clean: Path, noisy: Path, out: Path) -> tuple[int, int, int]:
 def buckeye(clean: Path, noisy: Path, out: Path) -> tuple[int, int, int]:
     """Per-recording: link .phones/.words from clean, .wav from noisy."""
     linked = missing = 0
-    jobs: list[tuple[Path, Path]] = []
+    jobs: list[tuple[Path, Path, Path]] = []
     for ph in sorted(clean.rglob("*.phones")):
         rel = ph.relative_to(clean)
         rec = ph.stem
         wav = noisy / f"{rec}.wav"
-        if not wav.is_file():
+        cw = _clean_wav(ph)
+        if not wav.is_file() or cw is None:
             missing += 1
             continue
         for ext in (".phones", ".words", ".txt", ".log"):
             s = ph.with_suffix(ext)
             if s.is_file():
                 _link(s, out / rel.with_suffix(ext))
-        jobs.append((wav, out / rel.with_suffix(".wav")))
+        jobs.append((wav, out / rel.with_suffix(".wav"), cw))
         linked += 1
     _run_trims(jobs)
     return linked, missing, 0

@@ -185,14 +185,31 @@ class CloudASR(AlignerAdapter):
         self._key_refreshable = bool(self.params.get("access_token_cmd")) and \
             self.key.startswith("Bearer ")
         self.token_ttl_s = float(self.params.get("token_ttl_s", 2400))
+        # An account-specific value can come from the environment instead of the
+        # tracked recipe: `project_id_env: GOOGLE_STT_PROJECT_ID` reads Google's
+        # project from .fabench.env. It lands in params before the options are
+        # built, so the cache key is the same as when the recipe wrote it out.
+        for k in _OPT_KEYS:
+            env_name = self.params.get(f"{k}_env")
+            if not env_name or k in self.params:
+                continue
+            if not os.environ.get(env_name):
+                # Silently leaving it out is worse than failing: for Google a
+                # missing project_id means the v1 API, a different system.
+                raise AlignerError(f"{self.name}: params.{k} comes from ${env_name}, "
+                                   f"which is not set (see .fabench.env.example)")
+            self.params[k] = os.environ[env_name]
         self.opts = {k: self.params[k] for k in _OPT_KEYS if k in self.params}
         self._call_opts = dict(self.opts) | {
             k: self.params[k] for k in _BEHAVIOUR_KEYS if k in self.params}
         self.timeout_s = float(self.params.get("timeout_s") or 300)
         self.retries = int(self.params.get("retries", 5))
         self.concurrency = max(1, int(self.params.get("concurrency", 4)))
+        # None is unlimited and 0 is NO calls, a cache-only replay. 0 used to
+        # read as unlimited, so a replay that was meant to stay offline
+        # re-bought 2,180 Speechmatics responses on a changed cache key.
         self.max_calls = self.params.get("max_calls")
-        self.max_calls = int(self.max_calls) if self.max_calls else None
+        self.max_calls = None if self.max_calls is None else int(self.max_calls)
         # Requests per minute, client side. CONCURRENCY DOES NOT BOUND THIS.
         # A cache hit returns at memory speed, so a mostly-cached re-run cycles
         # the pool far faster than a cold one and the few real calls bunch up:

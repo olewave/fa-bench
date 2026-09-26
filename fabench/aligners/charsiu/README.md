@@ -1,14 +1,15 @@
 # Charsiu aligner
 
-Wav2Vec2 frame-classifier forced aligner (`charsiu/en_w2v2_fc_10ms`), 10 ms grid,
-phone-level. One of the MFA-2026 paper's Table-5 baselines.
+A wav2vec2 frame-classifier forced aligner (`charsiu/en_w2v2_fc_10ms`) on a
+10 ms grid. It is one of the MFA-2026 paper's Table 5 baselines.
 
-- **Modes:** A + B. **Granularity:** phone. **Confidence:** yes (frame posteriors).
+- **Modes.** A and B. **Granularity.** Word and phone. **Confidence.** Yes
+  (frame posteriors).
 
-## Requirements
+## Install
 
 ```bash
-pip install git+https://github.com/lingjzhu/charsiu
+evals/aligners/charsiu/download_and_install.sh   # its own environment, pinned commit
 ```
 
 ## Config
@@ -18,8 +19,12 @@ pip install git+https://github.com/lingjzhu/charsiu
   adapter: charsiu
   enabled: true
   modes: [A, B]
-  granularity: [phone]
+  granularity: [word, phone]
   params: { model: charsiu/en_w2v2_fc_10ms, device: cuda }
 ```
 
-Phones are IPA → `charsiu`/`ipa` normalization source.
+Phones are ARPABET, so the normalization source is `arpabet`.
+
+Charsiu emits `[sil]` tokens in its word tier. The scorer drops silence
+pseudo-words on both sides before matching words, so they never count as
+insertions.
