@@ -7,6 +7,18 @@ be compared only when no such change lies between them.
 
 ## [Unreleased]
 
+### Added
+
+- `tools/ci.sh` runs the three CI jobs on a clean export of HEAD, in a
+  Python 3.12 environment holding only what CI installs. GitHub and GitLab
+  call the same script, and ruff is pinned to 0.16.9.
+
+### Fixed
+
+- Two workers kept an import they no longer use, which failed the lint job.
+- `evals/README.md` again says the top-level `run_all.sh` uses the same
+  option parser. The house-style rewrite had dropped it.
+
 ## [1.1.0] - 2026-09-26
 
 Records snapshot `records/202609/`. This release was first tagged on
