@@ -284,7 +284,7 @@ an endpoint, the model is the one requested and the dates are those of the
 calls behind the published rows. Regenerate with `evals/gen_provenance.py`.
 
 <!-- BEGIN GENERATED: provenance -->
-**FA-Bench release** commit `b8efca42032a`, branch `paper` (2026-09-26) + uncommitted changes
+**FA-Bench release** `v1.1.0`
 
 | System | Version | Commit | Released | Checkpoint |
 |---|---|---|---|---|
