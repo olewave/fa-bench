@@ -5,6 +5,9 @@
 #   Settings > Merge requests > "Pipelines must succeed"
 # in the GitLab project (a project setting, not something the repo can enforce).
 # A CI runner must be available to the project for pipelines to execute.
+#
+# Each job's steps live in tools/ci.sh, shared with .github/workflows/ci.yml and
+# runnable locally before a push.
 
 default:
   image: python:3.12
@@ -28,10 +31,8 @@ stages:
 # with no GPU, aligner models, corpora, or micromamba env.
 test:
   stage: test
-  before_script:
-    - python -m pip install -e ".[test]"
   script:
-    - python -m pytest -q
+    - bash tools/ci.sh test
 
 # End-to-end gate: the synthetic-oracle selftest builds known-answer gold/hyp
 # pairs and drives every metric family through the real pipeline. Needs no
@@ -39,17 +40,13 @@ test:
 selftest:
   stage: test
   needs: []
-  before_script:
-    - python -m pip install -e .
   script:
-    - python -m fabench selftest
+    - bash tools/ci.sh selftest
 
 # Style check — advisory (does not block merges).
 lint:
   stage: test
   needs: []
   allow_failure: true
-  before_script:
-    - python -m pip install ruff
   script:
-    - ruff check .
+    - bash tools/ci.sh lint
