@@ -1,5 +1,9 @@
 # Buckeye — word-level, forced aligners
 
+> **Superseded.** This August 2026 snapshot was scored under earlier rules and
+> on different splits, so its numbers cannot be compared with later snapshots.
+> See [September 2026](../../../../../202609/en/README.md#which-subset-the-numbers-cover) for what changed.
+
 Track 1: every system here is handed the reference transcript, so only its
 timing is measured. Systems that decode their own words are scored
 separately under `records/<yyyymm>/en/asr/word/buckeye/`.
