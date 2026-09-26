@@ -1,76 +1,74 @@
 # NeuFA aligner
 
-> ## ✋ Wanted: a NeuFA checkpoint. This is the one row the benchmark cannot fill itself.
+NeuFA is neural end-to-end forced alignment with a bidirectional attention
+mechanism (Li et al., ICASSP 2022,
+[arXiv:2203.16838](https://arxiv.org/abs/2203.16838)). ASR-style and
+TTS-style learning share one attention matrix, and per-phone [left, right]
+boundaries are decoded from the attention weights on a 10 ms frame grid.
+
+- **Modes.** A (text-driven, through its own cmudict plus sequitur G2P).
+  **Granularity.** Word and phone. **Confidence.** None, since boundaries are
+  threshold-decoded.
+
+## Where its numbers come from
+
+**The NeuFA rows in the results tables are scored from output its authors
+produced**, with a checkpoint they trained for this benchmark,
+`neufa-fabench-220k.pt` (SHA-256 `68b163eb…`), which is not released. They
+ran the model and sent the hypothesis files, and FA-Bench scored them exactly
+as it scores every other system. That checkpoint follows the repo's own
+Buckeye division, 36 of 40 speakers, so 7 of the 8 speakers in each of
+FA-Bench's Buckeye splits are in its training set. The records flag its
+Buckeye rows for that reason. It does not train on TIMIT.
+
+The recipe here loads an earlier checkpoint the authors supplied,
+`neufa_en.pt`. They say it is wrong, so none of its output is published, and
+running the recipe does not reproduce the published rows.
+
+> ## ✋ Wanted, a public NeuFA checkpoint
 >
-> NeuFA has **no published checkpoint** — the authors ship source only, so
-> running it means training it, and that is why it has no row in the results
-> tables. If you train one, it goes in the benchmark.
->
-> **Train on the train splits, and the leakage problem disappears.** FA-Bench
-> scores on held-out splits that are **speaker-disjoint** from train — verified,
-> zero overlap in both corpora:
+> Nobody outside can reproduce the NeuFA rows, because the checkpoint behind
+> them is unreleased. A checkpoint trained on FA-Bench's train splits would
+> fix that, and it would be held out as well. FA-Bench scores on splits that
+> are **speaker-disjoint** from train, with zero overlap in both corpora.
 >
 > | corpus | train | evaluated on | speaker overlap |
 > |---|---|---|---|
-> | TIMIT | 3,696 utts / 462 spk | dev (50 spk), core_test (24), full_test (168) | **0** |
+> | TIMIT | 3,696 utts / 462 spk | dev (50 spk), core_test (24) | **0** |
 > | Buckeye | 13,473 utts / 24 spk | dev (8 spk), test (8) | **0** |
 >
-> The lists are in `datasets/languages/en/{timit,buckeye}/split/train.list` and are the
-> definition of the split — read membership from them, not from a speaker-id
-> pattern. A checkpoint trained this way is on the same footing as every other
-> row, and reports a genuinely held-out number.
+> The lists are in `datasets/languages/en/{timit,buckeye}/split/train.list`
+> and are the definition of the split. Read membership from them rather than
+> from a speaker-id pattern. A checkpoint trained this way is on the same
+> footing as every other row, and reports a held-out number.
 >
-> **This is not the recipe in the NeuFA repo, and the split has to govern BOTH
-> ends.** The repo defines its own train/test division (Buckeye by speaker-id
-> pattern — everything except `s10*/s20*/s30*/s40*`) and finetunes against it,
-> which overlaps 36 of 40 speakers with what FA-Bench scores. Replace that
-> definition with FA-Bench's lists on the training side; the evaluation side is
-> already handled, because the harness reads membership from the same `.list`
-> files and never from a speaker pattern.
->
-> Both ends matter for the same reason. Training on our split while evaluating
-> on the repo's would report a number for a different test set than the tables
-> use; evaluating on ours while training on the repo's would report a leaked
-> one. Only using the same definition on both sides gives a row that means what
-> the column header says.
+> **This is not the recipe in the NeuFA repo, and the split has to govern
+> both ends.** The repo defines its own train/test division (Buckeye by
+> speaker-id pattern, everything except `s10*/s20*/s30*/s40*`) and finetunes
+> against it. Replace that definition with FA-Bench's lists on the training
+> side. The evaluation side is already handled, because the harness reads
+> membership from the same `.list` files and never from a speaker pattern.
 >
 > ### What to send
 >
-> 1. the exported checkpoint (`python misc/export.py <ckpt> neufa.pt`) at a URL
->    we can fetch, or a PR pointing `params.model_path` at where it lives;
-> 2. the training config — pretrain corpus, epochs, and which of
->    `pretrain`/`finetune`/`semi` you ran, so the row can carry its provenance
->    the way every other row does;
+> 1. the exported checkpoint (`python misc/export.py <ckpt> neufa.pt`) at a
+>    URL we can fetch, or a PR pointing `params.model_path` at where it lives,
+> 2. the training config, with the pretrain corpus, the epochs, and which of
+>    `pretrain`, `finetune` and `semi` you ran, so the row can carry its
+>    provenance the way every other row does,
 > 3. anything you had to change in the adapter to load it.
 >
-> We add the `evals/aligners/neufa/` recipe, run the sweep, and the row appears in
-> the phone and word tables with its training data stated. Open an issue or PR —
-> and if you get a number, it belongs in the tables whether it beats MFA or not.
-> A published negative result is worth as much here as a win.
-
-NeuFA — neural end-to-end forced alignment with a bidirectional attention
-mechanism (Li et al., ICASSP 2022, [arXiv:2203.16838](https://arxiv.org/abs/2203.16838)).
-ASR- and TTS-style learning share one attention matrix; per-phone
-[left, right] boundaries are decoded from the attention weights on a 10 ms
-frame grid. The paper reports, on its Buckeye test split against its MFA
-baseline: **word MAE 23.7 ms vs 25.8**, **phone MAE 15.7 ms vs 18.0**
-(medians 9.0 vs 12.3 and 9.1 vs 10.0). Those are the authors' numbers under
-their protocol — not FA-Bench results.
-
-- **Modes:** A (text-driven via its own cmudict+sequitur G2P). **Granularity:**
-  word + phone. **Confidence:** no (boundaries are threshold-decoded).
+> Open an issue or a PR. If you get a number, it belongs in the tables
+> whether it beats MFA or not. A published negative result is worth as much
+> here as a win.
 
 ## Requirements
 
-```bash
-git clone https://github.com/thuhcsi/NeuFA tools/NeuFA
-cd tools/NeuFA && git submodule update --init --recursive
-pip install torch librosa sequitur-g2p        # into the env running FA-Bench
-```
-
-**No pretrained checkpoint is distributed.** Train per the repo README
-(LibriSpeech pretrain → Buckeye finetune/semi) and export with
-`python misc/export.py /path/to/checkpoint neufa.pt`; point
+The recipe is `evals/aligners/neufa/download_and_install.sh`. It builds the
+environment and clones the repo, and you supply the checkpoint yourself,
+since none is distributed. Train per the repo README (LibriSpeech pretrain,
+then Buckeye finetune or semi) and export with
+`python misc/export.py /path/to/checkpoint neufa.pt`. Point
 `params.model_path` at the exported file. The adapter drives the repo's own
 `inference.NeuFA` class, so the checkpoint must be one `inference.py` itself
 can load.
@@ -85,75 +83,27 @@ can load.
   granularity: [word, phone]
   emits_confidence: false
   params:
-    repo_path: tools/NeuFA
-    model_path: tools/NeuFA/neufa.pt
-    device: cuda
+    venv: venv
+    repo_path: repo
+    model_path: repo/neufa.pt      # your exported checkpoint
 ```
 
-Phones are CMU ARPABET with stress digits → `arpabet` normalization source.
+Phones are CMU ARPABET with stress digits, so the normalization source is
+`arpabet`.
 
 ## Caveats
 
-- **The repo's recipe leaks; FA-Bench's train split does not.** The published
-  recipe finetunes on the Buckeye *train* speakers as the repo defines them
-  (everything except `s10*/s20*/s30*/s40*`), which against full-Buckeye gold is
-  36 of 40 speakers. FA-Bench does not score full-Buckeye: it scores `dev` and
-  `test`, 8 speakers each, with **zero** overlap against
-  `datasets/languages/en/buckeye/split/train.list`. Train on that list and the number is
-  held-out. Report training provenance either way (same policy as MAPS's
-  TIMIT+Buckeye overlap).
-- **Boundaries are not constrained** to be positive-length or non-overlapping
-  (the repo README says so itself). The adapter drops degenerate
-  (`right <= left`) phones; word spans are first-phone-left → last-phone-right,
-  matching the repo's own `inference.py`.
+- **Boundaries are not constrained** to be positive-length or
+  non-overlapping, as the repo README says itself. Neighbouring words and
+  phones overlap in the authors' output, and the records say how the scorer
+  reads a boundary in that case. The adapter drops degenerate
+  (`right <= left`) phones. Word spans run from the first phone's left edge to
+  the last phone's right edge, matching the repo's own `inference.py`.
 - The repo uses generic top-level module names (`inference`, `model`,
-  `hparams`, `data`, `g2p`) which are put on `sys.path` — same shadowing
-  caveat as the Charsiu adapter.
+  `hparams`, `data`, `g2p`). The adapter runs it in its own venv through a
+  worker, so those names never meet FA-Bench's own modules.
 
-## Status: NOT EVALUATED — no checkpoint exists, not a bug and not a blocker
-
-There is no NeuFA row in the results tables. That is a decision, not an
-oversight, and there is no `evals/aligners/neufa/` recipe for the same reason —
-nothing a sweep could run.
-
-**No checkpoint exists.** Verified against the GitHub API on 2026-08-07, not
-just inferred from the README:
-
-| Probe | Result |
-|---|---|
-| `/repos/thuhcsi/NeuFA/releases` | `[]` — no release assets |
-| `/repos/thuhcsi/NeuFA/tags` | `[]` |
-| repo size | **50 KB** — source only; a `.pt` would be tens of MB |
-| `pushed_at` | 2025-01-17 (dormant, not abandoned; 5 open issues) |
-
-The repo's own instructions confirm it: set `hparams.py` to `pretrain` /
-`finetune` / `semi`, train, then export with `misc/export.py`. Running NeuFA
-means training NeuFA.
-
-**Training it THE DOCUMENTED WAY would not produce a comparable number** —
-though training it on FA-Bench's train splits would; see the top of this page.
-The published recipe finetunes on Buckeye, so a recipe-trained checkpoint has
-seen 36 of the 40 speakers in FA-Bench's Buckeye gold — including the test
-split. It would be scoring on data it trained on. That is a different quantity
-from what every other row in the table reports, and putting the two side by
-side would mislead however the number came out.
-
-Ways forward, best first:
-
-1. **Train on FA-Bench's train splits** — the ask at the top of this page.
-   Speaker-disjoint from everything it is scored on, so the number is genuinely
-   held-out and ranks beside every other row. This is the footing Olign is on.
-   It did not exist as an option when the paragraph above was written, which
-   assumed full-corpus gold, where any Buckeye finetune leaks.
-2. **LibriSpeech-only checkpoint** — also leakage-free and closest to the
-   paper's pretrain stage, but it skips the finetune the published figures
-   depend on and will likely trail them.
-3. **Leave it unevaluated** (current). Cite the paper's own figures as the
-   authors' numbers under the authors' protocol, never as FA-Bench results.
-4. **Repo-recipe checkpoint, flagged** — cheapest path to a number, but it can
-   only be reported as train/test-overlapping and cannot be ranked.
-
-For reference, the paper reports on its own Buckeye test split against its own
-MFA baseline: word MAE **23.7 ms vs 25.8**, phone MAE **15.7 ms vs 18.0**
-(medians 9.0 vs 12.3, 9.1 vs 10.0). Those are the authors' numbers under their
-protocol — not FA-Bench results, and not comparable to the tables here.
+For reference, the paper reports on its own Buckeye test split against its
+own MFA baseline **word MAE 23.7 ms vs 25.8** and **phone MAE 15.7 ms vs
+18.0** (medians 9.0 vs 12.3 and 9.1 vs 10.0). Those are the authors' numbers
+under their protocol, and they are not comparable to the tables here.
