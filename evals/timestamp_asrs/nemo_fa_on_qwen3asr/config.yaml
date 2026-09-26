@@ -28,5 +28,4 @@ params:
   timeout_s: null
   env:
     LD_LIBRARY_PATH: null
-    HF_HOME: /ndata/hf
   requires_transcript_hyp: true

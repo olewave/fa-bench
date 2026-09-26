@@ -45,7 +45,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from fabench.envfile import load_env_file
 from fabench.paths import ORIGIN, cell_dir
+
+# .fabench.env first, as evals/gen_config.py does: run from a shell that had
+# not sourced it, the roots below read as None and building a noisy config
+# failed on a TypeError.
+load_env_file()
 
 # Machine-specific roots come from the environment (see evals/gen_config.py).
 SHADOW = Path(os.environ.get("FABENCH_SHADOW", "data/shadow"))

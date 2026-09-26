@@ -20,7 +20,10 @@ version: v1
 scope:
   language: english              # JA/KO/tonal/code-switch are deferred
   register: [read, spontaneous]  # TIMIT read + Buckeye spontaneous
-  channel: additive_noise_only   # reverb/codec/far-field/overlap deferred
+  # The in-process mixer (`fabench run`) adds noise only. The published reverb
+  # condition is built outside it, by datasets/prep/augment.sh; codec,
+  # far-field and overlap are deferred.
+  channel: additive_noise_only
   gold_policy: reuse_existing    # no new annotation in v1
   human_ceiling: cited_only      # ~10-20 ms literature band, NOT measured
 

@@ -78,10 +78,10 @@ params:
   # v2 needs an OAuth bearer token, not an API key. GOOGLE_STT_ACCESS_TOKEN, or
   # this command on a machine that has run `gcloud auth login`.
   access_token_cmd: gcloud auth print-access-token
-  # project_id is what switches the adapter from v1 to v2. This is the
-  # FA-Bench project ("forced-align"); anyone reproducing this substitutes
-  # their own, since the bearer token is theirs and the row is billed to it.
-  project_id: project-e4c68661-4166-4e4b-b96
+  # project_id is what switches the adapter from v1 to v2. It is your Google
+  # Cloud project, since the bearer token is yours and the row is billed to it,
+  # so it comes from .fabench.env rather than from this tracked file.
+  project_id_env: GOOGLE_STT_PROJECT_ID
   location: us-central1
   recognizer: _
   concurrency: 8

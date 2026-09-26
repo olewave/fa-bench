@@ -42,9 +42,10 @@ def word_abs_errors(
 ) -> list[float]:
     """Absolute time error at each MATCHED BOUNDARY, in seconds.
 
-    Words are matched by canonical label via the same monotonic aligner as
-    phones (labels here are lowercased word strings; normalization is identity
-    for words).
+    Words are matched by lowercased label via the same monotonic aligner as
+    phones, as the word F1, WER and word classes already were. This used to
+    compare raw labels, so a recognizer's "The" against the reference's "the"
+    lost both boundaries of that word here while counting as a hit in F1.
 
     ONE ENTRY PER BOUNDARY, not two per word. This used to walk the matched
     words and append each one's start and its end. Adjacent words share a time
@@ -68,8 +69,8 @@ def word_abs_errors(
     both exist they are the same time unless the hypothesis puts a gap where
     the reference has none, which is 1-2% of boundaries.
     """
-    gl = [w.label for w in gold_words]
-    hl = [w.label for w in hyp_words]
+    gl = [w.label.lower() for w in gold_words]
+    hl = [w.label.lower() for w in hyp_words]
     aln = nw_align(gl, hl)
     matched = dict(aln.matched(gl, hl))
     # gold boundary time -> [unit ending here, unit starting here]

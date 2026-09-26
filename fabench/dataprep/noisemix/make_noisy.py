@@ -42,16 +42,31 @@ audio the GOLD ALIGNMENTS were made against. Rebuilding them here would risk a
 different pad and silently shift every boundary.
 
 Output: real .wav files under
-``/scratch/data/speech/english/{TIMIT,Buckeye}/noisy/<type>/<utt_id>.wav``
+``$OUT/{TIMIT,Buckeye}/noisy/<type>/<utt_id>.wav`` (``--out``, default ``data/noisy``)
 so the existing split lists index them unchanged.
+
+THE OUTPUT IS PADDED AND MUST NOT BE SCORED AS IT IS. That pipeline is
+``-af "adelay=475,apad=pad_dur=0.475"``, so every file here is its clean
+source plus 475 ms at EACH end (15,200 samples at 16 kHz in all), with the
+noise mixed over the pads too. FA-Bench's gold is on the unpadded timeline.
+``shadow_root.py`` cuts every file back to the clean source's samples and
+length, and every noisy evaluation reads its audio through that shadow root.
+Until 2026-09-25 it cut only the head, and the 475 ms tail of noise charged
+any aligner that runs its last unit to the end of a TIMIT file (a Buckeye
+utterance is sliced from inside the recording and never reached it). The pad
+stays in THIS output on purpose: taking it out here would change the noise
+itself, since the augmentation draws its segments against the padded length.
 
 ## Equivalence with make_noisy.sh
 
 Determinism is what makes the comparison meaningful: kaldi's
-``augment_data_dir.py`` and ``reverberate_data_dir.py`` both call
-``random.seed(args.random_seed)`` with ``default=123``, so the SNR and
-noise-file choices are fixed. Two runs of the same recipe must therefore emit
-byte-identical ``wav.scp`` commands and byte-identical audio.
+``augment_data_dir.py`` seeds with ``random.seed(args.random_seed)``,
+``default=123``, and ``reverberate_data_dir.py`` the same way with
+``default=0``. Neither is overridden here, so the SNR, noise-file and impulse
+choices are fixed. The draws are taken in the ORDER of the wav.scp lines, so
+that order is part of the seed: the same lines in another order draw different
+noise. Two runs of the same recipe must therefore emit byte-identical
+``wav.scp`` commands and byte-identical audio.
 
 Three shell behaviours are load-bearing and are reproduced exactly:
 
@@ -315,17 +330,30 @@ def build_cell(a, split: str, kind: str, src: Path, stage: Path, env: dict) -> b
 def main() -> int:
     a = env_defaults()
     stage = build_stage(a)
+    # No recipe, no audio. Without this every split printed "skip" and the run
+    # still ended NOISY_BUILD_DONE with status 0.
+    if not a.ref or not (Path(a.ref) / "data" / "golden").is_dir():
+        print(f"ERROR: --ref (or $REF) must name the gold-prep recipe holding "
+              f"data/golden/<split>/wav.scp; got {a.ref!r}. See datasets/prep/README.md.",
+              file=sys.stderr)
+        return 1
     # cd to the stage BEFORE sourcing path.sh -- see the module docstring.
     env = source_path_sh(Path(a.ref) / "path.sh", stage)
     if not prepare_musan(a, stage, env):
         return 1
     types = a.types.split()
+    built = 0
     for split in a.splits.split():
         src = normalise_split(a, split, stage, env)
         if src is None:
             continue        # like the shell: a bad split does not abort the rest
         for kind in types:
             build_cell(a, split, kind, src, stage, env)
+        built += 1
+    if not built:
+        print("ERROR: no split had a wav.scp under the recipe; nothing was built.",
+              file=sys.stderr)
+        return 1
     print("NOISY_BUILD_DONE")
     return 0
 

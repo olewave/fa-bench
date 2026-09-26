@@ -335,3 +335,55 @@ def test_word_tier_scores_zero_for_a_faithful_aligner():
                    aligner="t", mode="A", boundary_unit="word")
     assert (a.n_sub_word, a.n_del_word, a.n_ins_word) == (0, 0, 0)
     assert a.n_hyp_word == 3
+
+
+# ---- case, empty and absent hypotheses (issues.md R5, R6 and issue 2) ----
+
+def _wutt(words, uid="u1"):
+    return Utterance(utt_id=uid, source_corpus="timit", register="", speaker_id="s",
+                     audio_path="", sample_rate=16000, duration_s=2.0,
+                     words=[Interval(label=l, start=a, end=b) for l, a, b in words])
+
+
+_GOLD3 = [("the", 0.0, 0.5), ("cat", 0.5, 1.0), ("sat", 1.0, 1.5)]
+
+
+def test_word_mae_ignores_case():
+    """"The" against "the" is the same word. Raw-label matching lost both of
+    its boundaries in word MAE while the F1 and WER paths lowercased."""
+    g = _wutt(_GOLD3)
+    h = _wutt([("The", 0.0, 0.5), ("cat", 0.5, 1.0), ("sat", 1.0, 1.5)])
+    assert len(word.word_abs_errors(g.words, h.words)) == 4
+
+
+def test_empty_hypothesis_is_charged_not_skipped():
+    """A record with no words is a system that returned nothing for the
+    utterance: every reference word is a deletion and every reference boundary
+    a miss. Nothing may be matched, so MAE has nothing to average."""
+    g = _wutt(_GOLD3)
+    us = score_pair(g, _wutt([]), condition="clean", aligner="t", mode="A",
+                    input_tokens=None, score_words=True, score_phones=False)
+    assert (us.n_gold_word, us.n_del_word) == (3, 3)
+    assert us.wbnd_ctx["all"]["n_gold"] == 4 and us.wbnd_ctx["all"]["n_hyp"] == 0
+    assert us.word_abs_errors == [] and us.empty
+
+
+def test_absent_utterances_count_against_f1_but_not_coverage():
+    from fabench.score.aggregate import aggregate
+    g1, g2 = _wutt(_GOLD3, "u1"), _wutt([("a", 0.0, 0.4), ("dog", 0.4, 0.9)], "u2")
+    kw = {"condition": "clean", "aligner": "t", "mode": "A", "input_tokens": None,
+          "score_words": True, "score_phones": False, "n_gold_utts": 2}
+    right = score_pair(g1, g1, **kw)
+    missing = score_pair(g2, _wutt([], "u2"), **kw)
+    missing.absent = True
+    row = aggregate([right, missing], bootstrap_iters=1)[0][0]
+    assert row["n_utts"] == 1 and row["n_absent"] == 1 and row["n_empty"] == 0
+    assert row["coverage"] == 0.5 and row["incomplete"]
+    assert row["wbe_ms"] == 0.0                              # MAE: present records only
+    assert row["wbnd_f1_all_20ms"] == pytest.approx(8 / 11)  # 4 hits of 7 gold, 4 hyp
+
+    # the same utterance returned as an empty record: scored alike, counted apart
+    empty = score_pair(g2, _wutt([], "u2"), **kw)
+    row = aggregate([right, empty], bootstrap_iters=1)[0][0]
+    assert (row["n_utts"], row["n_absent"], row["n_empty"]) == (2, 0, 1)
+    assert row["wbnd_f1_all_20ms"] == pytest.approx(8 / 11)

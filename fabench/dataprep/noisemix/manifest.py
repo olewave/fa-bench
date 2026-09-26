@@ -37,7 +37,7 @@ manifest is wrong — the command is the ground truth.
 
 Writes one JSONL per (corpus, condition):
 
-    /scratch/data/speech/english/<corpus>/noisy/<cond>/manifest.jsonl
+    $OUT/<corpus>/noisy/<cond>/manifest.jsonl
       {"utt_id":..., "condition":"babble",
        "snrs":[20.0,13.0,20.0],
        "noises":["<musan>/speech-librivox-0137.wav", ...],

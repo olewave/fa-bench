@@ -1656,6 +1656,14 @@ def word_table(m) -> str:
     # one rule orders the whole table instead of MAE here and $F_1$ above.
     t_rows = order(m, sorted(set(t_mae) - m.SUPPRESS_PUBLIC - PAPER_SUPPRESS),
                    t_mae, f1=t_f1)
+    # THE CASCADES STAND IN TABLE 2'S ORDER, mean clean word MAE, worst first,
+    # so a reader can carry a two-step row from one table to the other. The
+    # three Olign cascades differ by .01 or .02 in F1, which is not an
+    # ordering worth contradicting the other table for. One-step rows keep F1.
+    _two = [r for r in t_rows if m.pipe(r[3]) != "one-step"]
+    _pos = {r[3]: i for i, r in enumerate(order(m, sorted(r[3] for r in _two), t_mae))}
+    _next = iter(sorted(_two, key=lambda r: _pos[r[3]]))
+    t_rows = [next(_next) if m.pipe(r[3]) != "one-step" else r for r in t_rows]
     # No float wrapper and no caption: this is subtable (a) of the merged
     # float that combined_table() builds, and both halves are captioned there.
     #
@@ -1924,7 +1932,7 @@ def merged_table(m) -> str:
         r"Parakeet Parakeet-TDT, Qwen3 Qwen3-ASR and NeMo-FA its conformer "
         r"checkpoint. Timestamp grids are in the supplement. ElevenLabs has no "
         r"noisy cells, its credit having run out. \emph{MFA} 3.4 and "
-        r"\emph{Olign} 1.0 throughout. MAPS trained on 7 of 8 speakers in both "
+        r"\emph{Olign} 1.0 throughout. MAPS and NeuFA trained on 7 of 8 speakers in both "
         r"Buckeye splits.}",
         r"\label{tab:main}", r"\label{tab:phone}",
         r"\vspace{0pt}",
@@ -2186,27 +2194,28 @@ def combined_table(m) -> str:
         r"\begin{table}[!t]", *setup,
         r"\caption{\small Word-tier boundary error on the test split of each "
         r"corpus, on clean audio and under degradation, \emph{noisy} being the "
-        r"mean of the four. The dev splits are in \texttt{records/}\recfn. Every "
-        r"number here comes from our own run of the system. "
+        r"mean of the four. Every "
+        r"number here comes from our own runs. "
         r"MAE is over word boundaries in ms. $F_1$ is over every word "
         r"boundary, the two utterance edges included. A "
-        r"boundary is a hit only when the words on each side of it are the words "
-        r"the reference has there and the time falls within the tolerance of the "
+        r"boundary is a hit only when the words on each side of it match the "
+        r"reference and the time falls within the tolerance of the "
         r"reference boundary. The superscript on $F_1$ is that tolerance in ms. "
         r"The step size of a word boundary of each system is shown in the Grid "
         r"column of Table~\ref{tab:class}. "
         + _access_note(m, _TABLE_ROWS["word"])
-        + r" NeuFA model is trained with its GitHub code and not released."
-        + r" \textbf{W} is Whisper "
-        r"large-v3, \textbf{P} and Parakeet are Parakeet-TDT, \textbf{Q} and "
-        r"Qwen3 are Qwen3-ASR, and \textbf{G} is Google Chirp~2. Whisper-ts is "
-        r"Whisper-timestamped and NeMo-FA its conformer checkpoint. The APIs are "
+        + r" The NeuFA model is trained with its open-source code on GitHub, following"
+        r" the procedure in the original paper, and is not released."
+        + r" W is Whisper "
+        r"large-v3, P and Parakeet are Parakeet-TDT, Q and "
+        r"Qwen3 are Qwen3-ASR, and G is Google Chirp~2. Whisper-ts is "
+        r"Whisper-timestamped and NeMo-FA uses its Conformer checkpoint. The APIs are "
         r"Speechmatics Enhanced, Deepgram Nova-3, IBM Large US English, Azure "
         r"en-US, AssemblyAI Universal~3.5 Pro, Amazon Transcribe en-US, "
-        r"ElevenLabs Scribe~v2, Google Chirp~2 and \emph{Olign}~1.0."
+        r"ElevenLabs Scribe~v2, Google Chirp~2 and Olign~1.0."
         + _no_noisy_note(m, _TABLE_ROWS["word"]) +
-        r" \emph{MFA} is Montreal Forced Aligner 3.4. "
-        r"MAPS trained on 7 of 8 speakers in both Buckeye splits.}",
+        r" MFA is Montreal Forced Aligner 3.4. "
+        r"MAPS and NeuFA trained on 7 of 8 speakers in both Buckeye splits.}",
         r"\label{tab:main}",
         word,
         r"\end{table}",
@@ -2214,8 +2223,8 @@ def combined_table(m) -> str:
         r"\begin{table}[!t]", *setup,
         r"\caption{\small Phone-tier boundary error on the test split of "
         r"each corpus, on clean audio and under degradation, \emph{noisy} "
-        r"being the mean of the four, laid out as Table~\ref{tab:main}. The "
-        r"dev splits are in \texttt{records/}\recfn. Every Track~1 aligner "
+        r"being the mean of the four, laid out as Table~\ref{tab:main}. "
+        r"Every Track~1 aligner "
         r"is given the reference words and derives its own phones, and PER "
         r"is the phone error rate of what it derived against the gold "
         r"phones, per split and condition. FALCON, daggered, is handed the "

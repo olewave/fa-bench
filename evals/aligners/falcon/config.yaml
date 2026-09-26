@@ -18,4 +18,3 @@ params:
   timeout_s: null
   env:
     WANDB_MODE: disabled
-    HF_HOME: /ndata/hf

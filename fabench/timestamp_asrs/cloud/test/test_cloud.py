@@ -837,7 +837,10 @@ def test_every_recipe_param_reaches_something(monkeypatch):
         "max_calls", "max_rpm", "key_env", "access_token_cmd", "token_ttl_s",
         "venv", "worker", "device", "env",
     }
-    known = set(_OPT_KEYS) | set(_BEHAVIOUR_KEYS) | adapter_level
+    # `<opt>_env` names the environment variable an option is read from, for
+    # a value that must not sit in a tracked recipe (Google's project id).
+    known = (set(_OPT_KEYS) | {f"{k}_env" for k in _OPT_KEYS}
+             | set(_BEHAVIOUR_KEYS) | adapter_level)
     cloud = {"deepgram", "assemblyai", "elevenlabs", "google_stt",
              "speechmatics", "ibm"}
     orphans = []
@@ -1372,3 +1375,24 @@ def test_azure_invalid_http_request_is_transient_and_retried(monkeypatch):
     assert H.request("https://x.stt.speech.microsoft.com/",
                      retry_body=("Invalid HTTP request",), backoff_s=0.0) == b"ok"
     assert len(calls) == 2
+
+
+def test_max_calls_zero_means_no_calls(audio, tmp_path, monkeypatch):
+    """max_calls: 0 is a cache-only replay: a miss raises before any request.
+    It used to read as unlimited, and a replay meant to stay offline re-bought
+    2,180 Speechmatics responses on a changed cache key."""
+    n = {"calls": 0}
+
+    def fake(url, **kw):
+        n["calls"] += 1
+        return {"results": {"channels": [{"alternatives": [
+            {"words": [{"word": "hi", "start": 0.0, "end": 0.2}]}]}]}}
+
+    monkeypatch.setattr(P, "request_json", fake)
+    a = _make(A.Deepgram, tmp_path, monkeypatch, max_calls=0)
+    with pytest.raises(AlignerError, match="max_calls=0"):
+        a.align(audio)
+    assert n["calls"] == 0
+    unlimited = _make(A.Deepgram, tmp_path, monkeypatch)
+    unlimited.align(audio)
+    assert n["calls"] == 1
