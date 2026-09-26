@@ -38,15 +38,20 @@
 # different pad and silently shift every boundary.
 #
 # Output: real .wav files under
-#   /scratch/data/speech/english/{TIMIT,Buckeye}/noisy/<type>/<utt_id>.wav
+#   $OUT/{TIMIT,Buckeye}/noisy/<type>/<utt_id>.wav   (OUT defaults to data/noisy)
 # so the existing split lists index them unchanged.
+#
+# THE OUTPUT IS PADDED AND MUST NOT BE SCORED AS IT IS: every file is its clean
+# source plus 475 ms at EACH end, noise included. shadow_root.py cuts it back to
+# the clean samples and length, and every noisy evaluation reads through that.
+# See make_noisy.py for the whole story, including why the pad stays here.
 set -uo pipefail
 
 REF=${REF:-}                      # a Kaldi-style egs dir with path.sh
 FB=${FB:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}
-MUSAN=${MUSAN:-/scratch/data/speech/audio/musan}
-RIRS=${RIRS:-/scratch/data/speech/audio/RIRS_NOISES}
-OUT=${OUT:-/scratch/data/speech/english}
+MUSAN=${MUSAN:-data/musan/musan}
+RIRS=${RIRS:-data/RIRS_NOISES}
+OUT=${OUT:-data/noisy}
 WORK=${WORK:-data/noisy_work}
 NJ=${NJ:-16}
 # No timit_full_test: removed as a strict superset of dev + core_test.

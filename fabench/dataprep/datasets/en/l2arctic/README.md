@@ -1,12 +1,12 @@
 # L2-ARCTIC data processor
 
-Non-native (**L2**) accented English, with manual phone boundaries for a subset.
-Layout: `<speaker>/annotation/*.TextGrid` holds the hand-corrected gold;
-`<speaker>/wav/*.wav` the audio.
+Non-native (**L2**) accented English, with manual phone boundaries for a
+subset. The layout is `<speaker>/annotation/*.TextGrid` for the
+hand-corrected gold and `<speaker>/wav/*.wav` for the audio.
 
-- **License:** open for research (psi.engr.tamu.edu/l2-arctic). Download and set
-  the root — fabench never fetches it.
-- **Register:** read (L2).
+- **License.** Open for research (psi.engr.tamu.edu/l2-arctic). Download it
+  and set the root. fabench never fetches it.
+- **Register.** Read speech, L2.
 
 ## Config
 
@@ -18,5 +18,5 @@ datasets:
       subset: manual               # manual = speakers with hand-corrected TextGrids
 ```
 
-Public API: `iter_utterances` (see `processor.py`). TextGrid parsing uses
-`praatio`.
+The public API is `iter_utterances` (see `processor.py`). TextGrid parsing
+uses `praatio`.

@@ -20,6 +20,9 @@
 # -- so enabling one here by default would make the out-of-the-box command fail
 # with a missing-tool error on a machine that never asked for that tool. Enable
 # them as you install them, either here or in a run config.
+#
+# The `enabled:` in a tool's own config.yaml is overridden by its entry here,
+# which is why every recipe says true and this list still decides.
 
 aligners:
   - { name: torchaudio_fa, enabled: true }

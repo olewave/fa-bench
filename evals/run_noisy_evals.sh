@@ -83,6 +83,11 @@ if out:                       # an empty result printed a blank line, which
 EOF
 )
 echo "== ${#CFGS[@]} noisy cells"
+if [ ${#CFGS[@]} -eq 0 ]; then
+  echo "ERROR: no noisy cell configs found. Run evals/gen_noisy_configs.py after" >&2
+  echo "       datasets/prep/augment.sh has built the shadow roots." >&2
+  exit 1
+fi
 
 for cfg in "${CFGS[@]}"; do
   base=$(basename "$cfg" .yaml)

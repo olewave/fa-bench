@@ -25,5 +25,3 @@ params:
   # timeout does not truncate a run, it destroys it. See the crisperwhisper
   # note in subprocess_aligner.py -- two 4 h runs were thrown away that way.
   timeout_s: null
-  env:
-    HF_HOME: /ndata/hf

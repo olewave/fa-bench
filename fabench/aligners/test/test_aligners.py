@@ -97,6 +97,33 @@ def test_mfa_version_selects_env():
     assert env_of({"version": "3.0", "version_envs": {"3.0": "x"}}) == "x"  # remap
 
 
+def test_mfa_finds_the_micromamba_its_recipe_installs(tmp_path, monkeypatch):
+    """download_and_install.sh puts micromamba at <mamba_root>/bin/micromamba.
+    That copy must be found with nothing else set; an explicit param or
+    $FABENCH_MICROMAMBA still wins when it exists."""
+    from fabench.aligners.mfa.adapter import find_micromamba
+
+    monkeypatch.delenv("FABENCH_MICROMAMBA", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    root = tmp_path / "mamba"
+    (root / "bin").mkdir(parents=True)
+    recipe_mm = root / "bin" / "micromamba"
+    recipe_mm.write_text("")
+    assert find_micromamba({}, str(root)) == str(recipe_mm)
+
+    env_mm = tmp_path / "env_mm"
+    env_mm.write_text("")
+    monkeypatch.setenv("FABENCH_MICROMAMBA", str(env_mm))
+    assert find_micromamba({}, str(root)) == str(env_mm)
+
+    param_mm = tmp_path / "param_mm"
+    param_mm.write_text("")
+    assert find_micromamba({"micromamba": str(param_mm)}, str(root)) == str(param_mm)
+
+    # a named path that does not exist falls through to one that does
+    assert find_micromamba({"micromamba": str(tmp_path / "nope")}, str(root)) == str(env_mm)
+
+
 def test_charsiu_bfa_registered():
     for adapter, src in (("charsiu", "arpabet"), ("bfa", "ipa")):
         a = get_adapter(_spec(adapter, adapter))
@@ -121,3 +148,21 @@ def test_torchaudio_real_audio_smoke():
         assert w.conf is not None
         if i:
             assert out.words[i - 1].start <= w.start
+
+
+def test_one_step_recognizer_words_are_saved_as_written():
+    """A forced aligner's words go back onto the tokens it was handed; a
+    one-step recognizer was handed none, so it keeps its own spelling (issue 21:
+    an API's `boats` used to be saved as the reference's `boat's`)."""
+    from fabench.aligners.runner import _words_to_save
+    words = [Interval("boats", 0.0, 0.4), Interval("can", 0.4, 0.6), Interval("not", 0.6, 0.8)]
+    given = ["boat's", "cannot"]
+
+    def saved(name, **params):
+        spec = AlignerSpec(name=name, adapter="x", enabled=True, modes=["A"],
+                           granularity=["word"], emits_confidence=False, params=params)
+        return [w["label"] for w in _words_to_save(spec, given, words)]
+
+    assert saved("deepgram") == ["boats", "can", "not"]           # one-step ASR
+    assert saved("mfa") == ["boat's", "cannot"]                   # forced aligner
+    assert saved("olign_on_chirp2", transcript_hyp="x") == ["boat's", "cannot"]  # cascade

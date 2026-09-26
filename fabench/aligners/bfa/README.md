@@ -1,9 +1,16 @@
 # BFA aligner
 
-Bournemouth Forced Aligner — neural (CUPE + CTC). Text-driven via espeak G2P →
-IPA phones. One of the MFA-2026 paper's Table-5 baselines.
+Bournemouth Forced Aligner, a neural aligner (CUPE + CTC). It is text-driven,
+through espeak G2P to IPA phones, and it is one of the MFA-2026 paper's Table
+5 baselines.
 
-- **Modes:** A. **Granularity:** word + phone. **Confidence:** yes.
+- **Modes.** A. **Granularity.** Word and phone. **Confidence.** Yes.
+
+## Install
+
+```bash
+evals/aligners/bfa/download_and_install.sh   # its own environment, pinned
+```
 
 ## Config
 
@@ -16,5 +23,8 @@ IPA phones. One of the MFA-2026 paper's Table-5 baselines.
   params: { preset: en-us, device: cuda }
 ```
 
-Note: under `scoring.protocol: mfa_paper`, BFA is scored **onset-only** (its
-inter-phone gaps are a CTC artifact) — see `fabench/score/mfa_paper/`.
+Phones are IPA, so the normalization source is `ipa`.
+
+Note that under `scoring.protocol: mfa_paper`, BFA is scored **onset-only**,
+because its inter-phone gaps are a CTC artifact. See
+`fabench/score/mfa_paper/`.

@@ -105,6 +105,25 @@ def _asr_transcripts(spec) -> dict[str, str]:
     return out
 
 
+def _words_to_save(spec, in_tokens, words):
+    """The words a hypothesis record keeps.
+
+    A forced aligner's output is mapped back onto the tokens it was handed
+    (relabel_to_input). A one-step recognizer was handed nothing, so its words
+    are kept exactly as it wrote them: it is judged on its own output. Mapping
+    them onto the REFERENCE, as this once did for every tool, turned an API's
+    `boats` into the reference's `boat's` and credited it, while the open
+    recognizers, saved by an older runner, were charged for the same spelling.
+    """
+    import pathlib
+
+    from fabench.paths import tool_kind
+    if not (getattr(spec, "params", None) or {}).get("transcript_hyp") and \
+            tool_kind(pathlib.Path(__file__).resolve().parents[2], spec.name) == "timestamp_asrs":
+        return [w.to_dict() for w in words]
+    return [w.to_dict() for w in relabel_to_input(in_tokens, words)]
+
+
 def align_items(cfg, spec, gold_by_id, items, modes, limit=None):
     """Yield hyp records for (item x mode)."""
     _ASR_TXT = _asr_transcripts(spec)   # {} unless this is a cascade
@@ -165,8 +184,7 @@ def align_items(cfg, spec, gold_by_id, items, modes, limit=None):
                 "mode": mode,
                 "source": adapter.source,  # normalization source for hyp phones
                 "rtf": comp / dur if dur else None,
-                "words": [w.to_dict()
-                          for w in relabel_to_input(in_tokens, out.words)],
+                "words": _words_to_save(spec, in_tokens, out.words),
                 "phones": [p.to_dict() for p in out.phones],
                 **(getattr(out, "meta", None) or {}),
             }
@@ -279,8 +297,7 @@ def _align_batch_mode(adapter, spec, gold_by_id, items, mode, limit, cond_tag=""
             "mode": mode,
             "source": adapter.source,
             "rtf": rtf,
-            "words": [w.to_dict()
-                      for w in relabel_to_input(_in_tok, out.words)],
+            "words": _words_to_save(spec, _in_tok, out.words),
             "phones": [p.to_dict() for p in out.phones],
             # BATCH path. The per-item path above needed the same line; adding
             # it there only was the third two-write-sites miss in this module

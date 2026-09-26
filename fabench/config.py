@@ -68,6 +68,17 @@ class ConfigError(ValueError):
 
 @dataclass
 class AlignerSpec:
+    """One system as a run sees it, composed from evals/<kind>/<tool>/config.yaml.
+
+    `name` is the row the results carry and the directory its hyp.jsonl is
+    written under, so two variants of one tool (mfa and mfa2, a cascade and
+    its aligner) share an `adapter` and differ in `name`. `adapter` picks the
+    code in fabench/aligners or fabench/timestamp_asrs. `modes` is A (words
+    given) and/or B (phones given); `granularity` is the tiers it returns.
+    `params` goes to the adapter unread by anything else: paths, model names,
+    `env` for its subprocess, and `transcript_hyp` for a cascade.
+    """
+
     name: str
     adapter: str
     enabled: bool
@@ -102,6 +113,16 @@ class Condition:
 
 @dataclass
 class Config:
+    """A run's settings, composed by load_config.
+
+    `raw` is one dict: the run config, filled in from the FABENCH_*
+    environment, then from every subsystem's own config.yaml (fabench/,
+    fabench/score/, datasets/languages/<lang>/, evals/, ...), so a value the
+    run config states wins over the environment and both win over a default.
+    The properties below are read-only views into it. `path` is the run
+    config, or a `<composed-defaults>` placeholder when there is none.
+    """
+
     raw: dict
     path: Path
 
@@ -182,8 +203,13 @@ class Config:
     def condition_tag(self) -> str:
         """Noise condition for this run, or "" for clean.
 
-        Set by evals/gen_noisy_configs.py. Keeps a noisy run's hyp and results
-        from landing on top of the clean baseline.
+        Set by evals/gen_noisy_configs.py. A published noisy run reads a
+        shadow root, a copy of the corpus whose audio is degraded and whose
+        gold is the clean gold, so every item in it still says "clean". This
+        tag is what tells the run otherwise: hyp.jsonl goes to
+        <tool>/en/<corpus>/<subset>/<condition>/ and the leaderboard's
+        condition column reads it, instead of both landing on the clean
+        baseline.
         """
         return str(self.raw.get("condition_tag", "") or "")
 
@@ -430,6 +456,14 @@ def _merge_noise_defaults(cfg: Config) -> None:
             target.setdefault(key, val)
 
 
+#: Recipe params whose value may be a path relative to the recipe's folder. The
+#: same set as evals/gen_config.py's PATH_PARAMS (a test holds them equal).
+RECIPE_PATH_PARAMS = frozenset({
+    "venv", "worker", "python", "repo", "repo_path", "mamba_root",
+    "model_path", "model", "cache_dir", "micromamba", "mfa_root",
+})
+
+
 def _merge_aligner_defaults(cfg: Config) -> None:
     """Compose each ``aligners:`` entry from its canonical tool folder.
 
@@ -476,6 +510,15 @@ def _merge_aligner_defaults(cfg: Config) -> None:
             continue
         merged = dict(defaults)
         params = dict(defaults.get("params") or {})
+        # A recipe writes its paths relative to its own folder (mfa's
+        # `mamba_root: repo/mamba`). evals/gen_config.py resolves them for the
+        # per-cell configs; a plain `fabench run` has to do the same, or the path
+        # is read against the working directory and the tool is not found.
+        for k, v in list(params.items()):
+            if k in RECIPE_PATH_PARAMS and isinstance(v, str) and v and not v.startswith("/"):
+                cand = p.parent / v
+                if cand.exists():
+                    params[k] = str(cand.resolve())
         user_params = entry.get("params")
         merged.update(entry)
         if isinstance(user_params, dict):

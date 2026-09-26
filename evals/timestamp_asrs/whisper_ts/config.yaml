@@ -15,5 +15,3 @@ params:
   model: large-v3
   device: cuda
   timeout_s: null
-  env:
-    HF_HOME: /ndata/hf

@@ -1,5 +1,9 @@
 # TIMIT — word-level detail, forced aligners
 
+> **Superseded.** This August 2026 snapshot was scored under earlier rules and
+> on different splits, so its numbers cannot be compared with later snapshots.
+> See [September 2026](../../../../../202609/en/README.md#which-subset-the-numbers-cover) for what changed.
+
 Every word-tier field the scorer emits, by condition. Track 1 only: these
 systems are handed the transcript. The phone tier is at
 `../../phone/timit/Details.md`.

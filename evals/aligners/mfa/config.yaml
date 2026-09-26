@@ -1,5 +1,5 @@
 # MFA 3.4 -- exact params for the FA-Bench aligner registry.
-# Environment built by ./download_and_install.sh into evals/mfa/repo/.
+# Environment built by ./download_and_install.sh into evals/aligners/mfa/repo/.
 name: mfa
 adapter: mfa
 enabled: true
