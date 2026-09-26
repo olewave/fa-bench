@@ -7,8 +7,22 @@ be compared only when no such change lies between them.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-26
+
+Records snapshot `records/202609/`. This release was first tagged on
+2026-09-25 and re-cut on 2026-09-26 with further scorer fixes, so numbers
+taken from the first tag are superseded.
+
 ### Changes that move published numbers
 
+- **Word MAE counts each boundary once.** A boundary shared by two words was
+  counted twice, which weighted the easy interior double. MAE rose by 3 to
+  5 ms.
+- **Word F1 is label-checked.** A word boundary counts only when the words on
+  both sides match the reference and its time is within the tolerance, the
+  two utterance edges included. It paired boundaries by time alone.
+- **Phone boundary F1 checks the phone labels on both sides**, as the word
+  tier does.
 - **An utterance a system returns nothing for is charged.** Whether it wrote
   no record or an empty one, every boundary of that utterance counts against
   F1 recall and every word and phone in it as a deletion in WER and PER. MAE
@@ -22,16 +36,24 @@ be compared only when no such change lies between them.
   recognizers never had.
 - **Word MAE matches words without regard to case**, as F1 and WER already
   did. It moved by at most 0.14 ms.
-- **TIMIT's degraded audio is cut to the clean length.** It carried about
-  475 ms of noise-only audio at each end, which charged a system that timed
-  words into it. Every TIMIT noisy cell was re-run.
-- **Phone boundary F1 checks the phone labels on both sides**, as the word
-  tier does.
+- **TIMIT's degraded audio is cut to the clean length.** Each file carried
+  about 475 ms of noise after its last word, which charged a system that
+  timed words into it. The TIMIT noisy cells were re-run, apart from
+  ElevenLabs, which a spot check found unchanged, and NeuFA, whose output is
+  cut at the clean length.
+- **TIMIT's SA sentences are excluded, and Buckeye is re-split** 24/8/8 by
+  speaker, balanced for sex and age.
 - **The records' Noisy column averages unrounded values**, so it matches the
   paper to the last digit.
 
 ### Added
 
+- Track 2, timestamped ASR. One-step recognizers, including eight commercial
+  endpoints, and cascades that re-align a recognizer's transcript with a
+  Track 1 aligner.
+- NeuFA, scored from output its authors produced with a checkpoint they have
+  not released.
+- Boundary classes by position and by how many adjacent labels match.
 - Leaderboard columns `n_absent` and `n_empty`, and an Utterance completion
   note on every records page that says who returned nothing for how much.
 - Records gain the version and checkpoint of every system, the commercial
@@ -43,9 +65,9 @@ be compared only when no such change lies between them.
 ### Changed
 
 - Every README and the records prose are rewritten in one house style, with
-  stale facts corrected along the way. There are eight commercial endpoints, only
-  eight systems emit phones, ElevenLabs has twelve cells, and NeuFA's rows
-  come from its authors' checkpoint.
+  stale facts corrected along the way. There are eight commercial endpoints,
+  eight Track 1 systems emit phones, ElevenLabs has twelve of its twenty
+  cells, and NeuFA's rows come from its authors' checkpoint.
 
 ### Fixed
 
@@ -58,29 +80,6 @@ be compared only when no such change lies between them.
 - Audio files are written atomically.
 - Machine-specific paths and account ids left the tracked recipes. They come
   from `.fabench.env`.
-
-## [1.1.0] - 2026-09-25
-
-Records snapshot `records/202609/`.
-
-### Changes that move published numbers
-
-- **Word MAE counts each boundary once.** A boundary shared by two words was
-  counted twice, which weighted the easy interior double. MAE rose by 3 to
-  5 ms.
-- **Word F1 is label-checked.** A word boundary counts only when the words on
-  both sides match the reference and its time is within the tolerance, the
-  two utterance edges included. It paired boundaries by time alone.
-- **TIMIT's SA sentences are excluded, and Buckeye is re-split** 24/8/8 by
-  speaker, balanced for sex and age.
-- **NeuFA is scored from its authors' output.**
-
-### Added
-
-- Track 2, timestamped ASR. One-step recognizers, including eight commercial
-  endpoints, and cascades that re-align a recognizer's transcript with a
-  Track 1 aligner.
-- Boundary classes by position and by how many adjacent labels match.
 
 ## [1.0.0] - 2026-08-17
 
