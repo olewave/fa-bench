@@ -2201,8 +2201,7 @@ def combined_table(m) -> str:
         r"boundary is a hit only when the words on each side of it match the "
         r"reference and the time falls within the tolerance of the "
         r"reference boundary. The superscript on $F_1$ is that tolerance in ms. "
-        r"The step size of a word boundary of each system is shown in the Grid "
-        r"column of Table~\ref{tab:class}. "
+        r"The step size of a word boundary of each system is shown in Table~\ref{tab:class}. "
         + _access_note(m, _TABLE_ROWS["word"])
         + r" The NeuFA model is trained with its open-source code on GitHub, following"
         r" the procedure in the original paper, and is not released."
