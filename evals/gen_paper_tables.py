@@ -2203,8 +2203,8 @@ def combined_table(m) -> str:
         r"reference boundary. The superscript on $F_1$ is that tolerance in ms. "
         r"The step size of a word boundary of each system is shown in Table~\ref{tab:class}. "
         + _access_note(m, _TABLE_ROWS["word"])
-        + r" The NeuFA model is trained with its open-source code on GitHub, following"
-        r" the procedure in the original paper, and is not released."
+        + r" The NeuFA model is trained with its open-source code on GitHub and is not"
+        r" released."
         + r" W is Whisper "
         r"large-v3, P and Parakeet are Parakeet-TDT, Q and "
         r"Qwen3 are Qwen3-ASR, and G is Google Chirp~2. Whisper-ts is "
