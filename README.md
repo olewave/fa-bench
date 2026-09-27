@@ -3,12 +3,13 @@
 </p>
 
 <p align="center">
+  <a href="docs/paper.pdf"><img src="https://img.shields.io/badge/paper-PDF-b31b1b" alt="Paper (PDF)"></a>
   <a href="https://github.com/olewave/fa-bench/actions/workflows/ci.yml"><img src="https://github.com/olewave/fa-bench/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-blue" alt="License: PolyForm Noncommercial 1.0.0"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+">
 </p>
 
-# FA-Bench: A Benchmark for Evaluating Phone- and Word-Level Timestamp Accuracy in Forced Aligners (v1)
+# <a href="docs/paper.pdf" title="The FA-Bench paper (PDF)"><img src="docs/pdf-icon.svg" alt="Paper (PDF)" height="32"></a> FA-Bench: A Benchmark for Evaluating Phone- and Word-Level Timestamp Accuracy in Forced Aligners (v1)
 
 <p align="right">
   <b> Click ⭐ at the top right to save FA-Bench into your speech toolbox - save it now! ↗️</b><br>
@@ -25,7 +26,8 @@ speech in [TIMIT](records/202609/en/gold/word/timit/README.md#about-timit)
 and conversation in
 [Buckeye](records/202609/en/gold/word/buckeye/README.md#about-buckeye). We add
 **no new annotation**. Times are used as annotated and labels are folded into
-the shared TIMIT-39 phone set.
+the shared TIMIT-39 phone set. The [FA-Bench paper](docs/paper.pdf) describes
+the protocol and what the results show.
 
 Every system runs on **clean** audio and on
 [four degradations](records/202609/en/README.md#what-the-four-conditions-are)
