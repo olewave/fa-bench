@@ -48,8 +48,8 @@ build it ran.
 ### Credentials
 
 The hosted endpoint sits behind **Cloudflare Access**, so every request needs
-a service token, sent as two headers. The adapter sends them when both
-variables are set. Put them in `.fabench.env`, which is untracked, and never in
+a service token, sent as two headers. Olewave issues the tokens, so ask at
+info@olewave.com. The adapter sends them when both variables are set. Put them in `.fabench.env`, which is untracked, and never in
 a config.
 
 ```bash
