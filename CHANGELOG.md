@@ -7,6 +7,11 @@ be compared only when no such change lies between them.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-29
+
+No change moves a published number. The records snapshot is still
+`records/202609/`, as scored for 1.1.0.
+
 ### Added
 
 - The paper as `docs/paper.pdf`, linked from the top of the README by a PDF
@@ -17,6 +22,10 @@ be compared only when no such change lies between them.
 
 ### Fixed
 
+- The Olign adapter reaches the hosted endpoint. Cloudflare in front of it
+  rejects Python's default User-Agent, so the adapter names itself, and it
+  sends the Cloudflare Access service token from `.fabench.env` when one is
+  set. The default endpoint is `https://api.olewave.com/olign/v0.9`.
 - Two workers kept an import they no longer use, which failed the lint job.
 - `evals/README.md` again says the top-level `run_all.sh` uses the same
   option parser. The house-style rewrite had dropped it.
@@ -101,6 +110,7 @@ First public release. Track 1 forced alignment on TIMIT and Buckeye, word
 and phone tiers, clean audio and four degradations. Records snapshot
 `records/202608/`.
 
-[Unreleased]: https://github.com/olewave/fa-bench/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/olewave/fa-bench/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/olewave/fa-bench/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/olewave/fa-bench/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/olewave/fa-bench/releases/tag/v1.0.0
