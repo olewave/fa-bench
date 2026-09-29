@@ -249,3 +249,43 @@ def test_olign_real_server_smoke():
     assert len(out.phones) >= 1
     for iv in out.words + out.phones:
         assert 0.0 <= iv.start <= iv.end
+
+
+class _FakeResponse:
+    def __init__(self, payload):
+        self._body = json.dumps(payload).encode()
+    def __enter__(self):
+        return self
+    def __exit__(self, *exc):
+        return False
+    def read(self):
+        return self._body
+
+
+def _capture_rest_request(tmp_path, monkeypatch):
+    """Run the REST transport against a fake urlopen; return the Request it built."""
+    import fabench.aligners.olign.adapter as adapter_mod
+    seen = []
+    def fake_urlopen(req, timeout=None):
+        seen.append(req)
+        return _FakeResponse(REAL_RESPONSE)
+    monkeypatch.setattr(adapter_mod.urllib.request, "urlopen", fake_urlopen)
+    get_adapter(_spec())._align_rest(_silent_wav(tmp_path), "what is better")
+    return seen[0]
+
+
+def test_rest_sends_cloudflare_access_headers_from_the_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("CF_ACCESS_CLIENT_ID", "abc.access")
+    monkeypatch.setenv("CF_ACCESS_CLIENT_SECRET", "s3cret")
+    req = _capture_rest_request(tmp_path, monkeypatch)
+    assert req.get_header("Cf-access-client-id") == "abc.access"
+    assert req.get_header("Cf-access-client-secret") == "s3cret"
+
+
+def test_rest_without_a_token_sends_no_auth_but_still_names_itself(tmp_path, monkeypatch):
+    monkeypatch.delenv("CF_ACCESS_CLIENT_ID", raising=False)
+    monkeypatch.delenv("CF_ACCESS_CLIENT_SECRET", raising=False)
+    req = _capture_rest_request(tmp_path, monkeypatch)
+    assert req.get_header("Cf-access-client-id") is None
+    # Cloudflare 403s Python-urllib's default User-Agent ("error code: 1010").
+    assert req.get_header("User-agent", "").startswith("fa-bench-olign/")
