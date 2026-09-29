@@ -24,6 +24,9 @@ also carries per-word/per-phone ``begin``/``end`` timings, which is what makes i
 scoreable as a forced aligner at all. See this package's ``README.md`` for the
 wire contract.
 
+It targets **Olign v1.0.0**, the version in ``records/`` and the paper, through
+Olign's v0.9 API.
+
 Transports
 ----------
 Two doors, both documented; REST is the default because it is the one that is
@@ -80,16 +83,33 @@ from fabench.aligners.base import (
 from fabench.schema import Interval
 
 #: Public endpoint. The version is in the PATH -- a client selects the contract
-#: by choosing the URL, there is no version header to negotiate -- and `v1` only
-#: moves on a breaking change, so this default does not rot under additive ones.
+#: by choosing the URL, there is no version header to negotiate. This adapter
+#: speaks the synchronous contract (raw audio body, query parameters), which is
+#: `v0.9`; olign's `/olign/v1` is a different, job-based API (multipart upload,
+#: then poll) that this adapter does not use.
 #:
 #: Override with params.base_url, or with the OLIGN_BASE_URL environment
 #: variable, which is how a self-hosted or LAN instance is pointed at WITHOUT
 #: putting a private address in a tracked file.
 _DEFAULT_BASE = os.environ.get(
-    "OLIGN_BASE_URL", "https://api.olewave.com/olign/v1"
+    "OLIGN_BASE_URL", "https://api.olewave.com/olign/v0.9"
 )
 _DEFAULT_GRPC_HOST = os.environ.get("OLIGN_GRPC_HOST", "")
+
+#: The public endpoint sits behind Cloudflare, which answers Python-urllib's
+#: default User-Agent with HTTP 403 "error code: 1010", so the adapter names itself.
+_USER_AGENT = "fa-bench-olign/1"
+
+
+def _auth_headers() -> dict[str, str]:
+    """Cloudflare Access service-token headers for the public endpoint, from
+    CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET (put them in .fabench.env,
+    which is untracked: they are credentials, never config). Read at call
+    time so the CLI's env-file load is always seen. Unset: no auth headers,
+    as a LAN or self-hosted server needs none."""
+    cid = os.environ.get("CF_ACCESS_CLIENT_ID")
+    secret = os.environ.get("CF_ACCESS_CLIENT_SECRET")
+    return {"CF-Access-Client-Id": cid, "CF-Access-Client-Secret": secret} if cid and secret else {}
 _DEFAULT_CORE_TYPE = "en.phone.align"
 _DEFAULT_CHUNK_BYTES = 3200  # 100 ms @ 16 kHz mono int16, the doc's own cadence
 _DEFAULT_TIMEOUT_S = 60.0
@@ -212,7 +232,8 @@ class Olign(AlignerAdapter):
             body = f.read()
         req = urllib.request.Request(
             url, data=body, method="POST",
-            headers={"Content-Type": "application/octet-stream"},
+            headers={"Content-Type": "application/octet-stream",
+                     "User-Agent": _USER_AGENT, **_auth_headers()},
         )
         try:
             with urllib.request.urlopen(req, timeout=self._timeout()) as r:
