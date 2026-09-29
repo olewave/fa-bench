@@ -1,6 +1,6 @@
-# olign -- proprietary, and access is by request from Olewave
-# (info@olewave.com). Point base_url at the olign server you were given; nothing
-# here reaches out to Olewave on its own.
+# olign -- Olign v1.0.0 ("Olign 1.0" in the tables), through its v0.9 API.
+# Proprietary; access is by request from Olewave (info@olewave.com), who issue a
+# Cloudflare Access service token for the hosted endpoint.
 name: olign
 adapter: olign
 enabled: true
@@ -9,12 +9,12 @@ granularity: [word, phone]
 emits_confidence: true
 params:
   transport: rest
-  # The endpoint is NOT set here. It is machine-specific -- an internal host on
-  # someone's network -- and this file is public, so it comes from
-  # OLIGN_BASE_URL in .fabench.env (untracked) instead. Give it the FULL assess
-  # endpoint, not just the host: the adapter POSTs to "{base_url}?{query}"
-  # directly, so a bare host 404s. A server mounted under a path prefix
-  # serves below that prefix:
+  # The endpoint is NOT set here. It comes from OLIGN_BASE_URL in .fabench.env
+  # (untracked) and defaults to the hosted https://api.olewave.com/olign/v0.9;
+  # the token goes in .fabench.env too (CF_ACCESS_CLIENT_ID,
+  # CF_ACCESS_CLIENT_SECRET), see fabench/aligners/olign/README.md. Any other
+  # server takes its FULL assess endpoint, not just the host: the adapter POSTs
+  # to "{base_url}?{query}" directly, so a bare host 404s:
   #   OLIGN_BASE_URL=http://<host>:<port>/<base-path>/v1/assess
   # A private variant may still pin params.base_url, which wins over the env.
   accent: 2                 # 1 = UK, 2 = US

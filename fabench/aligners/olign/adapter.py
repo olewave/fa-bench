@@ -24,6 +24,9 @@ also carries per-word/per-phone ``begin``/``end`` timings, which is what makes i
 scoreable as a forced aligner at all. See this package's ``README.md`` for the
 wire contract.
 
+It targets **Olign v1.0.0**, the version in ``records/`` and the paper, through
+Olign's v0.9 API.
+
 Transports
 ----------
 Two doors, both documented; REST is the default because it is the one that is
