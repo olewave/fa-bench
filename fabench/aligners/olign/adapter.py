@@ -51,7 +51,7 @@ Until 2026-07-20 the REST door mangled the audio before alignment: it detected
 the speech onset but then laid every subsequent phone out at a fixed nominal
 30 ms (92.7 % of TIMIT phones exactly 30 ms) and ended the alignment far short
 of the audio, so matched-set MAE was ~940 ms — layout drift, not alignment. The
-acoustic extractor (still v0.5.0) was never at fault; the REST audio path was.
+alignment itself was never at fault; the REST audio path was.
 Once fixed, olign scores a real full-corpus MAE of ~20.5 ms (TIMIT) / ~18.7 ms
 (Buckeye) — best of all tested aligners on spontaneous speech; see
 summary/. ``test_olign.py::test_fixture_has_varied_real_timings`` guards
