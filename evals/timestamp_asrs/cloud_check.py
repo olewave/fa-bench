@@ -14,6 +14,11 @@ name should cost one second of audio to find out, not an afternoon's billing.
     evals/timestamp_asrs/cloud_check.py --audio some.wav
     evals/timestamp_asrs/cloud_check.py deepgram elevenlabs
     evals/timestamp_asrs/cloud_check.py --no-cache         # force a real call
+    evals/timestamp_asrs/cloud_check.py elevenlabs_fa --audio a.wav --text "what a.wav says"
+
+A forced aligner is given the words and times them, so it needs --text, the
+words spoken in --audio. Without both it is skipped, since timing words that
+were never said proves nothing and still bills.
 
 With no --audio it looks for a staged corpus file, and failing that synthesises
 a second of silence, which is enough to prove the credential and the response
@@ -154,6 +159,8 @@ def main(argv=None) -> int:
     ap.add_argument("tools", nargs="*", default=None,
                     help=f"which to check (default: all of {', '.join(TOOLS)})")
     ap.add_argument("--audio", help="a wav to send; default is a staged or synthetic one")
+    ap.add_argument("--text", help="the words spoken in --audio, for a forced "
+                                   "aligner such as elevenlabs_fa")
     ap.add_argument("--no-cache", action="store_true",
                     help="bypass the response cache and make a real call")
     ap.add_argument("--raw", action="store_true",
@@ -195,10 +202,15 @@ def main(argv=None) -> int:
         except Exception as e:
             # Almost always a missing key, which is expected until it is registered.
             print(f"{tool:12s} SKIP  {e}\n"); continue
+        sends_text = getattr(adapter, "sends_transcript", False)
+        if sends_text and not (a.audio and a.text):
+            print(f"{tool:12s} SKIP  a forced aligner needs --audio and --text, "
+                  f"the words spoken in it\n")
+            continue
 
         t0 = time.time()
         try:
-            out = adapter.align(audio)
+            out = adapter.align(audio, a.text) if sends_text else adapter.align(audio)
         except Exception as e:
             print(f"{tool:12s} FAIL  {type(e).__name__}: {str(e)[:300]}\n")
             rc = 1

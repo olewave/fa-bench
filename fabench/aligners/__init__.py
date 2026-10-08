@@ -38,6 +38,11 @@ _REGISTRY = {
     # stable-ts: Whisper with stabilised timestamps, driven through its
     # align() API on the reference transcript -- track 1, word tier only.
     "stable_ts": "fabench.aligners.stable_ts:StableTS",
+    # ElevenLabs forced alignment: the Scribe account's endpoint that is HANDED
+    # the reference words, so it is a genuine track-1 aligner on the word tier,
+    # beside its own track-2 row `elevenlabs`. HTTPS, no venv, like the cloud
+    # ASRs below, whose cache and spend cap it shares.
+    "elevenlabs_fa": "fabench.aligners.elevenlabs_fa:ElevenLabsFA",
     # TIMESTAMPED ASRs. They satisfy the aligner interface so the scoring
     # path can drive them, but they IGNORE the reference transcript and
     # decode their own -- their rows mix recognition with timing error and
