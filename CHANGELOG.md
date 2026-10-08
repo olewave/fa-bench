@@ -23,6 +23,14 @@ No change moves a published number. The records snapshot is still
 - `cloud_check.py` takes `--text`, the words spoken in `--audio`, so it can
   check a forced aligner. `cloud_cost.py` prices the new row and counts its
   cache in `--actual`.
+- A one-column, double-spaced copy of the paper,
+  `docs/paper_for_reviewer.pdf`, which the README's paper links now
+  open. Its tables are set larger and write every number with its leading
+  zero, 0.40 where the paper has .40, and its Fig. 1 is larger.
+  `evals/gen_paper_tables.py` writes its tables in the same run as the
+  paper's, so the two cannot disagree. The two-column `docs/paper.pdf`
+  stays, and a section at the end of the README links both and the paper
+  on arXiv.
 
 ### Changed
 
