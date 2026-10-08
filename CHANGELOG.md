@@ -7,6 +7,41 @@ be compared only when no such change lies between them.
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-10-08
+
+No change moves a published number. The records snapshot is still
+`records/202609/`, as scored for 1.1.0.
+
+### Added
+
+- ElevenLabs forced alignment as a Track 1 row, `elevenlabs_fa`. Each
+  utterance goes to ElevenLabs' `/v1/forced-alignment` endpoint with its
+  reference transcript, and the row is scored on word boundaries beside MFA
+  and Olign. It ships with `enabled: false` and no published numbers, because
+  every request bills the account. See
+  `fabench/aligners/elevenlabs_fa/README.md`.
+- `cloud_check.py` takes `--text`, the words spoken in `--audio`, so it can
+  check a forced aligner. `cloud_cost.py` prices the new row and counts its
+  cache in `--actual`.
+
+### Changed
+
+- The commercial cloud adapter can send the reference transcript with the
+  audio. When it does, the transcript is part of the response cache key. The
+  Track 2 rows send none, so their keys and cached responses are unchanged.
+
+### Fixed
+
+- Olign is named Olign 0.9, the version that produced its numbers. The records
+  in both snapshots, the Olign adapter's docs and the caption of the paper's
+  word table had called it Olign 1.0. Only the name changes.
+- `docs/paper.pdf` is the revised paper. Its title is now "FA-Bench: A
+  Benchmark for Phone- and Word-Level Timestamp Accuracy in Forced Alignment
+  and ASR on Clean and Noisy Speech", its word table names Olign 0.9, and the
+  abstract and the introduction open with a new first sentence. The text
+  gives Qwen3-FA's word F1 at 20 ms as 0.40, the value in its table, where
+  it said 0.39. The tables are unchanged.
+
 ## [1.1.1] - 2026-09-29
 
 No change moves a published number. The records snapshot is still
@@ -110,7 +145,8 @@ First public release. Track 1 forced alignment on TIMIT and Buckeye, word
 and phone tiers, clean audio and four degradations. Records snapshot
 `records/202608/`.
 
-[Unreleased]: https://github.com/olewave/fa-bench/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/olewave/fa-bench/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/olewave/fa-bench/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/olewave/fa-bench/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/olewave/fa-bench/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/olewave/fa-bench/releases/tag/v1.0.0

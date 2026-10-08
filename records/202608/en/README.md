@@ -204,7 +204,7 @@ previous version of this page.
 <!-- BEGIN GENERATED: coverage -->
 All **11** aligner-track systems are scored on all **4** splits (Buckeye Dev, Buckeye Test, TIMIT Dev, TIMIT Core-test):
 
-BFA, Charsiu, CrisperWhisper, MAPS, MFA 2.0, MFA 3.4, Olign 1.0, Qwen3, stable-ts, TorchAudio, WhisperX.
+BFA, Charsiu, CrisperWhisper, MAPS, MFA 2.0, MFA 3.4, Olign 0.9, Qwen3, stable-ts, TorchAudio, WhisperX.
 
 Scored separately in **track 2** — timestamped ASRs, which decode their own words rather than being given the transcript, so the two tracks never share a leaderboard: CrisperWhisper, Parakeet-TDT, Qwen3-ASR, TorchAudio (ASR), Whisper large-v3.
 <!-- END GENERATED: coverage -->
@@ -241,7 +241,7 @@ with `evals/gen_provenance.py`.
 | MAPS | (git) | `bf797f434b83` | 2026-02-23 |
 | MFA 2.0 | 2.0.6 | — | 2022-08-08 |
 | MFA 3.4 | 3.4.1 | — | 2026-07-11 |
-| Olign | v1.0.0 | — | undisclosed |
+| Olign | v0.9 | — | undisclosed |
 | Parakeet-TDT | 2.7.3 | — | 2026-04-23 |
 | Qwen3 | 0.0.6 | — | 2026-01-30 |
 | stable-ts | (git) | `e312072cc024` | — |

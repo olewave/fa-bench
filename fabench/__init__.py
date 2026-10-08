@@ -23,4 +23,4 @@ Paired additive-noise degradation over hand-corrected English gold (TIMIT, Bucke
 Everything is deterministic (seeded), config-driven, and flag-gated. See docs/methodology.md.
 """
 
-__version__ = "1.1.1"
+__version__ = "1.1.2"

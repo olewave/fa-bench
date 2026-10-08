@@ -123,7 +123,7 @@
   "commit": "\u2014",
   "display": "Olign",
   "released": "undisclosed",
-  "version": "v1.0.0"
+  "version": "v0.9"
  },
  "parakeet_tdt": {
   "checkpoint": "nvidia/parakeet-tdt-0.6b-v3",
