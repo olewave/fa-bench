@@ -42,6 +42,9 @@ PRICES = {
     "deepgram":   (0.312, 1,  "Nova-3 pay-as-you-go $0.0052/min; $0.0043 on Growth"),
     "assemblyai": (0.270, 1,  "Universal $0.27/hr"),
     "elevenlabs": (0.400, 1,  "Scribe ~$0.40/hr; tier-dependent, verify"),
+    # Track 1, evals/aligners/elevenlabs_fa. ElevenLabs bills forced alignment
+    # at its Speech to Text rate, so it is priced as Scribe is.
+    "elevenlabs_fa": (0.400, 1, "forced alignment, at the Scribe rate; verify"),
     # v2 CONFIRMED by measurement, not by the pricing page: a 2.15 s request
     # came back with "totalBilledDuration": "3s", so it rounds up to the
     # second, not to a 15 s increment. That is the difference between $39 and
@@ -121,8 +124,10 @@ def _actual() -> int:
     import wave
 
     rows = []
-    for tool_dir in sorted(glob.glob(str(ROOT / "evals/timestamp_asrs/**/cache"),
-                                     recursive=True)):
+    # The forced aligner bills from the same account but files under Track 1.
+    caches = glob.glob(str(ROOT / "evals/timestamp_asrs/**/cache"), recursive=True)
+    caches += glob.glob(str(ROOT / "evals/aligners/elevenlabs_fa/cache"))
+    for tool_dir in sorted(caches):
         tool = Path(tool_dir).parent.name
         billed = audio = 0.0
         n = n_receipt = 0

@@ -17,10 +17,7 @@
 # OUT OF THESE TERMS OR THE USE OR NATURE OF THE SOFTWARE, UNDER ANY KIND OF
 # LEGAL CLAIM.
 
-"""fabench — English forced-alignment benchmark (v1).
+"""ElevenLabs forced alignment, Track 1. The adapter is in adapter.py."""
+from fabench.aligners.elevenlabs_fa.adapter import ElevenLabsFA
 
-Paired additive-noise degradation over hand-corrected English gold (TIMIT, Buckeye).
-Everything is deterministic (seeded), config-driven, and flag-gated. See docs/methodology.md.
-"""
-
-__version__ = "1.1.2"
+__all__ = ["ElevenLabsFA"]

@@ -245,9 +245,9 @@ the previous version of this page.
 <!-- BEGIN GENERATED: coverage -->
 All **17** aligner-track systems are scored on all **4** splits (Buckeye Dev, Buckeye Test, TIMIT Dev, TIMIT Core-test).
 
-BFA, Charsiu, CrisperWhisper, FALCON, MAPS, MFA 2.0, MFA 3.4, MMS-FA, NeMo-FA 40 ms, NeMo-FA 80 ms, NeuFA, Olign 1.0, Qwen3-FA, stable-ts, TorchAudio, UnitY2, WhisperX.
+BFA, Charsiu, CrisperWhisper, FALCON, MAPS, MFA 2.0, MFA 3.4, MMS-FA, NeMo-FA 40 ms, NeMo-FA 80 ms, NeuFA, Olign 0.9, Qwen3-FA, stable-ts, TorchAudio, UnitY2, WhisperX.
 
-Scored separately in **track 2** are the timestamped ASRs, which decode their own words rather than being given the transcript, so the two tracks never share a leaderboard. They are Amazon Transcribe, AssemblyAI Universal 3.5, Azure AI Speech, CrisperWhisper, Deepgram Nova-3, ElevenLabs Scribe v2, Google Chirp 2, Google Chirp 2 → Olign 1.0, IBM Watson Large, Parakeet-TDT, Parakeet-TDT → MFA 3.4, Parakeet-TDT → Olign 1.0, Qwen3 → BFA, Qwen3 → Charsiu, Qwen3 → CrisperWhisper, Qwen3 → MAPS, Qwen3 → MFA 2.0, Qwen3 → MFA 3.4, Qwen3 → MMS-FA, Qwen3 → NeMo-FA 40 ms, Qwen3 → NeMo-FA 80 ms, Qwen3 → Olign 1.0, Qwen3 → Qwen3-FA, Qwen3 → stable-ts, Qwen3 → TorchAudio, Qwen3 → UnitY2, Qwen3 → WhisperX, Speechmatics enhanced, TorchAudio (ASR), Whisper large-v3, Whisper → WhisperX, Whisper-timestamped.
+Scored separately in **track 2** are the timestamped ASRs, which decode their own words rather than being given the transcript, so the two tracks never share a leaderboard. They are Amazon Transcribe, AssemblyAI Universal 3.5, Azure AI Speech, CrisperWhisper, Deepgram Nova-3, ElevenLabs Scribe v2, Google Chirp 2, Google Chirp 2 → Olign 0.9, IBM Watson Large, Parakeet-TDT, Parakeet-TDT → MFA 3.4, Parakeet-TDT → Olign 0.9, Qwen3 → BFA, Qwen3 → Charsiu, Qwen3 → CrisperWhisper, Qwen3 → MAPS, Qwen3 → MFA 2.0, Qwen3 → MFA 3.4, Qwen3 → MMS-FA, Qwen3 → NeMo-FA 40 ms, Qwen3 → NeMo-FA 80 ms, Qwen3 → Olign 0.9, Qwen3 → Qwen3-FA, Qwen3 → stable-ts, Qwen3 → TorchAudio, Qwen3 → UnitY2, Qwen3 → WhisperX, Speechmatics enhanced, TorchAudio (ASR), Whisper large-v3, Whisper → WhisperX, Whisper-timestamped.
 <!-- END GENERATED: coverage -->
 
 Three changes make the old numbers incomparable rather than merely
@@ -299,7 +299,7 @@ calls behind the published rows. Regenerate with `evals/gen_provenance.py`.
 | MMS-FA | 2.8.0 | — | 2025-08-06 | MMS_FA |
 | NeMo-FA | 2.7.3 | — | 2026-04-23 | stt_en_fastconformer_hybrid_large_pc (80 ms), stt_en_conformer_ctc_large (40 ms) |
 | NeuFA | (git) | `6cacd91cfe02` | 2025-01-17 | neufa-fabench-220k.pt, the authors', not released (SHA-256 `68b163eb3599`) |
-| Olign | v1.0.0 | — | undisclosed | — |
+| Olign | v0.9 | — | undisclosed | — |
 | Parakeet-TDT | 2.7.3 | — | 2026-04-23 | nvidia/parakeet-tdt-0.6b-v3 |
 | Qwen3-ASR | 0.0.6 | — | 2026-01-30 | Qwen/Qwen3-ASR-1.7B, with Qwen/Qwen3-ForcedAligner-0.6B |
 | Qwen3-FA | 0.0.6 | — | 2026-01-30 | Qwen/Qwen3-ForcedAligner-0.6B |

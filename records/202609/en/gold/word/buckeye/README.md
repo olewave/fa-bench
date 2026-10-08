@@ -75,7 +75,7 @@ Clean rather than against its neighbours sits with the per-condition tables in
 <tr><td>Frame</td><td>Charsiu</td><td style="border-left:2px solid rgba(128,128,128,.55)">28.1</td><td>67.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.606</td><td>0.470</td><td style="border-left:2px solid rgba(128,128,128,.55)">28.1</td><td>60.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.607</td><td>0.493</td></tr>
 <tr><td>HMM</td><td>MFA 2.0</td><td style="border-left:2px solid rgba(128,128,128,.55)">22.0</td><td>32.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.659</td><td>0.568</td><td style="border-left:2px solid rgba(128,128,128,.55)">22.5</td><td>32.4</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.649</td><td>0.579</td></tr>
 <tr><td>HMM</td><td>MFA 3.4</td><td style="border-left:2px solid rgba(128,128,128,.55)">21.6</td><td>36.3</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.676</td><td>0.560</td><td style="border-left:2px solid rgba(128,128,128,.55)">21.3</td><td>35.6</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.682</td><td>0.583</td></tr>
-<tr><td>API</td><td>Olign 1.0</td><td style="border-left:2px solid rgba(128,128,128,.55)">19.4</td><td>36.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.755</td><td>0.653</td><td style="border-left:2px solid rgba(128,128,128,.55)">22.5</td><td>36.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.744</td><td>0.659</td></tr>
+<tr><td>API</td><td>Olign 0.9</td><td style="border-left:2px solid rgba(128,128,128,.55)">19.4</td><td>36.0</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.755</td><td>0.653</td><td style="border-left:2px solid rgba(128,128,128,.55)">22.5</td><td>36.5</td><td style="border-left:1px solid rgba(128,128,128,.25)">0.744</td><td>0.659</td></tr>
 </tbody>
 </table>
 
@@ -97,6 +97,6 @@ Utterances each system returned **nothing** for, with no record or an empty one.
 - **MFA 2.0**. Dev 17 of 4,456 clean, then 21, 383, 164, 45 under reverb, noise, music and babble. Test 6 of 4,513 clean, then 5, 357, 125, 15 under reverb, noise, music and babble.
 - **MFA 3.4**. Dev 10 of 4,456 clean, then 47, 430, 205, 46 under reverb, noise, music and babble. Test 8 of 4,513 clean, then 11, 354, 170, 30 under reverb, noise, music and babble.
 - **NeMo-FA 80 ms**. Dev 18 of 4,456 clean, then 18, 18, 18, 18 under reverb, noise, music and babble. Test 17 of 4,513 clean, then 17, 17, 17, 17 under reverb, noise, music and babble.
-- **Olign 1.0**. Dev 0 of 4,456 clean, then 1, 2, 0, 2 under reverb, noise, music and babble. Test 0 of 4,513 clean, then 0, 1, 2, 0 under reverb, noise, music and babble.
+- **Olign 0.9**. Dev 0 of 4,456 clean, then 1, 2, 0, 2 under reverb, noise, music and babble. Test 0 of 4,513 clean, then 0, 1, 2, 0 under reverb, noise, music and babble.
 - **WhisperX**. Dev 1 of 4,456 clean, then 1, 1, 1, 1 under reverb, noise, music and babble. Test 0 of 4,513 clean, then 0, 0, 0, 0 under reverb, noise, music and babble.
 <!-- END GENERATED: completion-word-buckeye -->
