@@ -253,6 +253,12 @@ def collect(kind: str, metric: str) -> dict:
     return out
 
 
+#: The one-column copy writes every number with its leading zero, 0.40 and not
+#: .40. The two-column paper drops it to save a digit's width. main() sets this
+#: while it writes the one-column tables and clears it after.
+_LEAD_ZERO = False
+
+
 def fmt(v, bold=False, digits=1, pad=0, lead_zero=True) -> str:
     """One cell. `pad` prepends invisible zeros so every entry in a column has
     the same width: 16.9 under 143.2 becomes \\phantom{0}16.9, which puts the
@@ -262,7 +268,7 @@ def fmt(v, bold=False, digits=1, pad=0, lead_zero=True) -> str:
     if v is None:
         return "--"
     s = f"{v:.{digits}f}"
-    if not lead_zero and s.startswith("0."):
+    if not lead_zero and not _LEAD_ZERO and s.startswith("0."):
         s = s[1:]
     if bold:
         s = f"\\textbf{{{s}}}"
@@ -1032,7 +1038,7 @@ def body(rows, mae, f1, m=None, with_pipeline=False, family_col=True,
                 # the two blocks half a digit apart, which is what reads as the
                 # column not lining up. A phantom digit is exactly the
                 # difference, since a period is half the width of a digit.
-                digits, lz = wfmt[0], wfmt[1]
+                digits, lz = wfmt[0], wfmt[1] or _LEAD_ZERO
                 width = pads[(metric, cell, cond)] + 1 + 1     # ints, dot, one decimal
                 pad = width - ((len(f"{v:.0f}") if lz and v is not None else 0) + 1 + digits)
             cells.append(fmt(v, v is not None and v == bestv[(metric, cell, cond)],
@@ -2964,6 +2970,29 @@ def sdi_table(m) -> str:
 
 
 
+#: The one-column copy, paper_sincol_double_space.tex, gives each table the
+#: whole text width, about twice a column. Its tables are the same tabulars,
+#: set at 1/SINCOL_TABLE_SCALE of that width and scaled up to fill it, so every
+#: size inside grows by one factor and the hand-tuned spacing keeps its
+#: proportions. 1.35 takes the 8pt numbers to 10.8pt.
+SINCOL_TABLE_SCALE = 1.35
+#: Fig. 1's plot height in the one-column copy, against 156.8pt in a column.
+SINCOL_FIG_SIDE = 250.0
+
+
+def sincol_tables(text: str) -> str:
+    """tables.tex rewritten for the one-column copy, each tabular scaled up."""
+    begin = r"\begin{tabular*}{\columnwidth}"
+    n = text.count(begin)
+    if not n or n != text.count(r"\end{tabular*}"):
+        raise SystemExit("sincol_tables: every paper table must be a "
+                         "tabular* at \\columnwidth")
+    width = rf"\dimexpr\columnwidth*100/{round(SINCOL_TABLE_SCALE * 100)}\relax"
+    return (text.replace(begin, rf"\scalebox{{{SINCOL_TABLE_SCALE}}}"
+                                rf"{{\begin{{tabular*}}{{{width}}}")
+                .replace(r"\end{tabular*}", r"\end{tabular*}}"))
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", default=str(ROOT / "docs" / "paper" / "tables.tex"))
@@ -2990,6 +3019,17 @@ def main(argv=None) -> int:
     text = (banner + "\\newlength{\\fabdgt}\n\n"
             + (merged_table(m) if PAPER_MERGED else combined_table(m)) + "\n\n"
             + class_table(m) + "\n")
+    # The same tables for the one-column copy, from the same numbers in the
+    # same run, so the two PDFs cannot disagree. paper_sincol_double_space.tex
+    # reads these in place of tables.tex and figs.tex.
+    globals()["_LEAD_ZERO"] = True
+    text_sincol = sincol_tables(
+        banner + "% One-column copy: every number keeps its leading zero and "
+        "each table is scaled to the text width.\n\\newlength{\\fabdgt}\n\n"
+        + (merged_table(m) if PAPER_MERGED else combined_table(m)) + "\n\n"
+        + class_table(m) + "\n")
+    globals()["_LEAD_ZERO"] = False
+    _fig_sincol = onset_bias_scatter(m, side=SINCOL_FIG_SIDE)
     globals()["_SHORT_NAMES"] = True
     # table* is a two-column float; the supplement is a one-column article, where
     # it is undefined. The S/D/I table is 33 columns and runs 130pt past a
@@ -3012,6 +3052,9 @@ def main(argv=None) -> int:
     if _fig:
         (pathlib.Path(a.out).parent / "figs.tex").write_text(_fig + "\n")
         print(f"wrote {pathlib.Path(a.out).parent / 'figs.tex'}")
+    if _fig_sincol:
+        (pathlib.Path(a.out).parent / "figs_sincol.tex").write_text(_fig_sincol + "\n")
+        print(f"wrote {pathlib.Path(a.out).parent / 'figs_sincol.tex'}")
     _bias = onset_bias_table(m)
     if not _bias:
         print("note: no summary/onset_bias.json; run evals/measure_onset_bias.py "
@@ -3019,7 +3062,8 @@ def main(argv=None) -> int:
     supp = (banner + onecol(wer_table(m)) + "\n\n"
             + "\\begin{landscape}\n" + onecol(sdi_table(m)) + "\n\\end{landscape}\n"
             + ("\n" + _bias + "\n" if _bias else ""))
-    pairs = [(pathlib.Path(a.out), text), (pathlib.Path(a.out_supp), supp)]
+    pairs = [(pathlib.Path(a.out), text), (pathlib.Path(a.out_supp), supp),
+             (pathlib.Path(a.out).parent / "tables_sincol.tex", text_sincol)]
     if a.check:
         stale = [o for o, t in pairs if (o.read_text() if o.is_file() else "") != t]
         for o in stale:
