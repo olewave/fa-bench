@@ -24,7 +24,7 @@ No change moves a published number. The records snapshot is still
   check a forced aligner. `cloud_cost.py` prices the new row and counts its
   cache in `--actual`.
 - A one-column, double-spaced copy of the paper,
-  `docs/paper_sincol_double_space.pdf`, which the README's paper links now
+  `docs/paper_for_reviewer.pdf`, which the README's paper links now
   open. Its tables are set larger and write every number with its leading
   zero, 0.40 where the paper has .40, and its Fig. 1 is larger.
   `evals/gen_paper_tables.py` writes its tables in the same run as the
