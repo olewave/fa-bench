@@ -289,10 +289,10 @@ DISPLAY = {
     # withheld by SUPPRESS_PREFIX, and describing them here would disclose the
     # axes of a system whose design is not published -- which is the thing the
     # suppression exists to prevent.
-    "olign": "Olign 1.0",
-    "olign_b": "Olign 1.0",
-    "olign_noisy": "Olign 1.0",
-    "olign_t": "Olign 1.0",
+    "olign": "Olign 0.9",
+    "olign_b": "Olign 0.9",
+    "olign_noisy": "Olign 0.9",
+    "olign_t": "Olign 0.9",
     "parakeet_tdt": "Parakeet-TDT",
     "whisper3": "Whisper large-v3",
     # The row IS a cascade: Qwen3-ASR decodes, Qwen3-ForcedAligner-0.6B times

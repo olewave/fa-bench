@@ -1932,7 +1932,7 @@ def merged_table(m) -> str:
         r"Parakeet Parakeet-TDT, Qwen3 Qwen3-ASR and NeMo-FA its conformer "
         r"checkpoint. Timestamp grids are in the supplement. ElevenLabs has no "
         r"noisy cells, its credit having run out. \emph{MFA} 3.4 and "
-        r"\emph{Olign} 1.0 throughout. MAPS and NeuFA trained on 7 of 8 speakers in both "
+        r"\emph{Olign} 0.9 throughout. MAPS and NeuFA trained on 7 of 8 speakers in both "
         r"Buckeye splits.}",
         r"\label{tab:main}", r"\label{tab:phone}",
         r"\vspace{0pt}",
@@ -2211,7 +2211,7 @@ def combined_table(m) -> str:
         r"Whisper-timestamped and NeMo-FA uses its Conformer checkpoint. The APIs are "
         r"Speechmatics Enhanced, Deepgram Nova-3, IBM Large US English, Azure "
         r"en-US, AssemblyAI Universal~3.5 Pro, Amazon Transcribe en-US, "
-        r"ElevenLabs Scribe~v2, Google Chirp~2 and Olign~1.0."
+        r"ElevenLabs Scribe~v2, Google Chirp~2 and Olign~0.9."
         + _no_noisy_note(m, _TABLE_ROWS["word"]) +
         r" MFA is Montreal Forced Aligner 3.4. "
         r"MAPS and NeuFA trained on 7 of 8 speakers in both Buckeye splits.}",
