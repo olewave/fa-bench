@@ -142,6 +142,11 @@ class CloudASR(AlignerAdapter):
     #: The defining Track 2 property. align() is handed the reference transcript
     #: by the runner's signature and ignores it.
     ignores_transcript = True
+    #: A Track 1 endpoint (forced alignment) sets this. align() then sends the
+    #: reference transcript as the request's `text`, refuses to run without
+    #: one, and puts it in the cache key, since the same audio with other words
+    #: is another answer. Off, the key is computed exactly as it always was.
+    sends_transcript = False
 
     provider: str = ""
     default_model: str = ""
@@ -250,12 +255,18 @@ class CloudASR(AlignerAdapter):
             return None
         # tool_dir already resolves a nested recipe by its declared name, which
         # is the same lookup the runner uses to place hyp.jsonl.
-        from fabench.paths import tool_dir
+        from fabench.paths import tool_dir, tool_kind
         root = Path(__file__).resolve().parents[3]
+        # A forced-alignment endpoint's recipe lives under evals/aligners/, so
+        # the kind comes from where the recipe is rather than being assumed.
         try:
-            base = tool_dir(root, self.name, "timestamp_asrs")
+            kind = tool_kind(root, self.name)
         except Exception:
-            base = root / "evals" / "timestamp_asrs" / self.name
+            kind = "timestamp_asrs"
+        try:
+            base = tool_dir(root, self.name, kind)
+        except Exception:
+            base = root / "evals" / kind / self.name
         return (root / base).resolve() / "cache"
 
     def _resolve_key(self, env_names: tuple[str, ...]) -> str:
@@ -361,7 +372,9 @@ class CloudASR(AlignerAdapter):
         except OSError as e:
             raise AlignerError(f"{self.name}: cannot read {audio_path}: {e}") from e
 
-        path_cache = self._cache_path(blob)
+        text = self._request_text(transcript)
+        call_opts = self._call_opts if text is None else {**self._call_opts, "text": text}
+        path_cache = self._cache_path(blob, text)
         if path_cache is not None and path_cache.exists():
             try:
                 rec = json.loads(path_cache.read_text())
@@ -374,7 +387,7 @@ class CloudASR(AlignerAdapter):
                     # Re-parse every time. A corrected reading of the response
                     # then costs nothing, which is the whole reason the raw
                     # body is what gets stored.
-                    words, meta = self._parse(rec["raw"], self.model, self._call_opts)
+                    words, meta = self._parse(rec["raw"], self.model, call_opts)
                     # Replay the timing of the call that FETCHED this response,
                     # never the disk read. Not doing so lost the measurement
                     # entirely: a re-run of a cached cell rewrote hyp.jsonl with
@@ -402,7 +415,7 @@ class CloudASR(AlignerAdapter):
         H.reset_stats()
         t0 = time.monotonic()
         try:
-            raw = self._call(blob, str(audio_path), self.model, self._call_opts,
+            raw = self._call(blob, str(audio_path), self.model, call_opts,
                              self._fresh_key(), self.timeout_s, self.retries)
         except CloudASRError as e:
             # A 401 is not retried by the HTTP layer, and rightly so: a wrong
@@ -413,11 +426,11 @@ class CloudASR(AlignerAdapter):
                 raise
             print(f"  [{self.name}] credential refused, re-minting and retrying "
                   f"once", file=sys.stderr)
-            raw = self._call(blob, str(audio_path), self.model, self._call_opts,
+            raw = self._call(blob, str(audio_path), self.model, call_opts,
                              self._fresh_key(force=True), self.timeout_s,
                              self.retries)
         latency_s = time.monotonic() - t0
-        words, meta = self._parse(raw, self.model, self._call_opts)
+        words, meta = self._parse(raw, self.model, call_opts)
         dur = P.duration_s(blob)
         # Wall time for the whole vendor interaction, with the parts that are
         # OURS recorded beside it: retries and their backoff, and for the one
@@ -450,6 +463,8 @@ class CloudASR(AlignerAdapter):
                     "latency_s": latency_s, "audio_s": dur,
                     "setup_s": self._setup_s,
                 }
+                if text is not None:
+                    entry["text"] = text      # what was aligned, beside its answer
                 entry.update({k: v for k, v in st.items() if v})
                 tmp.write_text(json.dumps(entry))
                 tmp.replace(path_cache)           # atomic: a killed run leaves no half file
@@ -507,12 +522,28 @@ class CloudASR(AlignerAdapter):
         return out
 
     # ---- helpers ----------------------------------------------------------
-    def _cache_path(self, blob: bytes) -> Path | None:
+    def _request_text(self, transcript) -> str | None:
+        """The transcript to send, or None for an endpoint that decodes its own."""
+        if not self.sends_transcript:
+            return None
+        if isinstance(transcript, (list, tuple)):
+            transcript = " ".join(str(t) for t in transcript)
+        text = " ".join(str(transcript or "").split())
+        if not text:
+            raise AlignerError(f"{self.name}: forced alignment needs the reference "
+                               f"transcript, and this item has none")
+        return text
+
+    def _cache_path(self, blob: bytes, text: str | None = None) -> Path | None:
         if self.cache_dir is None:
             return None
         h = hashlib.sha256()
         for part in (self.provider, self.model, json.dumps(self.opts, sort_keys=True)):
             h.update(part.encode()); h.update(b"\0")
+        if text is not None:
+            # Only for an endpoint that is sent the words. Without it, the key is
+            # byte for byte what it was, so no cached response is lost.
+            h.update(b"text\0"); h.update(text.encode()); h.update(b"\0")
         h.update(blob)
         d = h.hexdigest()
         # Two-level fan-out: a Buckeye sweep is ~45k entries and one flat

@@ -1,0 +1,35 @@
+# ElevenLabs forced alignment. TRACK 1, WORD TIER, COMMERCIAL.
+#
+# The same account as the Scribe row (evals/timestamp_asrs/elevenlabs/), which
+# decodes its own words. This one is HANDED the reference transcript and times
+# it, POST https://api.elevenlabs.io/v1/forced-alignment, so it is scored
+# beside MFA and Olign in Track 1.
+#
+# CREDENTIAL: ELEVENLABS_STT_API_KEY, or ELEVENLABS_API_KEY, or XI_API_KEY,
+# from the environment or .fabench.env, the same key Scribe uses.
+#
+# COST: billed at the Speech to Text rate, one request per utterance. Both
+# corpora across clean and the four degradations are about 47,800 requests and
+# 34 audio hours. `evals/timestamp_asrs/cloud_cost.py` reads the real durations.
+#
+# OFF until the account has credit and the spend is decided. Off keeps it out
+# of rescore_all.sh and the pooled tables. A run that names it still goes
+# ahead, so try one cell with `max_calls` set first, then turn it on. A sweep
+# that reaches it with no credit stops at the first refusal.
+#
+# Words only. The response has word and character times and no phones, so the
+# row sits in the word tables alone. Each word carries ElevenLabs' alignment
+# loss, which has no stated scale, so the row claims no confidence.
+name: elevenlabs_fa
+adapter: elevenlabs_fa
+access: commercial
+enabled: false
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  concurrency: 4            # multipart uploads; keep this modest
+  timeout_s: 180
+  retries: 5
+  cache: true
+  max_calls: 4600          # per cell, above Buckeye test (4,513); remove before the grid

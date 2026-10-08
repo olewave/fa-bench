@@ -78,7 +78,7 @@ mismatch, since a `.so` is loaded once per process.
 | mms_fa, torchaudio_asr | share `aligners/torchaudio_fa/venv`, the same package |
 | whisperx_asr | shares `aligners/whisperx/venv` |
 | olign | none, a REST client to a running server |
-| assemblyai, aws, azure, deepgram, elevenlabs, google_stt, ibm, speechmatics | none, HTTPS from the shared venv |
+| assemblyai, aws, azure, deepgram, elevenlabs, elevenlabs_fa, google_stt, ibm, speechmatics | none, HTTPS from the shared venv |
 
 Each declares its own in `params.venv`, and `SubprocessAligner` refuses to
 load without it. They run in batches by construction, since a subprocess per
@@ -98,6 +98,13 @@ wired through `fabench/timestamp_asrs/cloud/` with **no vendor SDK and no
 venv**. Eight dependency trees would undo the isolation above, the GPU host
 has no PyPI route, and every one of these APIs is plain HTTPS and JSON that
 `urllib` can speak.
+
+One Track 1 row bills through the same code. `elevenlabs_fa` hands
+ElevenLabs the reference transcript with the audio and gets back the time of
+each word. Its recipe sits under `evals/aligners/`, its cache under
+`evals/aligners/elevenlabs_fa/cache/`, and its cache key carries the
+transcript as well. The cost and the caching below hold for it too, and
+[its README](../fabench/aligners/elevenlabs_fa/README.md) covers the rest.
 
 They differ from every other row in four ways the code has to answer for.
 

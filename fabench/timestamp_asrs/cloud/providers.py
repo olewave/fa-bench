@@ -256,6 +256,50 @@ def elevenlabs_parse(r: dict, model: str, opts: dict) -> tuple[list[Word], dict]
 
 
 # --------------------------------------------------------------------------
+# ElevenLabs forced alignment -- the same key and multipart upload as Scribe,
+# plus the reference transcript. TRACK 1: it times the words it is given.
+# --------------------------------------------------------------------------
+ELEVENLABS_FA_URL = "https://api.elevenlabs.io/v1/forced-alignment"
+
+
+def elevenlabs_fa_call(blob: bytes, path: str, model: str, opts: dict, key: str,
+                       timeout_s: float, retries: int) -> dict:
+    # The adapter puts the transcript in `text` for this one request. It is
+    # plain text, as the API asks, never wrapped in JSON.
+    text = str(opts.get("text") or "").strip()
+    if not text:
+        raise CloudASRError("elevenlabs_fa: forced alignment needs the reference "
+                            "transcript, and none was given")
+    ctype, body = multipart({"text": text}, {"file": (path.rsplit("/", 1)[-1],
+                                                      content_type(path), blob)})
+    _note("endpoint", ELEVENLABS_FA_URL)
+    _note("api_version", "v1")
+    return request_json(ELEVENLABS_FA_URL, method="POST", data=body,
+                        headers={"xi-api-key": key, "Content-Type": ctype},
+                        timeout_s=timeout_s, retries=retries)
+
+
+def elevenlabs_fa_parse(r: dict, model: str, opts: dict) -> tuple[list[Word], dict]:
+    """`words` carry text, start and end in seconds, and a per-word `loss`.
+
+    The loss is ElevenLabs' own alignment loss, lower being better, with no
+    stated scale, so it is kept out of the confidence field and the response
+    total goes in the meta instead. `characters` is ignored: it is a finer
+    tier of the same alignment, and there is no phone tier to score it as.
+    """
+    words: list[Word] = []
+    for w in r.get("words") or []:
+        text = str(w.get("text") or "")
+        if not text.strip():
+            continue                   # a space between words is no boundary
+        words.append([text, float(w["start"]), float(w["end"]), None])
+    meta = {"api_model": model}
+    if isinstance(r.get("loss"), (int, float)):
+        meta["alignment_loss"] = float(r["loss"])
+    return words, meta
+
+
+# --------------------------------------------------------------------------
 # Google Cloud Speech-to-Text -- v1 (API key works) or v2 (bearer + project).
 # --------------------------------------------------------------------------
 def google_stt_call(blob: bytes, path: str, model: str, opts: dict, key: str,
@@ -1082,6 +1126,7 @@ def host_for(provider: str, opts: dict) -> str:
     return {"deepgram": "api.deepgram.com",
             "assemblyai": "api.assemblyai.com",
             "elevenlabs": "api.elevenlabs.io",
+            "elevenlabs_fa": "api.elevenlabs.io",
             "speechmatics": "asr.api.speechmatics.com"}.get(provider, "")
 
 
@@ -1102,6 +1147,11 @@ PROVIDERS = {
     # for is the one worth preferring. XI_API_KEY is their own header spelling.
     "elevenlabs": (elevenlabs_call, elevenlabs_parse, "scribe_v2",
                    ("ELEVENLABS_STT_API_KEY", "ELEVENLABS_API_KEY", "XI_API_KEY")),
+    # The same account and key as Scribe. Forced alignment has no model to
+    # pick, so the "model" is the endpoint's name, which keeps its cache
+    # entries apart from Scribe's.
+    "elevenlabs_fa": (elevenlabs_fa_call, elevenlabs_fa_parse, "forced-alignment",
+                      ("ELEVENLABS_STT_API_KEY", "ELEVENLABS_API_KEY", "XI_API_KEY")),
     "google_stt": (google_stt_call, google_stt_parse, "latest_long",
                    ("GOOGLE_STT_ACCESS_TOKEN", "GOOGLE_STT_API_KEY")),
     "speechmatics": (speechmatics_call, speechmatics_parse, "enhanced",
