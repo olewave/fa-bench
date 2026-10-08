@@ -77,7 +77,7 @@ TOOLS = [
      {"gitlock": ("evals/aligners/stable_ts/requirements.lock", "stable-ts")}),
     # One version, the released one. The second number was an internal
     # build id and said nothing a reader could use.
-    ("Olign", "olign", {"fixed": ("v1.0.0", "—", "undisclosed")}),
+    ("Olign", "olign", {"fixed": ("v0.9", "—", "undisclosed")}),
     # The rest of the systems the records score. An environment that lives on
     # another machine (the GPU box) is read there; here its entry falls back to
     # the cached value, which is why the cache is committed.

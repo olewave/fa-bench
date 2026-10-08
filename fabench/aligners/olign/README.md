@@ -42,11 +42,11 @@ multipart upload and answers through a job you poll, and this adapter does not
 use it.
 
 Do not confuse the API version with the **Olign** version. The results in
-`records/` and the paper are **Olign v1.0.0** ("Olign 1.0" in the tables), and
-that is what the hosted endpoint serves, through API v0.9. Every response
-reports the Olign version it ran, so check it before comparing a run with the
-published numbers. The "1.0" in "Olign 1.0" is that release, and the
-`/olign/v1` path is unrelated.
+`records/` and the paper come from **Olign 0.9**, reached through API v0.9, and
+both name it Olign 0.9. Every response reports the Olign version it ran, so
+check it before comparing a run with the published numbers. A later Olign
+release can sit behind the same API path, and the `/olign/v1` path is a
+different API.
 
 ### Credentials
 
