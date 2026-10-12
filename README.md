@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="records/202610/en/README.md"><img src="https://img.shields.io/badge/leaderboard-latest-orange" alt="Leaderboard (latest)"></a>
+  <a href="https://olewave.com/en/leaderboard/fa-bench"><img src="https://img.shields.io/badge/leaderboard-latest-orange" alt="Leaderboard (latest)"></a>
   <a href="docs/paper_for_reviewer.pdf"><img src="https://img.shields.io/badge/paper-PDF-b31b1b" alt="Paper (PDF)"></a>
   <a href="https://github.com/olewave/fa-bench/actions/workflows/ci.yml"><img src="https://github.com/olewave/fa-bench/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-blue" alt="License: PolyForm Noncommercial 1.0.0"></a>

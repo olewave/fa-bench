@@ -7,6 +7,11 @@ be compared only when no such change lies between them.
 
 ## [Unreleased]
 
+### Changed
+
+- The README's leaderboard badge opens the live leaderboard at
+  https://olewave.com/en/leaderboard/fa-bench in place of the records page.
+
 ## [1.1.3] - 2026-10-12
 
 Records snapshot `records/202610/`, scored with this release. No change
