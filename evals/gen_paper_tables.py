@@ -593,6 +593,8 @@ PAPER_CITE = {
     # reaches by splitting on "_on_"; the Track 1 row is named olign_noisy.
     "olign": "olewave2024olign",
     "olign_noisy": "olewave2024olign",
+    "olign_v091": "olewave2024olign",
+    "olign_v101": "olewave2024olign",
 }
 
 
@@ -640,7 +642,15 @@ PAPER_SUPPRESS = {"mfa2", "mfa2_on_qwen3asr",
                   "torchaudio_fa_on_qwen3asr", "mms_fa_on_qwen3asr",
                   "stable_ts_on_qwen3asr", "crisperwhisper_fa_on_qwen3asr",
                   "unity2_on_qwen3asr", "charsiu_on_qwen3asr",
-                  "maps_on_qwen3asr"}
+                  "maps_on_qwen3asr",
+                  # Olign 1.0 on its job API, scored after the paper. The
+                  # paper's Olign rows are Olign 0.9; 1.0 is in records/.
+                  # olign_v101 is the run that records/ publishes as
+                  # Olign 1.0, suppressed here for the same reason.
+                  "olign_v1", "olign_v101", "olign_v1_asr",
+                  "olign_v101_asr",
+                  # Added after the paper, like Olign 1.0.
+                  "pocketsphinx", "pocketsphinx_on_qwen3asr"}
 
 #: Tools that are handed the GOLD phone sequence and only place its boundaries.
 #: Every other phone row derives its own phones from the words, so such a row

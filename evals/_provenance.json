@@ -125,12 +125,26 @@
   "released": "undisclosed",
   "version": "v0.9"
  },
+ "olign_v1": {
+  "checkpoint": "\u2014",
+  "commit": "\u2014",
+  "display": "Olign",
+  "released": "undisclosed",
+  "version": "v1.0"
+ },
  "parakeet_tdt": {
   "checkpoint": "nvidia/parakeet-tdt-0.6b-v3",
   "commit": null,
   "display": "Parakeet-TDT",
   "released": "2026-04-23",
   "version": "2.7.3"
+ },
+ "pocketsphinx": {
+  "checkpoint": "bundled en-us PTM model (CMUSphinx 5.2) and CMUdict, g2p_en 2.1.0 for words outside it",
+  "commit": "f20ff1b7a5db64c5e892a798479e20df86e79a35",
+  "display": "PocketSphinx",
+  "released": "2026-08-30",
+  "version": "(git)"
  },
  "qwen3_asr": {
   "checkpoint": "Qwen/Qwen3-ASR-1.7B, with Qwen/Qwen3-ForcedAligner-0.6B",
