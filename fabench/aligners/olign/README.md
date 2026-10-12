@@ -44,9 +44,10 @@ use it.
 Do not confuse the API version with the **Olign** version. The results in
 `records/` and the paper come from **Olign 0.9**, reached through API v0.9, and
 both name it Olign 0.9. Every response reports the Olign version it ran, so
-check it before comparing a run with the published numbers. A later Olign
-release can sit behind the same API path, and the `/olign/v1` path is a
-different API.
+check it before comparing a run with the published numbers. Each hyp.jsonl
+record keeps the `versions` object of the response that made it, for results
+fetched since 2026-10-11. A later Olign release can sit behind the same API
+path, and the `/olign/v1` path is a different API.
 
 ### Credentials
 
