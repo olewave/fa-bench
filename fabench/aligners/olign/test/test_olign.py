@@ -55,11 +55,10 @@ REAL_RESPONSE = json.loads(FIXTURE.read_text())
 SHORT1_WAV = Path(os.environ.get("OLIGN_TEST_WAV", "data/olign/short1.wav"))
 SHORT1_TEXT = "what is better a fruit or hamburger"
 # A live-server test needs a live server, and its address belongs to whoever
-# runs the suite, not to the repo. Set OLIGN_TEST_HOST / OLIGN_TEST_PORT to
-# point at one; without them these tests skip -- which is what they already
-# did on every machine but the author's.
+# runs the suite, not to the repo. Set OLIGN_TEST_HOST and OLIGN_TEST_PORT to
+# point at one. Without a port the smoke test skips.
 HOST = os.environ.get("OLIGN_TEST_HOST", "127.0.0.1")
-PORT = int(os.environ.get("OLIGN_TEST_PORT", "8848"))
+PORT = int(os.environ.get("OLIGN_TEST_PORT", "0"))
 
 
 def _spec(**params):
@@ -242,6 +241,7 @@ def test_olign_mode_b_unsupported(tmp_path):
 
 
 @pytest.mark.skipif(not SHORT1_WAV.exists(), reason="olign test fixture not staged")
+@pytest.mark.skipif(not PORT, reason="OLIGN_TEST_PORT unset")
 def test_olign_real_server_smoke():
     """Live smoke test against the deployed 0.9 REST door (skipped if
     unreachable). Asserts a well-formed alignment, not a good one."""
