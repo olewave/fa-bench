@@ -42,6 +42,8 @@ and its Olign rows are described below.
   ElevenLabs forced alignment is still unpublished for the same reason.
 - Each Olign 0.9 hyp record keeps the `versions` object of the response
   that made it, for responses fetched since 2026-10-11.
+- A leaderboard badge at the top of the README, ahead of the paper badge,
+  that opens the current snapshot's results page.
 
 ### Changed
 
