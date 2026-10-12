@@ -161,8 +161,14 @@ FLAG_NOTE = {
 #: it encodes no tunable axis -- so it is a keeper. Without this the prefix rule
 #: swallows it and the row is computed, scored, and silently never published.
 SUPPRESS_PREFIX = {"olign"}
-SUPPRESS_KEEP = {"olign_noisy", "olign_on_qwen3asr", "olign_on_parakeettdt",
-                 "olign_on_chirp2"}
+SUPPRESS_KEEP = {"olign_v091", "olign_v091_on_qwen3asr",
+                 "olign_v091_on_parakeettdt", "olign_v091_on_chirp2",
+                 # The published Olign rows. olign_v091 and its three
+                 # cascades feed every "Olign 0.9" row, olign_v101 and
+                 # olign_v101_asr the two "Olign 1.0" rows, one run behind
+                 # each name on both tracks. Every other olign recipe stays
+                 # internal.
+                 "olign_v101", "olign_v101_asr"}
 
 
 def _suppressed(name: str) -> bool:
@@ -285,6 +291,7 @@ DISPLAY = {
     "mfa": "MFA 3.4",
     "mfa2": "MFA 2.0",
     "neufa": "NeuFA",
+    "pocketsphinx": "PocketSphinx",
     # Only the shipped configuration is named. The internal variants are
     # withheld by SUPPRESS_PREFIX, and describing them here would disclose the
     # axes of a system whose design is not published -- which is the thing the
@@ -292,7 +299,13 @@ DISPLAY = {
     "olign": "Olign 0.9",
     "olign_b": "Olign 0.9",
     "olign_noisy": "Olign 0.9",
+    "olign_v091": "Olign 0.9",
     "olign_t": "Olign 0.9",
+    # Olign 1.0, the job API. Named apart from 0.9 in every table.
+    "olign_v1": "Olign 1.0",
+    "olign_v101": "Olign 1.0",
+    "olign_v1_asr": "Olign 1.0",
+    "olign_v101_asr": "Olign 1.0",
     "parakeet_tdt": "Parakeet-TDT",
     "whisper3": "Whisper large-v3",
     # The row IS a cascade: Qwen3-ASR decodes, Qwen3-ForcedAligner-0.6B times
@@ -369,10 +382,16 @@ FAMILY = {
     "falcon": "frame",
     "mfa": "hmm",               # Kaldi GMM-HMM + SAT/fMLLR/LDA
     "mfa2": "hmm",
+    "pocketsphinx": "hmm",       # Sphinx PTM GMM-HMM, no speaker adaptation
     "olign": "proprietary",
     "olign_noisy": "proprietary",
+    "olign_v091": "proprietary",
     "olign_t": "proprietary",
     "olign_b": "proprietary",
+    "olign_v1": "proprietary",
+    "olign_v101": "proprietary",
+    "olign_v1_asr": "proprietary",
+    "olign_v101_asr": "proprietary",
 }
 
 #: Presentation order. Within each family the MOST ACCURATE row sits LAST, so
@@ -433,6 +452,8 @@ PIPELINE = {
     "torchaudio_asr": "one-step",   # CTC frame spans from the same decode
     "whisperx_asr": "two-step",     # Whisper decodes, wav2vec2 re-aligns its words
     "qwen3_asr": "two-step",        # decodes, then aligns with Qwen3-ForcedAligner
+    "olign_v1_asr": "two-step",     # Olign 1.0 recognizes, then aligns its own words
+    "olign_v101_asr": "two-step",
     # The commercial endpoints return words and times from one request. Whether
     # a second stage runs server-side is not observable, so "one-step" here
     # means what the interface offers, which is also what a user gets.

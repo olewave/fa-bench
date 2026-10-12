@@ -55,6 +55,10 @@ TOOLS = [
                         "pypi": "montreal-forced-aligner"}),
     ("MFA 2.0", "mfa2", {"conda": ("mfa20", "montreal-forced-aligner"),
                          "pypi": "montreal-forced-aligner"}),
+    # Built from a main-branch commit, past its last release, so the commit
+    # is the version.
+    ("PocketSphinx", "pocketsphinx",
+     {"git": "evals/aligners/pocketsphinx/repo/pocketsphinx"}),
     ("Charsiu", "charsiu", {"git": "evals/aligners/charsiu/repo/charsiu"}),
     ("MAPS", "maps", {"git": "evals/aligners/maps/repo/MAPS"}),
     ("BFA", "bfa", {"lock": ("evals/aligners/bfa/requirements.lock",
@@ -78,6 +82,8 @@ TOOLS = [
     # One version, the released one. The second number was an internal
     # build id and said nothing a reader could use.
     ("Olign", "olign", {"fixed": ("v0.9", "—", "undisclosed")}),
+    # Olign 1.0 on its job API, both tracks.
+    ("Olign", "olign_v1", {"fixed": ("v1.0", "—", "undisclosed")}),
     # The rest of the systems the records score. An environment that lives on
     # another machine (the GPU box) is read there; here its entry falls back to
     # the cached value, which is why the cache is committed.
@@ -119,6 +125,8 @@ CHECKPOINT = {
     "whisper_ts": "Whisper large-v3",
     "mfa": "english_us_arpa acoustic model and dictionary",
     "mfa2": "english_us_arpa acoustic model and dictionary",
+    "pocketsphinx": "bundled en-us PTM model (CMUSphinx 5.2) and CMUdict, "
+                    "g2p_en 2.1.0 for words outside it",
     "olign": "—",
     "qwen3_asr": "Qwen/Qwen3-ASR-1.7B, with Qwen/Qwen3-ForcedAligner-0.6B",
     "whisperx_asr": "Whisper large-v3, then WAV2VEC2_ASR_BASE_960H",

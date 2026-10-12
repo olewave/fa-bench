@@ -73,7 +73,7 @@ mismatch, since a `.so` is loaded once per process.
 |---|---|
 | bfa, charsiu, maps | `<tool>/repo/env` |
 | mfa | `<tool>/repo/mamba` (micromamba) |
-| crisperwhisper, falcon, nemo_fa, neufa, parakeet_tdt, qwen3_asr, qwen3_fa, stable_ts, torchaudio_fa, unity2, whisper3, whisper_ts, whisperx | `<tool>/venv` |
+| crisperwhisper, falcon, nemo_fa, neufa, parakeet_tdt, pocketsphinx, qwen3_asr, qwen3_fa, stable_ts, torchaudio_fa, unity2, whisper3, whisper_ts, whisperx | `<tool>/venv` |
 | crisperwhisper_fa | shares `timestamp_asrs/crisperwhisper/venv`, the same package |
 | mms_fa, torchaudio_asr | share `aligners/torchaudio_fa/venv`, the same package |
 | whisperx_asr | shares `aligners/whisperx/venv` |

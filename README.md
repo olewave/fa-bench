@@ -22,22 +22,22 @@
 FA-Bench measures how well a system places word and phone boundaries in
 speech, and how much of that accuracy survives noise. The reference is the
 boundaries that human linguists marked by hand in two English corpora, read
-speech in [TIMIT](records/202609/en/gold/word/timit/README.md#about-timit)
+speech in [TIMIT](records/202610/en/gold/word/timit/README.md#about-timit)
 and conversation in
-[Buckeye](records/202609/en/gold/word/buckeye/README.md#about-buckeye). We add
+[Buckeye](records/202610/en/gold/word/buckeye/README.md#about-buckeye). We add
 **no new annotation**. Times are used as annotated and labels are folded into
 the shared TIMIT-39 phone set. The [FA-Bench paper](docs/paper_for_reviewer.pdf) describes
 the protocol and what the results show.
 
 Every system runs on **clean** audio and on
-[four degradations](records/202609/en/README.md#what-the-four-conditions-are)
+[four degradations](records/202610/en/README.md#what-the-four-conditions-are)
 (`reverb`, `noise`, `music`, `babble`). Systems are scored in **two tracks
 that never share a leaderboard**. A forced aligner is given the reference
 transcript, so only its timing is tested. A timestamped ASR decodes its own
 words, so its timing error carries its recognition error too. Every run is
 seeded and reproducible from a single command.
 
-**30 systems scored**, 21 open models and 9 commercial APIs.
+**31 systems scored**, 22 open models and 9 commercial APIs.
 
 - **Forced aligners**, given the reference transcript.
   [BFA](https://github.com/tabahi/bournemouth-forced-aligner) ·
@@ -49,6 +49,7 @@ seeded and reproducible from a single command.
   [MMS-FA](https://docs.pytorch.org/audio/stable/generated/torchaudio.pipelines.MMS_FA.html) ·
   [NeMo Forced Aligner](https://github.com/NVIDIA-NeMo/Speech/tree/main/tools/nemo_forced_aligner), Conformer and FastConformer checkpoints ·
   [NeuFA](https://github.com/thuhcsi/NeuFA) ·
+  [PocketSphinx](https://github.com/cmusphinx/pocketsphinx) ·
   [Qwen3-ForcedAligner](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B) ·
   [stable-ts](https://github.com/jianfch/stable-ts) ·
   [TorchAudio-FA](https://github.com/pytorch/audio) ·
@@ -72,16 +73,16 @@ seeded and reproducible from a single command.
   [IBM Watson Speech to Text](https://www.ibm.com/products/speech-to-text) ·
   [Speechmatics](https://www.speechmatics.com/)
 
-We also score 19 two-step cascades, in which one of the aligners re-times the
+We also score 21 two-step cascades, in which one of the aligners re-times the
 words an ASR produced.
 
-**Latest results**, the September 2026 snapshot.
-[TIMIT, words](records/202609/en/gold/word/timit/README.md) ·
-[TIMIT, phones](records/202609/en/gold/phone/timit/README.md) ·
-[Buckeye, words](records/202609/en/gold/word/buckeye/README.md) ·
-[Buckeye, phones](records/202609/en/gold/phone/buckeye/README.md) ·
-[Timestamped ASRs](records/202609/en/asr/word/timit/README.md) ·
-[Methodology](records/202609/en/README.md)
+**Latest results**, the October 2026 snapshot.
+[TIMIT, words](records/202610/en/gold/word/timit/README.md) ·
+[TIMIT, phones](records/202610/en/gold/phone/timit/README.md) ·
+[Buckeye, words](records/202610/en/gold/word/buckeye/README.md) ·
+[Buckeye, phones](records/202610/en/gold/phone/buckeye/README.md) ·
+[Timestamped ASRs](records/202610/en/asr/word/timit/README.md) ·
+[Methodology](records/202610/en/README.md)
 
 > **Licensed under [PolyForm Noncommercial 1.0.0](LICENSE)**
 >
@@ -263,7 +264,7 @@ uses our own matcher with the manner-match exclusion and works for every
 aligner. `mfa_paper` bridges to the MFA paper's own evaluation code, so its
 Table 5 can be reproduced exactly. What that changes, and the residual it does
 not explain, is worked through in
-[the methodology page](records/202609/en/README.md).
+[the methodology page](records/202610/en/README.md).
 
 ---
 
@@ -284,11 +285,11 @@ Olewave (<info@olewave.com>). Every other system installs from its own recipe
 and needs nothing from us.
 
 Not every system reaches every tier. On Track 1, only **BFA, Charsiu, FALCON,
-MAPS, MFA, NeuFA, Olign and TorchAudio emit phones**. The others, and every
-one-step ASR, emit words only and appear in the word tables alone. The tables
-show a dash rather than a number wherever that is so. Per-system notes are in
-each tool's README under `fabench/aligners/`. The numbers and their caveats are
-in [`records/`](records/202609/en/gold/word/timit/README.md).
+MAPS, MFA, NeuFA, Olign, PocketSphinx and TorchAudio emit phones**. The others,
+and every one-step ASR, emit words only and appear in the word tables alone.
+The tables show a dash rather than a number wherever that is so. Per-system
+notes are in each tool's README under `fabench/aligners/`. The numbers and
+their caveats are in [`records/`](records/202610/en/gold/word/timit/README.md).
 
 Reproduce with `.venv/bin/python -m pytest -q` and `fabench gates`. The only
 gate that needs restricted data is gold plausibility, which runs inside

@@ -50,7 +50,7 @@ from fabench.schema import load_jsonl
 
 def systems(corpus: str):
     """(name, hyp_path, has_phones) for every aligner run present for `corpus`.
-    olign = post-edge-snap; qwen3 = word-only. Missing runs are skipped."""
+    olign = the olign_probe run; qwen3 = word-only. Missing runs are skipped."""
     R = REPO / "summary"
     base = {"timit": "timit_full", "buckeye": "buckeye_paper"}[corpus]
     cand = [(a, R / base / "hyp" / f"{a}__{corpus}.jsonl", True)

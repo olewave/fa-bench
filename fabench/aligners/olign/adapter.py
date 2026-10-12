@@ -324,8 +324,12 @@ class Olign(AlignerAdapter):
 
         x, sr = load_resample(audio_path, 16000)
         dur = len(x) / sr
+        # Since 2026-10-11 the body carries a versions object. Kept as given,
+        # its keys unread, so each hyp record says what aligned it. Older
+        # bodies carry none and add nothing.
         return AlignerOutput(
-            words=clamp_intervals(words, dur), phones=clamp_intervals(phones, dur)
+            words=clamp_intervals(words, dur), phones=clamp_intervals(phones, dur),
+            meta={"versions": payload["versions"]} if "versions" in payload else {},
         )
 
     def align_corpus(self, items) -> dict:

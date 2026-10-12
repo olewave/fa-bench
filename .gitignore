@@ -196,3 +196,18 @@ docs/paper/overleaf.zip
 # Model checkpoints supplied by hand. neufa_en.pt is 82 MB and is not
 # published upstream, so it is staged here and never committed.
 model/
+
+# Internal working notes at the repo root, never published
+/TODO.md
+/issues.md
+/things_to_be_removed.md
+
+# Private Olign track-2 variants. Same reason as the aligner tree above: these
+# pin an endpoint that is not public, and the exps config un-ignore rule would
+# otherwise track them into the public repo.
+evals/timestamp_asrs/olign_v1_asr/exps/
+
+# Cascade variants built on a private Olign recipe. gen_cascade_configs.py
+# copies the base aligner spec into the new recipe, so these would otherwise
+# carry its base_url into a tracked file.
+evals/timestamp_asrs/olign_v*_on_*/

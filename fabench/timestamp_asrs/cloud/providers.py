@@ -300,6 +300,88 @@ def elevenlabs_fa_parse(r: dict, model: str, opts: dict) -> tuple[list[Word], di
 
 
 # --------------------------------------------------------------------------
+# Olign 1.0 -- Olewave's job API. Submit, then poll the job until it is done.
+# --------------------------------------------------------------------------
+OLIGN_V1_URL = "https://api.olewave.com/olign/v1"
+#: Cloudflare in front of api.olewave.com refuses urllib's default User-Agent
+#: with HTTP 403, as it does for the v0.9 adapter, so these calls name themselves.
+OLIGN_USER_AGENT = "fa-bench-olign/1"
+#: The job's own word for a recording with nothing in it. A real answer, so
+#: it is kept and cached as an empty result rather than retried on every run.
+OLIGN_NO_SPEECH = "no speech recognized"
+
+
+def olign_v1_call(blob: bytes, path: str, model: str, opts: dict, key: str,
+                  timeout_s: float, retries: int) -> dict:
+    """POST the audio, and the reference transcript when there is one.
+
+    With a transcript the job aligns those words (`transcript_source: client`,
+    Track 1). Without one Olign recognizes the words first and aligns its own
+    (`transcript_source: asr`, Track 2). Both answer in the job's final status.
+    """
+    base = str(opts.get("base_url") or OLIGN_V1_URL).rstrip("/")
+    auth = {"X-API-Key": key, "User-Agent": OLIGN_USER_AGENT}
+    files = {"audio": (path.rsplit("/", 1)[-1], content_type(path), blob)}
+    text = str(opts.get("text") or "").strip()
+    if text:
+        files["transcript"] = ("transcript.txt", "text/plain", text.encode("utf-8"))
+    ctype, body = multipart({}, files)
+    _note("endpoint", base); _note("api_version", "v1")
+    created = request_json(base, method="POST", data=body,
+                           headers={**auth, "Content-Type": ctype},
+                           timeout_s=min(120.0, timeout_s), retries=retries)
+    jid = created.get("job_id")
+    if not jid:
+        raise CloudASRError(f"olign_v1: no job id in {json.dumps(created)[:200]}")
+
+    # A short utterance is done in about three seconds. Olewave asks for a
+    # poll every 5 to 10 s, so after the first look the interval is 5 s.
+    time.sleep(float(opts.get("poll_first_s", 3.0)))
+    interval = float(opts.get("poll_interval_s", 5.0))
+    deadline = time.monotonic() + timeout_s
+    while True:
+        st = request_json(f"{base}/{jid}", headers=auth,
+                          timeout_s=min(60.0, timeout_s), retries=retries)
+        state = str(st.get("state") or "").lower()
+        if state == "done":
+            return st
+        if state == "failed":
+            if OLIGN_NO_SPEECH in str(st.get("log_tail") or ""):
+                return st
+            raise CloudASRError(f"olign_v1: job {jid} failed -- "
+                                f"{str(st.get('log_tail') or '')[:200]}")
+        if time.monotonic() > deadline:
+            raise CloudASRError(f"olign_v1: job {jid} still {state!r} after {timeout_s:.0f}s")
+        _bump("poll_sleep_s", interval)
+        _bump("n_polls")
+        time.sleep(interval)
+
+
+def olign_v1_parse(r: dict, model: str, opts: dict) -> tuple[list[Word], dict, list[Word]]:
+    """Words and their phones, times in seconds, scores as 0..1 confidence.
+
+    The scores are Olign's pronunciation scores, carried as a confidence proxy
+    the way the v0.9 adapter carries its per-phone scores.
+    """
+    res = r.get("result") or {}
+    words: list[Word] = []
+    phones: list[Word] = []
+    for w in res.get("words") or []:
+        score = w.get("score")
+        words.append([str(w.get("word") or ""), float(w["begin"]), float(w["end"]),
+                      None if score is None else float(score) / 100.0])
+        for p in w.get("phones") or []:
+            ps = p.get("score")
+            phones.append([str(p.get("ph") or ""), float(p["begin"]), float(p["end"]),
+                           None if ps is None else float(ps) / 100.0])
+    meta = {"api_model": model, "transcript_source": r.get("transcript_source"),
+            "job_state": r.get("state")}
+    if r.get("state") == "failed":
+        meta["no_speech"] = True
+    return words, meta, phones
+
+
+# --------------------------------------------------------------------------
 # Google Cloud Speech-to-Text -- v1 (API key works) or v2 (bearer + project).
 # --------------------------------------------------------------------------
 def google_stt_call(blob: bytes, path: str, model: str, opts: dict, key: str,
@@ -1127,6 +1209,7 @@ def host_for(provider: str, opts: dict) -> str:
             "assemblyai": "api.assemblyai.com",
             "elevenlabs": "api.elevenlabs.io",
             "elevenlabs_fa": "api.elevenlabs.io",
+            "olign_v1": "api.olewave.com",
             "speechmatics": "asr.api.speechmatics.com"}.get(provider, "")
 
 
@@ -1152,6 +1235,9 @@ PROVIDERS = {
     # entries apart from Scribe's.
     "elevenlabs_fa": (elevenlabs_fa_call, elevenlabs_fa_parse, "forced-alignment",
                       ("ELEVENLABS_STT_API_KEY", "ELEVENLABS_API_KEY", "XI_API_KEY")),
+    # Olewave's own job API. One key serves both of its modes, with the
+    # transcript (Track 1) and without it (Track 2).
+    "olign_v1": (olign_v1_call, olign_v1_parse, "olign-1.0", ("OLIGN_API_KEY",)),
     "google_stt": (google_stt_call, google_stt_parse, "latest_long",
                    ("GOOGLE_STT_ACCESS_TOKEN", "GOOGLE_STT_API_KEY")),
     "speechmatics": (speechmatics_call, speechmatics_parse, "enhanced",

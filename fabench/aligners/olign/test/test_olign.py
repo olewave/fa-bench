@@ -20,7 +20,7 @@
 """olign adapter — registry, request building, and JSON->Interval conversion.
 
 Parsing is tested against ``test/fixtures/olign_response.json``, which is a real
-(trimmed) response captured from the live v0.9.0 server rather than a
+(trimmed) response captured from the live 0.9 server rather than a
 hand-written mock, so the shape cannot drift from reality silently.
 
 A live smoke test hits the deployed server (skipped if unreachable). It asserts
@@ -55,11 +55,10 @@ REAL_RESPONSE = json.loads(FIXTURE.read_text())
 SHORT1_WAV = Path(os.environ.get("OLIGN_TEST_WAV", "data/olign/short1.wav"))
 SHORT1_TEXT = "what is better a fruit or hamburger"
 # A live-server test needs a live server, and its address belongs to whoever
-# runs the suite, not to the repo. Set OLIGN_TEST_HOST / OLIGN_TEST_PORT to
-# point at one; without them these tests skip -- which is what they already
-# did on every machine but the author's.
+# runs the suite, not to the repo. Set OLIGN_TEST_HOST and OLIGN_TEST_PORT to
+# point at one. Without a port the smoke test skips.
 HOST = os.environ.get("OLIGN_TEST_HOST", "127.0.0.1")
-PORT = int(os.environ.get("OLIGN_TEST_PORT", "8848"))
+PORT = int(os.environ.get("OLIGN_TEST_PORT", "0"))
 
 
 def _spec(**params):
@@ -178,6 +177,18 @@ def test_olign_success_via_stubbed_transport(tmp_path, monkeypatch):
     assert len(out.phones) == 9
 
 
+def test_olign_keeps_the_versions_object_as_given(tmp_path, monkeypatch):
+    """A body's ``versions`` object reaches hyp.jsonl through meta untouched,
+    and a body without one adds nothing."""
+    a = get_adapter(_spec())
+    wav = _silent_wav(tmp_path)
+    versions = {"x": "v0.0.1"}
+    monkeypatch.setattr(a, "_align_rest", lambda *_: {**REAL_RESPONSE, "versions": versions})
+    assert a.align(wav, "what is better", mode="A").meta == {"versions": versions}
+    monkeypatch.setattr(a, "_align_rest", lambda *_: REAL_RESPONSE)
+    assert a.align(wav, "what is better", mode="A").meta == {}
+
+
 def test_olign_align_corpus_concurrent(tmp_path, monkeypatch):
     """The batch path fans align() across a thread pool and returns every item
     keyed by item_id."""
@@ -230,8 +241,9 @@ def test_olign_mode_b_unsupported(tmp_path):
 
 
 @pytest.mark.skipif(not SHORT1_WAV.exists(), reason="olign test fixture not staged")
+@pytest.mark.skipif(not PORT, reason="OLIGN_TEST_PORT unset")
 def test_olign_real_server_smoke():
-    """Live smoke test against the deployed v0.9.0 REST door (skipped if
+    """Live smoke test against the deployed 0.9 REST door (skipped if
     unreachable). Asserts a well-formed alignment, not a good one."""
     try:
         with socket.create_connection((HOST, PORT), timeout=2):

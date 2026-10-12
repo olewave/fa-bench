@@ -21,6 +21,7 @@ from fabench.timestamp_asrs.cloud.adapter import (
     ElevenLabs,
     GoogleSTT,
     IBMWatson,
+    OlignV1ASR,
     Speechmatics,
 )
 
@@ -33,5 +34,6 @@ __all__ = [
     "ElevenLabs",
     "GoogleSTT",
     "IBMWatson",
+    "OlignV1ASR",
     "Speechmatics",
 ]
