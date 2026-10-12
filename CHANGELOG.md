@@ -7,6 +7,69 @@ be compared only when no such change lies between them.
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-10-12
+
+Records snapshot `records/202610/`, scored with this release. No change
+moves a number published in `records/202609/`, which stands as scored for
+1.1.0. The October snapshot adds PocketSphinx, Olign 1.0 and one cascade,
+and its Olign rows are described below.
+
+### Added
+
+- Olign 1.0 as its own row beside Olign 0.9, on both tracks. On Track 1 it
+  is given the reference transcript. On Track 2 it recognizes the words
+  itself and then aligns them, so the tables call it two-step, as they do
+  Qwen3-ASR. It is reached through Olewave's job API at
+  `https://api.olewave.com/olign/v1`, with the key in `OLIGN_API_KEY`. The
+  call lives with the cloud providers, which cache every response, retry
+  and run requests concurrently. Recipes `evals/aligners/olign_v1/` and
+  `evals/timestamp_asrs/olign_v1_asr/`.
+- PocketSphinx as a Track 1 row, the HMM family's one member not built on
+  Kaldi. It aligns the way `pocketsphinx align` does, with the bundled
+  en-us model and CMUdict, and g2p_en for words outside the dictionary. It
+  is built from a pinned main-branch commit rather than the PyPI wheel,
+  because the alignment fixes that matter here landed after v5.1.1. An
+  utterance that fails on the default beams is aligned again with the beams
+  open. The utterances that still fail also fail upstream's own CLI, and
+  they count against the row as every system's failures do. See
+  `fabench/aligners/pocketsphinx/README.md`.
+- Qwen3-ASR → PocketSphinx as a Track 2 cascade, generated the way the
+  other cascades are.
+- The records snapshot `records/202610/`, with 19 forced aligners on
+  Track 1 and 34 systems on Track 2. `records/latest` and the README point
+  at it. ElevenLabs Scribe v2 has 12 of its 20 cells, since the account ran
+  out of credit before the dev split under the four degradations, and
+  ElevenLabs forced alignment is still unpublished for the same reason.
+- Each Olign 0.9 hyp record keeps the `versions` object of the response
+  that made it, for responses fetched since 2026-10-11.
+
+### Changed
+
+- The three cascades into Olign 0.9 on Track 2 were rerun against the
+  Olign 0.9 service that produced its Track 1 row, so every Olign 0.9 row
+  comes from the same service. Under noise their word MAE improves by 0.8
+  to 1.6 ms and their F1 at 20 ms by 0.02 to 0.05. Clean cells move by
+  0.3 ms or less.
+- A cloud recipe's `base_url` is part of its response cache key, so a
+  recipe aimed at one endpoint cannot replay the cached answers of another.
+  No tracked recipe sets `base_url`, so no cached response is orphaned.
+- The Olign live smoke test runs only when `OLIGN_TEST_PORT` is set. It
+  used to default to one machine's port.
+
+### Fixed
+
+- The cloud adapter drops a phone whose end is not after its start, as the
+  Olign 0.9 adapter has since it was written. Olign 1.0 is the only cloud
+  row with a phone tier and it had kept them, so the two versions of one
+  system were scored under different rules. On Buckeye dev under additive
+  noise the difference was close to 10 ms of phone MAE. No published number
+  moves, since Olign 1.0 first appears in `records/202610/`.
+- `evals/gen_cascade_configs.py` writes a base tool's relative paths
+  relative to the cascade's directory, and decides what is a path by the
+  key, as the composer does. A bare `venv: venv` was left pointing at
+  nothing.
+- `evals/run_cpu_cells.sh` printed an empty tool name in every status line.
+
 ## [1.1.2] - 2026-10-08
 
 No change moves a published number. The records snapshot is still
@@ -153,7 +216,8 @@ First public release. Track 1 forced alignment on TIMIT and Buckeye, word
 and phone tiers, clean audio and four degradations. Records snapshot
 `records/202608/`.
 
-[Unreleased]: https://github.com/olewave/fa-bench/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/olewave/fa-bench/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/olewave/fa-bench/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/olewave/fa-bench/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/olewave/fa-bench/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/olewave/fa-bench/compare/v1.0.0...v1.1.0
