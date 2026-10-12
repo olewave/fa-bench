@@ -498,7 +498,17 @@ class CloudASR(AlignerAdapter):
                 # The account is out, not the network. Every remaining call
                 # would fail the same way, so stop paying the round trip.
                 raise AlignerError(f"{self.name}: halted, {halt[0]}")
-            return it.item_id, self.align(it.audio_path, it.transcript, mode=it.mode)
+            try:
+                return it.item_id, self.align(it.audio_path, it.transcript, mode=it.mode)
+            except Exception as e:
+                # Flagged here, on the worker, not when the main thread gets
+                # round to the finished future. The worker starts its next
+                # item the moment this one returns, and on a loaded CI runner
+                # it had four calls out before the main thread woke up.
+                why = _exhausted(e)
+                if why and not halt:
+                    halt.append(why)
+                raise
 
         with ThreadPoolExecutor(max_workers=self.concurrency) as ex:
             futures = [ex.submit(_one, it) for it in items]
@@ -509,9 +519,6 @@ class CloudASR(AlignerAdapter):
                     n_fail += 1
                     if not first:
                         first = f"{type(e).__name__}: {e}"
-                    why = _exhausted(e)
-                    if why and not halt:
-                        halt.append(why)
                     continue
                 out[item_id] = res
         if halt:

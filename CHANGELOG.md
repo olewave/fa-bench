@@ -7,6 +7,18 @@ be compared only when no such change lies between them.
 
 ## [Unreleased]
 
+### Changed
+
+- The README's leaderboard badge opens the live leaderboard at
+  https://olewave.com/en/leaderboard/fa-bench in place of the records page.
+
+### Fixed
+
+- The cloud batch loop flags an exhausted quota on the worker thread that
+  hit it, so no further call leaves before the main thread notices. The CI
+  run on the 1.1.3 merge failed on the test for this, four calls past the
+  wall on a loaded runner, and the test now expects exactly one.
+
 ## [1.1.3] - 2026-10-12
 
 Records snapshot `records/202610/`, scored with this release. No change
