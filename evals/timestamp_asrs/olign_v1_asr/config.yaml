@@ -1,0 +1,37 @@
+# Olign 1.0, given audio alone. TRACK 2, TWO-STEP INSIDE ONE SYSTEM, WORD AND
+# PHONE TIERS, COMMERCIAL.
+#
+# The same job API as evals/aligners/olign_v1 with the transcript left out.
+# Olign then recognizes the words itself and aligns its own, and the job
+# reports "transcript_source": "asr". Its own recognizer and its own aligner
+# run inside the one service, so the tables call it two-step, as they do
+# Qwen3-ASR. It is never handed another system's words, unlike the Olign 0.9
+# cascades (olign_on_qwen3asr, olign_on_parakeettdt, olign_on_chirp2).
+#
+# A recording where Olign hears no speech ends as a failed job with "no speech
+# recognized". That is kept as an empty answer, so the utterance scores as
+# returning nothing, the way every recognizer's silence does.
+#
+# Olign returns cased, punctuated words. They are lower-cased and stripped of
+# end punctuation as every cloud recognizer's are, and scored as written.
+#
+# CREDENTIAL: OLIGN_API_KEY, from the environment or .fabench.env.
+name: olign_v1_asr
+adapter: olign_v1_asr
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word, phone]
+emits_confidence: true
+params:
+  concurrency: 8           # measured 2026-10-06: the service tops out near 3 jobs/s; 16 per mode
+                            # doubled each job's wait for about 10% more throughput
+  timeout_s: 300
+  retries: 5
+  cache: true
+  # The service changes behind the same API and reports the same versions,
+  # so the build in use is named here. It is part of the cache key, so a new
+  # build never reuses an older build's answers.
+  version: "2026-10-09"
+  poll_first_s: 2
+  poll_interval_s: 5

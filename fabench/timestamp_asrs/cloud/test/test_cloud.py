@@ -377,6 +377,14 @@ def test_behaviour_options_reach_the_call_but_not_the_cache_key(audio, tmp_path,
         "changing a poll interval must not orphan a corpus of cached responses"
 
 
+def test_base_url_reaches_the_call_and_the_cache_key(audio, tmp_path, monkeypatch):
+    """A recipe aimed at another build must not replay this build's answers."""
+    a = _make(A.AssemblyAI, tmp_path, monkeypatch, base_url="http://a")
+    b = _make(A.AssemblyAI, tmp_path, monkeypatch, base_url="http://b")
+    assert a._call_opts["base_url"] == "http://a"
+    assert a._cache_path(b"x") != b._cache_path(b"x")
+
+
 def test_a_model_that_ignores_word_offsets_fails_loudly(audio, tmp_path, monkeypatch):
     """A transcript with no word times must stop a sweep, not produce empty rows.
 
@@ -584,6 +592,29 @@ def test_a_clean_response_records_no_repair_counts(audio, tmp_path, monkeypatch)
         ]}]}]}})
     meta = _make(A.Deepgram, tmp_path, monkeypatch).align(audio).meta
     assert not any(k.startswith("n_") for k in meta), meta
+
+
+def test_zero_duration_phones_are_dropped_the_way_0_9_drops_them(tmp_path,
+                                                                 monkeypatch):
+    """A zero-duration phone is not a boundary, and the 0.9 adapter drops it.
+
+    parse_olign_result has dropped ``end <= begin`` phones since it was
+    written, so keeping them on this path scored two versions of one vendor
+    under different rules. Responses carry far more of them for
+    conversational speech.
+    """
+    monkeypatch.setenv("OLIGN_API_KEY", "k")
+    a = _make(A.OlignV1ASR, tmp_path, monkeypatch)
+    phones = [["hh", 0.00, 0.10, None],
+              ["aa", 0.10, 0.30, None],
+              ["r", 0.30, 0.30, None],    # zero duration
+              ["d", 0.30, 0.40, None]]
+    out = a._to_output([["hard", 0.0, 0.40, None]], {}, phones)
+    assert [ph.label for ph in out.phones] == ["hh", "aa", "d"]
+    assert out.meta["n_phone_zero_len"] == 1
+
+    clean = a._to_output([["hard", 0.0, 0.40, None]], {}, phones[:2])
+    assert "n_phone_zero_len" not in clean.meta
 
 
 def test_a_cache_hit_replays_the_original_timing(audio, tmp_path, monkeypatch):

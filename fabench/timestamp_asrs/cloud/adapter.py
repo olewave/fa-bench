@@ -109,6 +109,11 @@ _OPT_KEYS = (
     # TEXT for the same audio -- lexical against inverse-normalised -- so it
     # belongs to the answer and to the cache key.
     "api", "profanity",
+    # `base_url` can point a recipe at a different build of a service, which
+    # can answer differently, so unlike service_url below it belongs to the
+    # answer. Out of the key, a recipe aimed at a new build replayed the old
+    # build's cached responses.
+    "base_url",
 )
 
 #: Options the provider reads that CANNOT change the answer, so they reach the
@@ -126,8 +131,8 @@ _OPT_KEYS = (
 #: service_url does. Two resources in one region return the same transcript,
 #: so moving resource must not invalidate a cache; `region`, which CAN change
 #: the answer because Azure rolls models out by region, is in _OPT_KEYS above.
-_BEHAVIOUR_KEYS = ("poll_interval_s", "service_url", "s3_bucket", "s3_prefix",
-                   "keep_s3_object", "access_key_id", "endpoint")
+_BEHAVIOUR_KEYS = ("poll_interval_s", "poll_first_s", "service_url", "s3_bucket",
+                   "s3_prefix", "keep_s3_object", "access_key_id", "endpoint")
 
 
 class CloudASR(AlignerAdapter):
@@ -387,7 +392,7 @@ class CloudASR(AlignerAdapter):
                     # Re-parse every time. A corrected reading of the response
                     # then costs nothing, which is the whole reason the raw
                     # body is what gets stored.
-                    words, meta = self._parse(rec["raw"], self.model, call_opts)
+                    words, meta, phones = self._parsed(rec["raw"], call_opts)
                     # Replay the timing of the call that FETCHED this response,
                     # never the disk read. Not doing so lost the measurement
                     # entirely: a re-run of a cached cell rewrote hyp.jsonl with
@@ -399,7 +404,8 @@ class CloudASR(AlignerAdapter):
                                                   "retries", "backoff_s", "n_polls")
                               if rec.get(k) is not None}
                     return self._to_output(words, {**meta, **replay, "cached": True,
-                                                   "fetched_at": rec.get("fetched_at")})
+                                                   "fetched_at": rec.get("fetched_at")},
+                                           phones)
                 # Pre-raw entry. Kept readable so an early cache is not wasted.
                 return self._to_output(rec.get("words") or [],
                                        {**(rec.get("meta") or {}), "cached": True,
@@ -430,7 +436,7 @@ class CloudASR(AlignerAdapter):
                              self._fresh_key(force=True), self.timeout_s,
                              self.retries)
         latency_s = time.monotonic() - t0
-        words, meta = self._parse(raw, self.model, call_opts)
+        words, meta, phones = self._parsed(raw, call_opts)
         dur = P.duration_s(blob)
         # Wall time for the whole vendor interaction, with the parts that are
         # OURS recorded beside it: retries and their backoff, and for the one
@@ -470,7 +476,7 @@ class CloudASR(AlignerAdapter):
                 tmp.replace(path_cache)           # atomic: a killed run leaves no half file
             except OSError:
                 pass
-        return self._to_output(words, {**meta, "cached": False})
+        return self._to_output(words, {**meta, "cached": False}, phones)
 
     # ---- a whole cell -----------------------------------------------------
     def align_corpus(self, items) -> dict:
@@ -550,15 +556,32 @@ class CloudASR(AlignerAdapter):
         # directory of those is slow to stat on every lookup.
         return self.cache_dir / d[:2] / f"{d}.json"
 
-    def _to_output(self, words, meta) -> AlignerOutput:
+    def _parsed(self, raw, call_opts):
+        """A provider's parse as (words, meta, phones).
+
+        Most providers return words and meta alone. One that also times
+        phones, Olign, returns them third, and the rest get an empty list.
+        """
+        out = self._parse(raw, self.model, call_opts)
+        return out[0], out[1], (out[2] if len(out) > 2 else [])
+
+    def _to_output(self, words, meta, phones=()) -> AlignerOutput:
         """Vendor words -> Intervals, COUNTING what has to be repaired.
 
-        Two repairs happen here and both destroy evidence: `max(end, start)`
-        hides a reversed interval and the sort hides one emitted out of order.
-        Neither is recoverable from hyp.jsonl afterwards, so the counts go in
-        the record. Everything else about a cloud row can be re-derived from
-        the cached raw body at any time; these two cannot, which is the only
-        reason they are counted here rather than added later.
+        Three repairs happen here and all destroy evidence. `max(end, start)`
+        hides a reversed interval, the sort hides one emitted out of order, and
+        a zero-duration phone is dropped rather than emitted as a boundary.
+        None is recoverable from hyp.jsonl afterwards, so the counts go in the
+        record. Everything else about a cloud row can be re-derived from the
+        cached raw body at any time, these cannot, which is the only reason
+        they are counted here rather than added later.
+
+        The phone drop matches parse_olign_result, which has dropped
+        ``end <= begin`` phones since the 0.9 adapter was written. Responses
+        carry far more of them for conversational speech. Keeping them here
+        while 0.9 dropped them scored the two versions of one vendor under
+        different rules and cost Olign 1.0 close to 10 ms of phone MAE on
+        Buckeye dev under additive noise.
         """
         ivs = []
         n_reversed = n_zero = 0
@@ -582,7 +605,35 @@ class CloudASR(AlignerAdapter):
                      ("n_disordered", n_disordered)):
             if v:
                 meta = {**meta, k: v}
-        return AlignerOutput(words=ivs, phones=[], meta=meta)
+        phone_ivs = []
+        n_ph_zero = 0
+        for ph in phones:
+            label = str(ph[0] or "").strip().lower()
+            if not label:
+                continue
+            start, end = float(ph[1]), float(ph[2])
+            conf = float(ph[3]) if len(ph) > 3 and ph[3] is not None else None
+            if end <= start + 1e-9:
+                n_ph_zero += 1
+                continue
+            phone_ivs.append(Interval(label, start, end, conf))
+        if n_ph_zero:
+            meta = {**meta, "n_phone_zero_len": n_ph_zero}
+        phone_ivs.sort(key=lambda iv: (iv.start, iv.end))
+        return AlignerOutput(words=ivs, phones=phone_ivs, meta=meta)
+
+
+class OlignV1ASR(CloudASR):
+    """Olign 1.0 given audio alone. It recognizes the words, then aligns them.
+
+    Both steps run inside the one service, so the tables call it two-step, as
+    they do Qwen3-ASR. It never sees another system's words, unlike the Olign
+    0.9 rows, which align Qwen3's, Parakeet-TDT's or Chirp 2's.
+    """
+    provider = "olign_v1"
+    default_model = "olign-1.0"
+    source = "arpabet"
+    granularity = ("word", "phone")
 
 
 class Deepgram(CloudASR):

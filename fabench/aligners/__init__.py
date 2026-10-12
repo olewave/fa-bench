@@ -43,6 +43,9 @@ _REGISTRY = {
     # beside its own track-2 row `elevenlabs`. HTTPS, no venv, like the cloud
     # ASRs below, whose cache and spend cap it shares.
     "elevenlabs_fa": "fabench.aligners.elevenlabs_fa:ElevenLabsFA",
+    # Olign 1.0 on Olewave's job API, given the reference transcript. Its
+    # one-step Track 2 row, which recognizes the words itself, is olign_v1_asr.
+    "olign_v1": "fabench.aligners.olign_v1:OlignV1",
     # TIMESTAMPED ASRs. They satisfy the aligner interface so the scoring
     # path can drive them, but they IGNORE the reference transcript and
     # decode their own -- their rows mix recognition with timing error and
@@ -75,6 +78,7 @@ _REGISTRY = {
     "ibm": "fabench.timestamp_asrs.cloud:IBMWatson",
     "aws": "fabench.timestamp_asrs.cloud:AWSTranscribe",
     "azure": "fabench.timestamp_asrs.cloud:AzureSpeech",
+    "olign_v1_asr": "fabench.timestamp_asrs.cloud:OlignV1ASR",
     "neufa": "fabench.aligners.neufa:NeuFA",
     # Phone tier, mode B only -- its English path requires the phone
     # sequence; text goes through a Dutch G2P. See the adapter docstring.
@@ -84,6 +88,8 @@ _REGISTRY = {
     # NeMo Forced Aligner: Viterbi over a NeMo CTC model's posteriors.
     # Word tier only -- its token tier is subword text, not phones.
     "nemo_fa": "fabench.aligners.nemo_fa:NemoFA",
+    # PocketSphinx in forced-alignment mode: an HMM aligner not built on Kaldi.
+    "pocketsphinx": "fabench.aligners.pocketsphinx:PocketSphinx",
 }
 
 
