@@ -1,0 +1,23 @@
+# PocketSphinx forced alignment. TRACK 1, HMM, OPEN SOURCE (BSD).
+#
+# CMU's recognizer in alignment mode, run as `pocketsphinx align` runs it: no
+# language model, the transcript as a chain of words, a word pass and then a
+# phone pass. Its bundled US English model is a phonetically tied mixture HMM
+# on 10 ms frames, the HMM family's one member not built on Kaldi.
+#
+# BUILT FROM GITHUB, at a pinned commit of the main branch, by
+# download_and_install.sh. The PyPI release predates the alignment fixes on
+# main; that script says which.
+#
+# Words CMUdict lacks get g2p_en pronunciations, about 1 to 1.6 % of Buckeye
+# tokens and almost none of TIMIT's. Each record counts them in n_g2p_words.
+#
+# CPU only. About 0.05 s an utterance, so a whole cell takes minutes.
+name: pocketsphinx
+adapter: pocketsphinx
+enabled: true
+modes: [A]
+granularity: [word, phone]
+params:
+  venv: venv
+  model: en-us
