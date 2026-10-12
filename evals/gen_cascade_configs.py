@@ -42,6 +42,7 @@ an error here rather than a fallback to gold.
 from __future__ import annotations
 
 import argparse
+import os
 import pathlib
 import sys
 
@@ -65,6 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     # evals/aligners/mfa/v2.0.6 -- so guessing the path silently reports
     # "no base config" for a tool whose cells are all present.
     sys.path.insert(0, str(ROOT))
+    from fabench.config import RECIPE_PATH_PARAMS
     from fabench.paths import tool_index
     idx = tool_index(ROOT)
     for who in (a.aligner, a.asr):
@@ -88,11 +90,15 @@ def main(argv: list[str] | None = None) -> int:
         prm.pop("transcript_hyp", None)      # per cell, never in the recipe
         prm["requires_transcript_hyp"] = True
         # Relative tool paths are resolved against the BASE tool's directory;
-        # from the cascade's own directory they would point at nothing.
+        # from the cascade's own directory they would point at nothing. They
+        # are rewritten relative to the cascade's directory, which the composer
+        # resolves them against, so the recipe names no machine path. The key
+        # decides what is a path, as in the composer: a bare `venv: venv` is
+        # one, and deepgram's `language: en` is not, though both exist on disk.
         for key, val in list(prm.items()):
-            if isinstance(val, str) and ("/" in val) and not val.startswith("/") \
-                    and (base_dir / val).exists():
-                prm[key] = str((base_dir / val).resolve())
+            if key in RECIPE_PATH_PARAMS and isinstance(val, str) and val \
+                    and not val.startswith("/") and (base_dir / val).exists():
+                prm[key] = os.path.relpath(base_dir / val, recipe.parent)
         recipe.parent.mkdir(parents=True, exist_ok=True)
         recipe.write_text(
             f"# CASCADE RECIPE: {a.aligner} aligning what {a.asr} decoded.\n"

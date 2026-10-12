@@ -13,7 +13,7 @@ LOG="$ROOT/evals/log/cpu_${TAG}.log"
 ok=0; fail=0
 for cfg in "$@"; do
   cell=$(echo "$cfg" | sed -E 's|.*/en/||; s|/config.yaml$||')
-  tool=$(echo "$cfg" | sed -E 's|.*/(aligners|timestamp_asrs)/([^/]*)/.*|\2|')
+  tool=$(echo "$cfg" | sed -E 's#.*/(aligners|timestamp_asrs)/([^/]*)/.*#\2#')
   t0=$SECONDS
   if "$PY" -m fabench run --config "$cfg" >> "$LOG" 2>&1; then
     echo "[ ok ] $tool $cell ($((SECONDS-t0))s)"; ok=$((ok+1))
