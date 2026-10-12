@@ -1351,7 +1351,7 @@ def test_an_exhausted_quota_stops_the_cell_instead_of_bleeding(audio, tmp_path,
     out = a.align_corpus(items)
     assert out == {}
     # One real attempt, then the wall; the rest never leave the machine.
-    assert len(calls) <= 2, f"kept calling after the quota wall: {len(calls)}"
+    assert len(calls) == 1, f"kept calling after the quota wall: {len(calls)}"
 
 
 def test_a_transient_failure_still_only_omits(audio, tmp_path, monkeypatch):
