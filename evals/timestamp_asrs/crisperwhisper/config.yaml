@@ -1,0 +1,27 @@
+# CrisperWhisper -- ASR WITH WORD TIMESTAMPS, not a forced aligner.
+# Interspeech 2024, arXiv:2408.16589 | github.com/nyrahealth/CrisperWhisper
+#
+# It IGNORES the reference transcript and decodes its own. Its rows therefore
+# mix recognition error with timing error: misrecognised words leave the matched
+# path and depress recall rather than worsening MAE. Read B-F1 (label-agnostic)
+# as the primary metric here, MAE as secondary -- the inverse of the aligner
+# tables -- and do NOT rank it head-to-head against MFA/olign/qwen3_fa.
+#
+# Word-level only; absent from phone tables by construction.
+# Runs in its own interpreter (see fabench/timestamp_asrs/subprocess_asr.py).
+name: crisperwhisper
+adapter: crisperwhisper
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: venv
+  model: nyrahealth/CrisperWhisper
+  # 14400 (4 h) was NOT enough for Buckeye and cost every record.
+  # Measured 5.9 s/item on TIMIT full_test (1344 items, 7632-8180 s), so
+  # buckeye_dev at 4456 items needs ~7.3 h and buckeye_test ~7.4 h. Both
+  # timed out at 4 h with 0 records -- the worker is BATCH, so the parent
+  # only reads stdout after the process exits and a timeout discards all
+  # completed work rather than keeping a partial result.
+  timeout_s: null           # NO timeout -- see subprocess_aligner.load()

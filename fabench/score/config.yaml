@@ -1,0 +1,29 @@
+# Scoring defaults (Plan Section 5) — canonical config, living beside the
+# scoring engine that consumes it. load_config() merges this under `scoring:`
+# per key; the run config wins, so a run overrides only what it changes (e.g.
+# `scoring: { boundary_unit: word }`).
+
+# matched-set alignment: "levenshtein" (label-only NW, default/headline) or
+# "boundary_distance" (paper's modified Levenshtein — cost also rewards
+# time-close boundaries; weight = matcher_lambda). Ablation (experiment_settings.md)
+# shows boundary_distance only redistributes error, so we keep levenshtein.
+matcher: levenshtein
+matcher_lambda: 2.0          # boundary-distance weight (only used by boundary_distance)
+
+# Paper protocol: score boundary error on aligned pairs (incl. substitutions)
+# and exclude those whose manner classes differ (arXiv:2606.18466). PER
+# keeps the full label alignment. Set false for exact-label matching only.
+manner_match: true
+
+# SUPERSEDED first-pass approximation (kept for comparison, not exact
+# reproduction). This flag was fabench's own guess, from the paper's *text
+# alone*, at why sharp aligners ran ~4ms high: excluding all silence-adjacent
+# boundaries reconciled TIMIT numerically (MFA 16.1->12.0 vs 12.11) but was
+# never the actual mechanism. Reading MFA's real evaluation code
+# (kalpy.evaluation.align_phones) directly shows the true drivers are (a) a
+# boundary is dropped from the tally whenever it's adjacent to an
+# insertion/deletion — not because it touches silence — and (b) a separate,
+# paper-specific manner-category-agreement filter. Silence is NOT excluded by
+# label in either mechanism. Retained here, off by default, as a documented
+# "what our best independent guess got vs. the real mechanism" comparison.
+exclude_silence_boundaries: false

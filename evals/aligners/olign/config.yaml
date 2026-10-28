@@ -1,0 +1,16 @@
+# olign -- Olign 0.9 ("Olign 0.9" in the tables), through its v0.9 API.
+# Proprietary; access is by request from Olewave (info@olewave.com), who issue a
+# service token for the hosted endpoint.
+name: olign
+adapter: olign
+enabled: true
+modes: [A]
+granularity: [word, phone]
+emits_confidence: true
+params:
+  # The endpoint is the hosted https://api.olewave.com/olign/v0.9. The token
+  # goes in .fabench.env, which is untracked (CF_ACCESS_CLIENT_ID,
+  # CF_ACCESS_CLIENT_SECRET), see fabench/aligners/olign/README.md.
+  accent: 2                 # 1 = UK, 2 = US
+  timeout_s: 60
+  concurrency: 8            # parallel requests

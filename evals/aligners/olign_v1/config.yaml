@@ -1,0 +1,34 @@
+# Olign 1.0, given the reference transcript. TRACK 1, WORD AND PHONE TIERS,
+# COMMERCIAL.
+#
+# Olewave's job API, https://api.olewave.com/olign/v1. The audio and the
+# reference transcript go up together, the job is polled until done, and the
+# answer times every word and its phones. The job reports
+# "transcript_source": "client".
+#
+# This is Olign 1.0. The `olign` recipe beside it is Olign 0.9 on the older
+# synchronous API, and its rows stay as they are. The two are named apart in
+# every table.
+#
+# CREDENTIAL: OLIGN_API_KEY, from the environment or .fabench.env, sent as
+# X-API-Key. Never in a config.
+#
+# Every response is cached under this recipe's cache/, keyed by the audio, the
+# transcript and the options, so a restart or a rescore sends nothing again.
+name: olign_v1
+adapter: olign_v1
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word, phone]
+emits_confidence: true      # Olign's pronunciation scores, as a proxy, as for 0.9
+params:
+  concurrency: 8           # parallel jobs
+  timeout_s: 300
+  retries: 5
+  cache: true
+  # Names the snapshot these results belong to. It is part of the cache key,
+  # so a later snapshot never reuses an earlier one's answers.
+  version: "2026-10-09"
+  poll_first_s: 2           # first look after 2 s
+  poll_interval_s: 5        # Olewave asks for a poll every 5 to 10 s

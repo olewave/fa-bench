@@ -1,0 +1,287 @@
+# Copyright 2026 Olewave, LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""Boundary and word metrics (Plan 5.2-5.5).
+
+Every expected value below is computed by hand in the comments so the test is a
+specification, not just a regression lock (Plan S5 acceptance / gate #4).
+"""
+
+import pytest
+
+from fabench.schema import Interval, Utterance
+from fabench.score import boundary as B
+from fabench.score import word
+from fabench.score.core import score_pair
+
+TOL = 1e-9
+
+# Manner map for the toy inventory.
+_MANNER = {"sil": "silence", "s": "fricative", "iy": "vowel"}
+
+
+def manner_of(canon: str) -> str:
+    return _MANNER.get(canon, "vowel")
+
+
+def _phones(seq):
+    return [Interval(lab, s, e) for lab, s, e in seq]
+
+
+# Gold: 4 tiled phones over [0, 0.5]s.
+GOLD = _phones(
+    [("sil", 0.00, 0.10), ("s", 0.10, 0.20), ("iy", 0.20, 0.40), ("sil", 0.40, 0.50)]
+)
+# Hyp (Mode B, 1:1) with deliberate offsets.
+HYP = _phones(
+    [("sil", 0.00, 0.12), ("s", 0.12, 0.19), ("iy", 0.19, 0.41), ("sil", 0.41, 0.50)]
+)
+
+
+def _matched_11(n):
+    return [(i, i) for i in range(n)]
+
+
+def _errs():
+    return B.build_boundary_errors(_matched_11(4), GOLD, HYP, manner_of)
+
+
+# --------------------------------------------------------------------------
+# 5.2 MAE
+# --------------------------------------------------------------------------
+def test_boundary_mae():
+    errs = _errs()
+    # 4 contiguous units share 3 interior times, so the utterance has 5
+    # boundaries, not 8 unit edges: [0, .02, .01, .01, 0] -> sum .04
+    assert len(errs) == 5
+    assert B.mae(errs) == pytest.approx(0.04 / 5)           # 8 ms
+
+
+# --------------------------------------------------------------------------
+# 5.5 WBE
+# --------------------------------------------------------------------------
+def test_wbe_pools_over_all_boundaries():
+    gold1 = _phones([("she", 0.0, 0.3), ("sells", 0.3, 0.7)])
+    hyp1 = _phones([("she", 0.0, 0.32), ("sells", 0.32, 0.69)])
+    gold2 = _phones([("hi", 0.0, 0.2)])
+    hyp2 = _phones([("hi", 0.0, 0.25)])
+    # ONE entry per boundary. "she sells" is contiguous, so its three
+    # boundaries are 0.0, the shared 0.3, and 0.7 -- not four word edges with
+    # the middle one counted from both sides.
+    e1 = word.word_abs_errors(gold1, hyp1)  # [0, .02, .01]
+    e2 = word.word_abs_errors(gold2, hyp2)  # [0, .05]
+    assert sorted(e1) == pytest.approx([0.0, 0.01, 0.02])
+    mm = word.word_boundary_error([e1, e2])
+    # One number: the mean over ALL 5 boundaries, not the mean of the two
+    # per-utterance means. The short utterance therefore carries the weight its
+    # 2 boundaries earn, not the half it would get from utterance-averaging.
+    assert mm["wbe_s"] == pytest.approx(0.08 / 5)
+    assert mm["n_word_boundaries"] == 5
+    assert mm["n_utts_with_words"] == 2
+    assert "wbe_macro_s" not in mm
+
+
+# --------------------------------------------------------------------------
+# score_pair end-to-end (gate #5: Mode B 1:1 => PER 0)
+# --------------------------------------------------------------------------
+def test_score_pair_mode_b():
+    gold = Utterance("u1", "toy", "read", "spk1", "x.wav", 16000, 0.5, words=[], phones=GOLD)
+    hyp = Utterance("u1", "toy", "read", "spk1", "x.wav", 16000, 0.5, words=[], phones=HYP)
+    us = score_pair(
+        gold, hyp, condition="clean", aligner="toy", mode="B",
+        manner_of_canonical=manner_of,
+    )
+    assert us.n_gold_phone == 4
+    assert (us.n_sub_phone, us.n_del_phone, us.n_ins_phone) == (0, 0, 0)
+    # 4 contiguous phones -> 5 boundaries, mean |err| .04/5
+    assert B.mae(us.boundary_errors) == pytest.approx(0.008)
+
+
+def test_score_pair_manner_match_keeps_consistent_substitutions():
+    """Paper protocol (arXiv:2606.18466): boundary error is scored on aligned
+    pairs incl. substitutions, dropping only manner-mismatched ones. Here
+    s~sh (both sibilant/affricate) is kept, z~d (sibilant vs stop) is dropped,
+    iy~iy is an exact match. PER still counts both substitutions."""
+    gp = _phones([("s", 0.0, 0.1), ("z", 0.1, 0.2), ("iy", 0.2, 0.4)])
+    hp = _phones([("sh", 0.0, 0.11), ("d", 0.1, 0.19), ("iy", 0.19, 0.41)])
+    gold = Utterance("u", "toy", "read", "spk", "x.wav", 16000, 0.4, words=[], phones=gp)
+    hyp = Utterance("u", "toy", "read", "spk", "x.wav", 16000, 0.4, words=[], phones=hp)
+
+    # exact-label matching (default): only iy matches. Its onset sits beside an
+    # unmatched z, so only the utterance-final boundary is scored.
+    us_exact = score_pair(gold, hyp, condition="clean", aligner="t", mode="A")
+    assert (us_exact.n_sub_phone, us_exact.n_del_phone, us_exact.n_ins_phone) == (2, 0, 0)
+    assert len(us_exact.boundary_errors) == 1
+
+    # manner-match: s~sh + iy~iy kept, z~d excluded
+    us_mm = score_pair(gold, hyp, condition="clean", aligner="t", mode="A", manner_match=True)
+    assert us_mm.n_sub_phone == 2                   # PER unchanged
+    # s~sh and iy~iy aligned, z~d dropped: the utterance edges plus nothing
+    # interior, since every interior boundary touches the dropped z.
+    assert len(us_mm.boundary_errors) == 2
+
+
+def test_score_pair_exclude_silence_boundaries():
+    """Paper scores speech-to-speech boundaries only (no silence manner class);
+    silence/edge-adjacent boundaries are dropped when the flag is set."""
+    gold = Utterance("u1", "toy", "read", "spk1", "x.wav", 16000, 0.5, words=[], phones=GOLD)
+    hyp = Utterance("u1", "toy", "read", "spk1", "x.wav", 16000, 0.5, words=[], phones=HYP)
+    kw = {"condition": "clean", "aligner": "toy", "mode": "B", "manner_of_canonical": manner_of}
+    us_all = score_pair(gold, hyp, **kw)
+    us_sp = score_pair(gold, hyp, exclude_silence_boundaries=True, **kw)
+    # GOLD = sil,s,iy,sil -> of the 5 boundaries only the internal s|iy one is
+    # speech-to-speech; every other touches silence or an utterance edge.
+    assert len(us_all.boundary_errors) == 5
+    assert len(us_sp.boundary_errors) == 1
+    for e in us_sp.boundary_errors:
+        assert e.left_manner != "silence" and e.right_manner != "silence"
+
+
+def test_boundary_unit_word_scores_word_boundaries():
+    """boundary_unit='word' scores WORD boundaries (with hand-computed errors)
+    instead of phones."""
+    gold = Utterance(
+        utt_id="u", source_corpus="timit", register="read", speaker_id="s",
+        audio_path="", sample_rate=16000, duration_s=1.0,
+        words=[Interval("she", 0.10, 0.30), Interval("had", 0.30, 0.60)],
+        phones=[Interval("sh", 0.10, 0.20), Interval("iy", 0.20, 0.30),
+                Interval("hh", 0.30, 0.40), Interval("ae", 0.40, 0.50), Interval("d", 0.50, 0.60)],
+    )
+    hyp = Utterance(
+        utt_id="u", source_corpus="hyp", register="", speaker_id="", audio_path="",
+        sample_rate=16000, duration_s=1.0,
+        words=[Interval("she", 0.12, 0.30), Interval("had", 0.30, 0.57)],
+        phones=[Interval("sh", 0.12, 0.22), Interval("iy", 0.22, 0.30),
+                Interval("hh", 0.30, 0.42), Interval("ae", 0.42, 0.52), Interval("d", 0.52, 0.57)],
+    )
+    us_w = score_pair(gold, hyp, condition="c", aligner="a", mode="A", boundary_unit="word")
+    # 2 contiguous words -> 3 boundaries: .10 off by .02, the shared .30 exact,
+    # .60 off by .03. The shared one is counted once, not once per word.
+    assert len(us_w.boundary_errors) == 3
+    assert sorted(round(b.abs, 4) for b in us_w.boundary_errors) == [0.0, 0.02, 0.03]
+    assert us_w.n_gold_phone == 2  # word counts
+    # phone mode still uses phones: 5 contiguous phones -> 6 boundaries
+    us_p = score_pair(gold, hyp, condition="c", aligner="a", mode="A", boundary_unit="phone")
+    assert len(us_p.boundary_errors) == 6
+
+
+def test_boundary_unit_word_drops_silence_pseudowords():
+    """Silence pseudo-words on the hyp word tier (charsiu '[sil]', maps 'sil')
+    are dropped, so they never count as a real word boundary."""
+    gold = Utterance("u", "timit", "read", "s", "", 16000, 1.0,
+                     words=[Interval("she", 0.1, 0.3)], phones=[Interval("sh", 0.1, 0.3)])
+    hyp = Utterance("u", "hyp", "", "", "", 16000, 1.0,
+                    words=[Interval("[sil]", 0.0, 0.1), Interval("she", 0.1, 0.3)],
+                    phones=[Interval("sh", 0.1, 0.3)])
+    us = score_pair(gold, hyp, condition="c", aligner="a", mode="A", boundary_unit="word")
+    assert len(us.boundary_errors) == 2  # only "she", both edges ~0 error
+    assert us.n_gold_phone == 1
+
+
+def test_relabel_to_input_repairs_lexicon_normalisation():
+    """An aligner returns its own lexicon's tokens, not the ones it was given:
+    BFA drops every apostrophe, MFA splits tom-boy and strips kids'. Those are
+    the aligner's spelling, not a different word, and the word tier must not
+    charge them -- a forced aligner handed the reference cannot misrecognise.
+    """
+    from fabench.aligners.relabel import relabel_to_input
+    from fabench.schema import Interval as I
+
+    given = ["this", "tom-boy", "don't", "kids'", "take care"]
+    hyp = [I("this", 0, .1), I("tom", .1, .2), I("boy", .2, .3),
+           I("don", .3, .4), I("t", .4, .5), I("kids", .5, .6),
+           I("take", .6, .7), I("care", .7, .8)]
+    out = relabel_to_input(given, hyp)
+    assert [w.label for w in out] == given
+    assert (out[1].start, out[1].end) == (.1, .3)     # merged span is the run's
+    assert (out[4].start, out[4].end) == (.6, .8)
+
+
+def test_relabel_to_input_is_conservative():
+    """Only a run that rebuilds the input token may be merged: a wrong word is
+    never rescued, and genuine infidelity stays visible in the numbers."""
+    from fabench.aligners.relabel import relabel_to_input
+    from fabench.schema import Interval as I
+
+    # Charsiu duplicating a word must survive relabelling
+    dup = relabel_to_input(["those", "big", "you"],
+                           [I("those", 0, .1), I("big", .1, .2),
+                            I("big", .2, .3), I("you", .3, .4)])
+    assert [w.label for w in dup] == ["those", "big", "big", "you"]
+
+    # a wrong word is not turned into a right one
+    bad = relabel_to_input(["don't"], [I("do", 0, .2), I("x", .2, .4)])
+    assert [w.label for w in bad] == ["do", "x"]
+
+
+def test_word_tier_scores_zero_for_a_faithful_aligner():
+    """End-to-end: a gold-transcript aligner that merely respells what it was
+    given must score no substitutions, deletions or insertions."""
+    from fabench.schema import Interval as I
+    from fabench.schema import Utterance
+    from fabench.score.core import score_pair
+
+    def utt(words):
+        return Utterance(utt_id="u", source_corpus="c", register="", speaker_id="s",
+                         audio_path="", sample_rate=16000, duration_s=1.0,
+                         words=words, phones=[])
+
+    given = ["i", "don't", "know"]
+    gold = utt([I("i", 0, .1), I("don't", .1, .5), I("know", .5, .9)])
+    split = utt([I("i", 0, .1), I("don", .1, .3), I("t", .3, .5), I("know", .5, .9)])
+
+    a = score_pair(gold, split, input_tokens=given, condition="clean",
+                   aligner="t", mode="A", boundary_unit="word")
+    assert (a.n_sub_word, a.n_del_word, a.n_ins_word) == (0, 0, 0)
+    assert a.n_gold_word == 3
+
+
+# ---- case, empty and absent hypotheses (issues.md R5, R6 and issue 2) ----
+
+def _wutt(words, uid="u1"):
+    return Utterance(utt_id=uid, source_corpus="timit", register="", speaker_id="s",
+                     audio_path="", sample_rate=16000, duration_s=2.0,
+                     words=[Interval(label=l, start=a, end=b) for l, a, b in words])
+
+
+_GOLD3 = [("the", 0.0, 0.5), ("cat", 0.5, 1.0), ("sat", 1.0, 1.5)]
+
+
+def test_word_mae_ignores_case():
+    """"The" against "the" is the same word. Raw-label matching lost both of
+    its boundaries in word MAE while the F1 and WER paths lowercased."""
+    g = _wutt(_GOLD3)
+    h = _wutt([("The", 0.0, 0.5), ("cat", 0.5, 1.0), ("sat", 1.0, 1.5)])
+    assert len(word.word_abs_errors(g.words, h.words)) == 4
+
+
+def test_empty_hypothesis_is_charged_not_skipped():
+    """A record with no words is a system that returned nothing for the
+    utterance: every reference word is a deletion and every reference boundary
+    a miss. Nothing may be matched, so MAE has nothing to average."""
+    g = _wutt(_GOLD3)
+    us = score_pair(g, _wutt([]), condition="clean", aligner="t", mode="A",
+                    input_tokens=None, score_words=True, score_phones=False)
+    assert (us.n_gold_word, us.n_del_word) == (3, 3)
+    assert us.wbnd_all["n_gold"] == 4 and us.wbnd_all["n_hyp"] == 0
+    assert us.word_abs_errors == [] and us.empty
+
+
+def test_absent_utterances_count_against_f1_but_not_mae():
+    from fabench.score.aggregate import aggregate
+    g1, g2 = _wutt(_GOLD3, "u1"), _wutt([("a", 0.0, 0.4), ("dog", 0.4, 0.9)], "u2")
+    kw = {"condition": "clean", "aligner": "t", "mode": "A", "input_tokens": None,
+          "score_words": True, "score_phones": False}
+    right = score_pair(g1, g1, **kw)
+    missing = score_pair(g2, _wutt([], "u2"), **kw)
+    missing.absent = True
+    row = aggregate([right, missing])[0]
+    assert row["n_utts"] == 1 and row["n_absent"] == 1 and row["n_empty"] == 0
+    assert row["wbe_ms"] == 0.0                              # MAE: present records only
+    assert row["wbnd_f1_all_20ms"] == pytest.approx(8 / 11)  # 4 hits of 7 gold, 4 hyp
+
+    # the same utterance returned as an empty record: scored alike, counted apart
+    empty = score_pair(g2, _wutt([], "u2"), **kw)
+    row = aggregate([right, empty])[0]
+    assert (row["n_utts"], row["n_absent"], row["n_empty"]) == (2, 0, 1)
+    assert row["wbnd_f1_all_20ms"] == pytest.approx(8 / 11)

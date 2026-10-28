@@ -1,0 +1,25 @@
+# The sdist is a working copy of the open tree, so `prepare`, `run` and
+# `score` work from an unpacked sdist the way they do from a git clone.
+# Build it from a clean export (`git archive`), never from a working copy:
+# a working copy holds gitignored system outputs and corpus-derived files,
+# and setuptools packs what is on disk. The excludes below are a second guard.
+include README.md CHANGELOG.md CONTRIBUTING.md NOTICE CITATION.cff LICENSE
+include .fabench.env.example run_all.sh
+graft bin
+graft datasets
+graft evals
+graft tools
+graft tests
+prune tools/kaldi
+prune evals/configs
+prune evals/log
+global-exclude *.jsonl *.wav *.flac *.sph *.mp3 *.parquet *.TextGrid *.zip *.tar *.tgz *.zst
+global-exclude *.pyc *.log *.pid
+prune evals/*/*/en
+prune evals/*/*/exps/*/en
+prune evals/*/*/cache
+prune evals/*/*/exps/*/cache
+prune evals/*/*/repo
+prune evals/*/*/venv
+# records/ stays out. It only describes the snapshots, whose numbers are on
+# the leaderboard, and prepare, run and score never read it.

@@ -1,0 +1,44 @@
+# Deepgram Nova-2. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# The sibling of the nova-3 row, and the pair exists for one question that a
+# single call cannot answer: nova-3 recognises better, and quantises its word
+# times eight times coarser. Which wins on a boundary metric?
+#
+# MEASURED 2026-09-17, one utterance through every model this project can
+# reach. The grid is not a property of Deepgram, it is a property of the
+# checkpoint, and it has grown with each generation:
+#
+#   model          grid     served version
+#   enhanced        1 ms    2022-05-18.1
+#   base            1 ms    2024-01-26.8851
+#   nova           10 ms    2023-07-06.22746
+#   nova-2         10 ms    2024-01-06.5664
+#   nova-3         80 ms    2025-07-31.0      <- the current default
+#   whisper-large  20 ms    2022-12-08.0
+#   nova-4                  exists, but "Project does not have access"
+#
+# Do NOT read that as Deepgram getting worse. A coarser grid most likely
+# follows a larger encoder subsampling factor, which is plausibly what buys
+# the recognition accuracy. Whether it is a good trade is the measurement,
+# and it is the reason both rows are run rather than one being declared
+# better from a spec.
+#
+# CREDENTIAL and everything else: see ../../config.yaml. Only `model` differs.
+name: deepgram_nova2
+adapter: deepgram
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  model: nova-2
+  language: en
+  punctuate: false
+  smart_format: false
+  numerals: false
+  filler_words: true
+  concurrency: 8
+  timeout_s: 120
+  retries: 8
+  cache: true

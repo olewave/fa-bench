@@ -1,0 +1,50 @@
+# Buckeye speaker characteristics.
+# VERBATIM from the corpus manual: BuckeyeCorpusmanual.pdf, Table 1
+#   "Characteristics of talkers in the corpus (f = female, m = male,
+#    y = young, o = old)".
+# Design (manual 2.1): 40 talkers, natives of Central Ohio, stratified for
+# age (under thirty / over forty) and sex; sampling frame limited to
+# middle-class Caucasians so ethnicity and class are controlled. Interviewer
+# sex is balanced so each interviewer met half the talkers in each cell.
+# There is NO dialect axis: all speakers are from one community.
+# speaker	sex	age	interviewer_sex
+s01	f	y	f
+s02	f	o	m
+s03	m	o	m
+s04	f	y	f
+s05	f	o	f
+s06	m	y	f
+s07	f	o	f
+s08	f	y	f
+s09	f	y	f
+s10	m	o	f
+s11	m	y	m
+s12	f	y	m
+s13	m	y	f
+s14	f	o	f
+s15	m	y	m
+s16	f	o	m
+s17	f	o	m
+s18	f	o	f
+s19	m	o	f
+s20	f	o	f
+s21	f	y	m
+s22	m	o	f
+s23	m	o	m
+s24	m	o	m
+s25	f	o	m
+s26	f	y	f
+s27	f	o	m
+s28	m	y	m
+s29	m	o	f
+s30	m	y	m
+s31	f	y	m
+s32	m	y	f
+s33	m	y	f
+s34	m	y	m
+s35	m	o	m
+s36	m	o	f
+s37	f	y	m
+s38	m	o	m
+s39	f	y	m
+s40	m	y	f

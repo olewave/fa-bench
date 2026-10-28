@@ -1,0 +1,148 @@
+# Copyright 2026 Olewave, LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""Audio I/O shared by ingestion and mixing.
+
+Reads WAV/FLAC via libsndfile and NIST-SPHERE (TIMIT) via a minimal PCM parser
+with a ``sph2pipe`` fallback for shorten-compressed spheres. Everything is
+returned as **mono float64 in [-1, 1]** so downstream SNR math is unit-consistent.
+"""
+
+from __future__ import annotations
+
+import os
+import subprocess
+import threading
+from pathlib import Path
+
+import numpy as np
+import soundfile as sf
+
+
+def to_mono(x: np.ndarray) -> np.ndarray:
+    if x.ndim == 2:
+        x = x.mean(axis=1)
+    return x.astype(np.float64, copy=False)
+
+
+def read_audio(path: str | Path) -> tuple[np.ndarray, int]:
+    """Return (mono float64 samples, sample_rate). Handles WAV/FLAC and SPHERE."""
+    path = Path(path)
+    try:
+        x, sr = sf.read(str(path), always_2d=False)
+        return to_mono(np.asarray(x)), int(sr)
+    except Exception:
+        return _read_sphere(path)
+
+
+def _read_sphere(path: Path) -> tuple[np.ndarray, int]:
+    """Minimal NIST SPHERE reader (uncompressed PCM); falls back to sph2pipe."""
+    with open(path, "rb") as f:
+        magic = f.readline().strip()
+        if magic not in (b"NIST_1A", b"NIST_1a"):
+            raise ValueError(f"{path}: not a WAV/FLAC/SPHERE file (magic={magic!r})")
+        hdr_size = int(f.readline().strip())
+        header = f.read(hdr_size - len(magic) - len(str(hdr_size)) - 2)
+        fields: dict[str, str] = {}
+        for line in header.split(b"\n"):
+            parts = line.split()
+            if len(parts) >= 3 and parts[1].startswith(b"-"):
+                fields[parts[0].decode()] = parts[2].decode()
+        n = int(fields.get("sample_count", "0"))
+        sr = int(fields.get("sample_rate", "16000"))
+        nb = int(fields.get("sample_n_bytes", "2"))
+        chans = int(fields.get("channel_count", "1"))
+        coding = fields.get("sample_coding", "pcm")
+        byte_fmt = fields.get("sample_byte_format", "01")  # 01=LE, 10=BE
+        if "shorten" in coding or "wavpack" in coding:
+            return _sph2pipe(path)
+        raw = f.read(n * nb * chans) if n else f.read()
+    dtype = "<i2" if byte_fmt == "01" else ">i2"
+    if nb != 2:
+        raise ValueError(f"{path}: unsupported sample_n_bytes={nb}")
+    data = np.frombuffer(raw, dtype=dtype).astype(np.float64) / 32768.0
+    if chans > 1:
+        data = data.reshape(-1, chans).mean(axis=1)
+    return data, sr
+
+
+def _sph2pipe(path: Path) -> tuple[np.ndarray, int]:
+    try:
+        out = subprocess.run(
+            ["sph2pipe", "-f", "wav", str(path)],
+            capture_output=True, check=True,
+        ).stdout
+    except (FileNotFoundError, subprocess.CalledProcessError) as e:
+        raise RuntimeError(
+            f"{path} is a compressed SPHERE (shorten). Install `sph2pipe` or "
+            f"convert TIMIT to PCM WAV first. ({e})"
+        ) from e
+    import io
+
+    x, sr = sf.read(io.BytesIO(out), always_2d=False)
+    return to_mono(np.asarray(x)), int(sr)
+
+
+def resample(x: np.ndarray, sr: int, target_sr: int) -> tuple[np.ndarray, int]:
+    """Polyphase resample to target_sr (no-op if already there)."""
+    if sr == target_sr:
+        return x, sr
+    from math import gcd
+
+    from scipy.signal import resample_poly
+
+    g = gcd(sr, target_sr)
+    up, down = target_sr // g, sr // g
+    return resample_poly(x, up, down).astype(np.float64), target_sr
+
+
+def load_resample(path: str | Path, target_sr: int = 16000) -> tuple[np.ndarray, int]:
+    x, sr = read_audio(path)
+    return resample(x, sr, target_sr)
+
+
+def write_audio(path: str | Path, x: np.ndarray, sr: int, subtype: str = "PCM_16") -> None:
+    """Write `x` to `path` ATOMICALLY: into a temp file beside it, then rename.
+
+    Runs of different tools on the same cell share work/mix/<source>/<utt>/,
+    and each run rewrites every clean.wav there. sf.write truncates the file and
+    fills it in place, so a run whose aligner was reading that file while
+    another run rewrote it could get an empty or half-written one. A rename
+    leaves a reader either the old complete file or the new one, and both hold
+    the same samples.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.stem}.{os.getpid()}.{threading.get_ident()}.tmp{path.suffix}")
+    try:
+        sf.write(str(tmp), np.clip(x, -1.0, 1.0), sr, subtype=subtype)
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def write_sphere_pcm(path: str | Path, x: np.ndarray, sr: int) -> None:
+    """Write a minimal uncompressed NIST-SPHERE PCM file (used to make TIMIT-like
+    test fixtures)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pcm = np.clip(x, -1.0, 1.0)
+    pcm = (pcm * 32767.0).astype("<i2")
+    body = pcm.tobytes()
+    header_fields = (
+        "NIST_1A\n"
+        "   1024\n"
+        f"sample_count -i {len(pcm)}\n"
+        "sample_n_bytes -i 2\n"
+        f"sample_rate -i {sr}\n"
+        "channel_count -i 1\n"
+        "sample_byte_format -s2 01\n"
+        "sample_coding -s3 pcm\n"
+        "end_head\n"
+    )
+    header = header_fields.encode()
+    header = header + b"\x00" * (1024 - len(header))
+    with open(path, "wb") as f:
+        f.write(header)
+        f.write(body)

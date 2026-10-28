@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Run FA-Bench's CLI from THIS checkout's venv, with no activation.
+#
+#     ./bin/fabench init
+#     export PATH="$PWD/bin:$PATH" && fabench init      # plain `fabench`, anywhere
+#
+# WHY A SHIM RATHER THAN A GLOBAL INSTALL. `uv tool install` / `pipx install`
+# would also put `fabench` on PATH, but in an isolated environment -- and three
+# adapters (charsiu, bfa, torchaudio_fa) `import torch` IN-PROCESS, so they need
+# the project venv, the one that carries the pinned cu128 build. A globally
+# installed fabench would run `init` and `config` fine and then fail those
+# aligners with "No module named 'torch'" in a way that looks like a broken
+# install rather than a wrong interpreter. This shim always uses the venv that
+# belongs to the checkout it sits in.
+#
+# It resolves the checkout from its own location, so a symlink into ~/.local/bin
+# keeps working:  ln -s "$PWD/bin/fabench" ~/.local/bin/fabench
+set -euo pipefail
+
+self=${BASH_SOURCE[0]}
+# Follow a symlink chain to the real file, so $ROOT is the checkout, not ~/.local/bin.
+while [ -L "$self" ]; do
+  target=$(readlink "$self")
+  case $target in
+    /*) self=$target ;;
+    *)  self=$(dirname "$self")/$target ;;
+  esac
+done
+ROOT=$(cd "$(dirname "$self")/.." && pwd)
+
+PY="$ROOT/.venv/bin/python"
+if [ ! -x "$PY" ]; then
+  echo "no project venv at $ROOT/.venv" >&2
+  echo "create it with:  uv venv --python 3.12 .venv && uv pip install -e ." >&2
+  exit 1
+fi
+
+exec "$PY" -m fabench.cli "$@"

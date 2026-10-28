@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# Copyright 2026 Olewave, LLC
+# SPDX-License-Identifier: Apache-2.0
+
+# Evaluate every installed aligner over every held-out split.
+#
+# One FA-Bench run per (corpus, subset, tool) rather than one run per cell with
+# every aligner enabled: an adapter that dies -- a missing model, a CUDA OOM --
+# would otherwise take the whole cell's results with it. Ingest is cached, so
+# the extra runs cost little. A failing cell is RECORDED and the sweep carries
+# on; nothing here aborts the sweep.
+#
+# Splits come from datasets/languages/en/{timit,buckeye}/split/*.list. train is not
+# evaluated: it is the training split, so a number there measures
+# nothing about generalisation.
+#
+# THREE STAGES, each re-runnable and selectable:
+#
+#   stage 1  ALIGN clean   -> <recipe>/en/<corpus>/<subset>/hyp.jsonl
+#   stage 2  ALIGN noisy   -> <recipe>/en/<corpus>/<subset>__<cond>/hyp.jsonl
+#                             (skipped unless --use-noisy-dataset)
+#   stage 3  SCORE         -> <recipe>/exp/<config>/summary/
+#
+# Stage 3 scores from the SAVED hypotheses, so it is cheap and can be re-run
+# after any metric change without re-aligning. It writes a recipe-LOCAL result
+# (beside the recipe that produced it) rather than the cross-tool tables in
+# summary/ -- those come from a pooled rescore, one config listing every tool.
+#
+# Clean and noisy are stages rather than separate scripts because they are the
+# same work over different audio: same recipes, same cells, same scoring. The
+# noisy hypotheses land under <subset>__<condition> so they never overwrite the
+# clean baseline they are compared against.
+#
+# Usage:  ./run_evals.sh [--stage N] [--stop-stage N] [--use-noisy-dataset] [tool ...]
+#   ./run_evals.sh                          # clean + score
+#   ./run_evals.sh --use-noisy-dataset      # clean + noisy + score
+#   ./run_evals.sh --stage 3 mfa            # rescore mfa from saved hyp only
+#   ./run_evals.sh --use-noisy-dataset true --stop-stage 2   # explicit Kaldi form
+set -uo pipefail
+
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+ROOT=$(dirname "$HERE")
+PY="${FABENCH_PY:-$ROOT/.venv/bin/python}"
+# Per-tool logs live with the tool (evals/<tool>/log/), not in one flat pile at
+# evals/ root -- a sweep produces one file per cell and they became unreadable.
+# The cross-tool summary stays at evals/log/ since it spans tools by definition.
+# Per-cell configs live WITH their tool (evals/<kind>/<tool>/configs/), for the
+# same reason the logs do: one flat directory accumulated 443 files across every
+# corpus x subset x condition x tool and stopped being readable. evals/configs/
+# now holds only the CROSS-tool scoring configs, which name every system by
+# definition and so belong to no single one.
+CFGS="$HERE/configs"; mkdir -p "$CFGS"
+RUNLOG="$HERE/log"; mkdir -p "$RUNLOG"
+SUMMARY="$RUNLOG/summary.tsv"
+
+# Kaldi-style knobs: declared with defaults, then set by --option value.
+stage=1
+stop_stage=3
+use_noisy_dataset=false
+. "$HERE/parse_options.sh" || exit 1
+
+TOOLS=("$@")
+[ ${#TOOLS[@]} -eq 0 ] && TOOLS=(mfa charsiu maps bfa)
+
+# How the sweep uses the box (GPUs, threads) lives in ONE place, not inline in
+# each driver: see evals/env.sh and the FABENCH_* knobs it documents.
+. "$HERE/env.sh"
+
+# The default grid. FABENCH_CELLS overrides it with a ';'-separated list, so a
+# sweep can be split across GPUs by running one invocation per cell:
+#   FABENCH_CELLS="buckeye test" FABENCH_DEVICE=cuda:3 ./run_evals.sh ... tool
+if [ -n "${FABENCH_CELLS:-}" ]; then
+  IFS=';' read -ra CELLS <<< "$FABENCH_CELLS"
+else
+CELLS=(
+  "timit dev"
+  "timit core_test"
+  "buckeye dev"
+  "buckeye test"
+)
+fi
+
+[ -f "$SUMMARY" ] || printf 'corpus\tsubset\ttool\tstatus\tseconds\n' > "$SUMMARY"
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+echo "=== stage 1: align, clean ==="
+for cell in "${CELLS[@]}"; do
+  set -- $cell; corpus=$1; subset=$2
+  for tool in "${TOOLS[@]}"; do
+    tag="${corpus}_${subset}_${tool}"
+    # Resolve the tool's KIND instead of assuming aligners/.
+    #
+    # This mattered far more than a tidy log path. fabench.paths.tool_kind()
+    # infers a tool's contract from WHICH evals/<kind>/ dir it lives in -- first
+    # match wins, aligners/ first. The old hardcoded
+    # `mkdir -p $HERE/aligners/$tool/log` CREATED that directory, so after one
+    # sweep parakeet_tdt (a timestamp_asr) was classified as an aligner and
+    # every hyp.jsonl was written under evals/aligners/. The check below looked in
+    # the same wrong place and reported OK, so nothing ever surfaced.
+    kind=aligners
+    [ -d "$HERE/timestamp_asrs/$tool" ] && kind=timestamp_asrs
+    tdir=$("$PY" -c "from fabench.paths import tool_dir; from pathlib import Path; print(tool_dir(Path('$ROOT'), '$tool'))" 2>/dev/null) \
+      || tdir="$HERE/$kind/$tool"
+    tlog="$tdir/log"; mkdir -p "$tlog"
+    log="$tlog/${corpus}_${subset}.log"
+    # The config lives IN the cell it describes, beside the hyp it produces
+    # and the scores of that hyp; gen_config.py picks the path itself.
+    cfg="$tdir/en/$corpus/$subset/origin/config.yaml"
+
+    if ! "$PY" "$HERE/gen_config.py" --corpus "$corpus" --subset "$subset" \
+         --tools "$tool" ${FABENCH_DEVICE:+--device "$FABENCH_DEVICE"} \
+         > "$log" 2>&1; then
+      echo "[SKIP] $tag -- config generation failed (see $log)"
+      printf '%s\t%s\t%s\tCONFIG_FAIL\t0\n' "$corpus" "$subset" "$tool" >> "$SUMMARY"
+      continue
+    fi
+
+    echo "[RUN ] $tag"
+    t0=$SECONDS
+    # Thread pinning comes from env.sh (FABENCH_THREADS), exported above.
+    if "$PY" -m fabench run --config "$cfg" >> "$log" 2>&1; then
+      # Exit 0 is NOT sufficient. Per-item aligner failures are caught and
+      # logged, so a tool that fails on every single utterance still exits 0
+      # and writes an EMPTY hypothesis file -- whisperx did exactly this
+      # across all five cells (a float64/float32 mismatch) and was recorded as
+      # OK. Check the run actually produced records.
+      # $tdir, not $HERE/$kind/$tool: a recipe nested under exps/ or v*/ does
+      # not live at its own name, so the guessed path missed every one. And the
+      # CONDITION is its own directory level (fabench.paths.cell_dir) -- the
+      # check predates that change and never gained the segment, so it had been
+      # looking one level too high for every tool since. Both together made it
+      # report EMPTY for 53 runs that had written full hypothesis files.
+      hyp="$tdir/en/$corpus/$subset/origin/hyp.jsonl"
+      if [ ! -s "$hyp" ]; then
+        echo "[EMPTY] $tag  ($((SECONDS - t0))s) -- ran, but produced 0 records; see $log"
+        printf '%s\t%s\t%s\tEMPTY\t%d\n' "$corpus" "$subset" "$tool" $((SECONDS - t0)) >> "$SUMMARY"
+        continue
+      fi
+      echo "[ OK ] $tag  ($((SECONDS - t0))s, $(wc -l < "$hyp") records)"
+      printf '%s\t%s\t%s\tOK\t%d\n' "$corpus" "$subset" "$tool" $((SECONDS - t0)) >> "$SUMMARY"
+    else
+      echo "[FAIL] $tag  ($((SECONDS - t0))s) -- see $log"
+      printf '%s\t%s\t%s\tFAIL\t%d\n' "$corpus" "$subset" "$tool" $((SECONDS - t0)) >> "$SUMMARY"
+    fi
+  done
+done
+fi   # stage 1
+
+# --- stage 2: the same cells over noise-augmented audio ---------------------
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ] && [ "${use_noisy_dataset}" = true ]; then
+  echo "=== stage 2: align, noisy ==="
+  # Stage 2 must cover the SAME cells stage 1 ran. gen_noisy_configs.py
+  # defaults to timit:core_test + buckeye:test, so a dev sweep silently
+  # regenerated the TEST configs, found them already done and skipped --
+  # yielding clean dev results and no noisy ones, with no error anywhere.
+  _subs=(); for _c in "${CELLS[@]}"; do set -- $_c; _subs+=("$1:$2"); done
+  # Asked for noisy runs and got no config: stop. Carrying on reported a
+  # finished sweep with no noisy result in it.
+  if ! "$PY" "$HERE/gen_noisy_configs.py" --tools "${TOOLS[@]}" --subsets "${_subs[@]}"; then
+    echo "ERROR: --use-noisy-dataset, but no noisy config could be written." >&2
+    echo "       Build the four conditions and their shadow roots first:" >&2
+    echo "       datasets/prep/augment.sh (see datasets/prep/README.md)." >&2
+    exit 1
+  fi
+  "$HERE/run_noisy_evals.sh" "${TOOLS[@]}" || exit 1
+elif [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+  echo "=== stage 2: skipped (pass --use-noisy-dataset to include noisy audio) ==="
+fi
+
+# --- stage 3: score from the saved hypotheses ------------------------------
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+  echo "=== stage 3: score -> summary/<kind>/<tool>/<lang>/<corpus>/<cell> ==="
+  # Walk each tool's cells. A cell config already names its own directory as
+  # results_dir, so scoring writes beside the hyp it scored and there is no
+  # rewritten `.stage3.yaml` copy to build first -- that file existed only
+  # because the config used to point at the cross-tool tree.
+  for tool in "${TOOLS[@]}"; do
+   tdir=$("$PY" -c "from fabench.paths import tool_dir; from pathlib import Path; print(tool_dir(Path('$ROOT'), '$tool'))" 2>/dev/null) || continue
+   for cfg in "$tdir"/en/*/*/*/config.yaml; do
+    [ -f "$cfg" ] || continue
+    cell=$(dirname "$cfg"); cell=${cell#"$tdir/en/"}
+    if "$PY" -m fabench score --config "$cfg" >> "$RUNLOG/score.log" 2>&1; then
+      echo "[ OK ] scored $tool/$cell"
+    else
+      echo "[FAIL] score $tool/$cell -- see $RUNLOG/score.log"
+    fi
+   done
+  done
+fi
+
+echo
+echo "=== sweep complete ==="
+column -t "$SUMMARY" 2>/dev/null || cat "$SUMMARY"

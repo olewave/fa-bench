@@ -1,0 +1,250 @@
+# Copyright 2026 Olewave, LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""`fabench score` (Plan S5): gold + hyp records -> aggregated metrics.
+
+Collects UttScores across *all* enabled aligners x corpora, then aggregates
+them into one leaderboard row per system.
+"""
+
+from __future__ import annotations
+
+import pathlib
+import sys
+
+from fabench.config import load_config
+from fabench.normalize import make_canon, manner_of
+from fabench.schema import Utterance, load_jsonl
+from fabench.score.aggregate import aggregate
+from fabench.score.core import score_pair
+
+
+def _hyp_utt(rec: dict) -> Utterance:
+    from fabench.schema import Interval
+
+    return Utterance(
+        utt_id=rec["utt_id"],
+        source_corpus="hyp",
+        register="",
+        speaker_id="",
+        audio_path="",
+        sample_rate=16000,
+        duration_s=0.0,
+        words=[Interval.from_dict(w) for w in rec.get("words", [])],
+        phones=[Interval.from_dict(p) for p in rec.get("phones", [])],
+    )
+
+
+
+def _cascade_input(cfg, tool: str, corpus: str, subset: str, cond: str) -> dict[str, str]:
+    """The words a cascade was handed for one cell: ``{utt_id: "w1 w2 ..."}``.
+
+    Empty for anything that is not a cascade. The upstream hypothesis is named
+    in the cell's own config (``params.transcript_hyp``) rather than inferred
+    from the tool name, so a cell scored here is relabelled against exactly the
+    file it was aligned against -- including a cascade whose upstream is not the
+    one its name suggests.
+    """
+    import json
+
+    import yaml
+
+    from fabench.paths import tool_index
+
+    ent = tool_index(cfg.repo_root()).get(tool)
+    if ent is None:
+        return {}
+    cell = ent[1] / "en" / corpus / subset / (cond or "origin") / "config.yaml"
+    if not cell.is_file():
+        return {}
+    try:
+        spec_cfg = yaml.safe_load(cell.read_text()) or {}
+        als = spec_cfg.get("aligners") or []
+        rel = (als[0].get("params", {}) or {}).get("transcript_hyp") if als else None
+    except (OSError, yaml.YAMLError, AttributeError, IndexError):
+        return {}
+    if not rel:
+        return {}
+    hyp = pathlib.Path(rel)
+    if not hyp.is_absolute():
+        hyp = cfg.repo_root() / hyp
+    if not hyp.is_file():
+        return {}
+    out: dict[str, str] = {}
+    with hyp.open() as fh:
+        for line in fh:
+            r = json.loads(line)
+            words = [w["label"] if isinstance(w, dict) else w[0]
+                     for w in (r.get("words") or [])]
+            if words:
+                out[r["utt_id"]] = " ".join(words)
+    return out
+
+
+def score_utts(cfg, extras=()):
+    """Every UttScore of every enabled aligner x corpus, absent utterances
+    included. ``extras`` go to each score_pair call (see its docstring), with
+    the hyp record (``{}`` for an absent utterance) and the size of the split
+    in the context as ``record`` and ``n_gold_utts``."""
+    from fabench.dataprep.datasets import ingest_corpus
+
+    scoring = cfg.scoring
+    manner_match = bool(scoring.get("manner_match", False))
+    matcher = str(scoring.get("matcher", "levenshtein"))
+    matcher_lambda = float(scoring.get("matcher_lambda", 2.0))
+    exclude_silence = bool(scoring.get("exclude_silence_boundaries", False))
+    boundary_unit = str(scoring.get("boundary_unit", "phone"))  # phone | word
+    uttscores = []
+    from fabench.paths import hyp_path as _hyp_path
+    from fabench.paths import tool_kind
+    for corpus, _ in cfg.enabled_gold():
+        try:
+            gold_by_id = {u.utt_id: u for u in ingest_corpus(corpus, cfg)}
+        except (FileNotFoundError, ValueError) as e:
+            print(f"  SKIP {corpus}: {e}", file=sys.stderr)
+            continue
+        gold_canon = make_canon(corpus)
+        for spec in cfg.aligners(enabled_only=True):
+            # condition= is REQUIRED here, not just on the write side. Without
+            # it every noise-augmented rescore silently loaded the CLEAN hyp
+            # (dev/hyp.jsonl instead of dev__reverb/hyp.jsonl) and reported
+            # numbers identical to clean across all 12 metric columns -- which
+            # is what exposed it: real noise cannot leave MAE, CI, median,
+            # TA@10/25/50 and ARR unchanged to 4 significant figures.
+            hyp_path = _hyp_path(
+                cfg.repo_root(), spec.name, corpus, cfg.subset_of(corpus),
+                condition=cfg.condition_tag(),
+            )
+            if not hyp_path.exists():
+                continue
+            hyp_recs = list(load_jsonl(hyp_path))
+            # WHAT THIS TOOL WAS GIVEN, so its output can be mapped back onto
+            # it (fabench.aligners.relabel). A cascade was handed the upstream
+            # ASR's words -- using gold here would erase exactly the
+            # recognition error track 2 exists to measure. A timestamped ASR
+            # was handed nothing and chose its own words: no relabelling.
+            #
+            # Read from the CELL config, not the spec: a pooled rescore builds
+            # its aligner list from the recipes, and transcript_hyp is per cell
+            # by design, so the spec in hand does not carry it.
+            _asr_in = _cascade_input(cfg, spec.name, corpus,
+                                     cfg.subset_of(corpus), cfg.condition_tag())
+            _is_asr_tool = tool_kind(cfg.repo_root(), spec.name) == "timestamp_asrs"
+            # WHAT EACH MODE OF THIS FILE EMITS. A tier is scored for every record
+            # of a mode that emits it anywhere in the file, so an EMPTY record is
+            # charged for what it missed. Reading the flags off each record
+            # switched an empty record's own tiers off, and it counted for nothing.
+            emits: dict[str, list[bool]] = {}
+            first: dict[str, dict] = {}
+            for rec in hyp_recs:
+                m = rec["mode"]
+                e = emits.setdefault(m, [False, False])
+                e[0] = e[0] or bool(rec.get("words"))
+                e[1] = e[1] or bool(rec.get("phones"))
+                first.setdefault(m, rec)
+
+            def _tokens(utt_id, gold):
+                if _asr_in:
+                    return _asr_in.get(utt_id, "").split()
+                if _is_asr_tool:
+                    return None          # decoded its own words
+                return [w.label for w in gold.words]
+
+            seen: dict[str, set[str]] = {}
+            for rec in hyp_recs:
+                gold = gold_by_id.get(rec["utt_id"])
+                if gold is None:
+                    continue
+                seen.setdefault(rec["mode"], set()).add(rec["utt_id"])
+                us = score_pair(
+                    gold,
+                    _hyp_utt(rec),
+                    input_tokens=_tokens(rec["utt_id"], gold),
+                    # The run config's tag wins over the hyp record's own
+                    # field: hypotheses aligned before the shadow-root labelling
+                    # fix all carry "clean" regardless of the audio they saw, so
+                    # trusting the record would keep every noisy leaderboard
+                    # mislabelled until each cell is re-aligned. This makes it a
+                    # rescore instead. Empty tag (a clean cell) keeps the record.
+                    condition=cfg.condition_tag() or rec["condition"],
+                    aligner=rec["aligner"],
+                    mode=rec["mode"],
+                    gold_canon=gold_canon,
+                    hyp_canon=make_canon(rec.get("source", "arpabet")),
+                    manner_of_canonical=manner_of,
+                    score_phones=emits[rec["mode"]][1],
+                    score_words=emits[rec["mode"]][0],
+                    manner_match=manner_match,
+                    matcher=matcher,
+                    matcher_lambda=matcher_lambda,
+                    exclude_silence_boundaries=exclude_silence,
+                    boundary_unit=boundary_unit,
+                    extras=extras,
+                    context={"record": rec, "n_gold_utts": len(gold_by_id)},
+                )
+                uttscores.append(us)
+
+            # ABSENT UTTERANCES. A reference utterance the tool returned no
+            # record for, in a mode it ran, is scored against an empty
+            # hypothesis: its boundaries count against F1 recall and its units
+            # as deletions. Leaving it out scored the tool only where it
+            # produced something, the survivor bias F1 exists to catch.
+            # MAE still sees only the records that exist.
+            for m, (w_on, p_on) in emits.items():
+                if not (w_on or p_on):
+                    continue
+                r0 = first[m]
+                for utt_id, gold in gold_by_id.items():
+                    if utt_id in seen.get(m, ()):
+                        continue
+                    us = score_pair(
+                        gold,
+                        _hyp_utt({"utt_id": utt_id}),
+                        input_tokens=_tokens(utt_id, gold),
+                        condition=cfg.condition_tag() or r0["condition"],
+                        aligner=r0["aligner"],
+                        mode=m,
+                        gold_canon=gold_canon,
+                        hyp_canon=make_canon(r0.get("source", "arpabet")),
+                        manner_of_canonical=manner_of,
+                        score_phones=p_on,
+                        score_words=w_on,
+                        manner_match=manner_match,
+                        matcher=matcher,
+                        matcher_lambda=matcher_lambda,
+                        exclude_silence_boundaries=exclude_silence,
+                        boundary_unit=boundary_unit,
+                        extras=extras,
+                        context={"record": {}, "n_gold_utts": len(gold_by_id)},
+                    )
+                    us.absent = True
+                    uttscores.append(us)
+    return uttscores
+
+
+def score_all(cfg) -> list[dict]:
+    """The leaderboard rows over all enabled aligners."""
+    return aggregate(score_utts(cfg))
+
+
+def write_results(cfg, leaderboard):
+    import pandas as pd
+
+    rd = cfg.results_dir()
+    rd.mkdir(parents=True, exist_ok=True)
+    lb = pd.DataFrame(leaderboard)
+    lb.to_parquet(rd / "leaderboard.parquet")
+    lb.to_csv(rd / "leaderboard.csv", index=False)
+    return lb
+
+
+def cmd_score(args) -> int:
+    cfg = load_config(args.config)
+    leaderboard = score_all(cfg)
+    if not leaderboard:
+        print("no scored results (no gold staged / no hyp files). Run ingest+mix+align.",
+              file=sys.stderr)
+        return 1
+    write_results(cfg, leaderboard)
+    print(f"[score] {len(leaderboard)} leaderboard rows -> {cfg.results_dir()}")
+    return 0

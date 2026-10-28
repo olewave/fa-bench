@@ -1,0 +1,86 @@
+{
+  "errId": 0,
+  "error": "",
+  "result": {
+    "details": [
+      {
+        "char": "what",
+        "score": 34,
+        "begin": 640,
+        "end": 900,
+        "phone": [
+          {
+            "char": "w",
+            "score": 0,
+            "begin": 640,
+            "end": 670
+          },
+          {
+            "char": "ah",
+            "score": 0,
+            "begin": 670,
+            "end": 700
+          },
+          {
+            "char": "t",
+            "score": 0,
+            "begin": 700,
+            "end": 900
+          }
+        ]
+      },
+      {
+        "char": "is",
+        "score": 40,
+        "begin": 900,
+        "end": 1080,
+        "phone": [
+          {
+            "char": "ih",
+            "score": 0,
+            "begin": 900,
+            "end": 1040
+          },
+          {
+            "char": "z",
+            "score": 0,
+            "begin": 1040,
+            "end": 1080
+          }
+        ]
+      },
+      {
+        "char": "better",
+        "score": 32,
+        "begin": 1080,
+        "end": 2010,
+        "phone": [
+          {
+            "char": "b",
+            "score": 0,
+            "begin": 1080,
+            "end": 1320
+          },
+          {
+            "char": "eh",
+            "score": 0,
+            "begin": 1320,
+            "end": 1460
+          },
+          {
+            "char": "t",
+            "score": 0,
+            "begin": 1460,
+            "end": 1560
+          },
+          {
+            "char": "er",
+            "score": 0,
+            "begin": 1560,
+            "end": 2010
+          }
+        ]
+      }
+    ]
+  }
+}

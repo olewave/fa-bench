@@ -1,0 +1,32 @@
+# Olign 1.0, given audio alone. TRACK 2, WORD AND PHONE TIERS, COMMERCIAL.
+#
+# The same job API as evals/aligners/olign_v1 with the transcript left out.
+# Olign then returns its own words with their times, and the job reports
+# "transcript_source": "asr". It is never handed another system's words, unlike
+# the Olign 0.9 cascades (olign_on_qwen3asr, olign_on_parakeettdt, olign_on_chirp2).
+#
+# A recording where Olign hears no speech ends as a failed job with "no speech
+# recognized". That is kept as an empty answer, so the utterance scores as
+# returning nothing, the way every recognizer's silence does.
+#
+# Olign returns cased, punctuated words. They are lower-cased and stripped of
+# end punctuation as every cloud recognizer's are, and scored as written.
+#
+# CREDENTIAL: OLIGN_API_KEY, from the environment or .fabench.env.
+name: olign_v1_asr
+adapter: olign_v1_asr
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word, phone]
+emits_confidence: true
+params:
+  concurrency: 8           # parallel jobs
+  timeout_s: 300
+  retries: 5
+  cache: true
+  # Names the snapshot these results belong to. It is part of the cache key,
+  # so a later snapshot never reuses an earlier one's answers.
+  version: "2026-10-09"
+  poll_first_s: 2
+  poll_interval_s: 5

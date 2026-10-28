@@ -1,0 +1,17 @@
+# MMS forced aligner (Meta, torchaudio.pipelines.MMS_FA). WORD TIER.
+#
+# Same adapter and the same venv as torchaudio_fa, since it is another
+# torchaudio bundle. Character CTC over a 29-symbol multilingual dictionary, so
+# there is no phone tier and no mode B.
+name: mms_fa
+adapter: torchaudio_fa
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  venv: evals/aligners/torchaudio_fa/venv
+  worker: evals/aligners/torchaudio_fa/worker.py
+  model: MMS_FA
+  device: cuda
+  timeout_s: null

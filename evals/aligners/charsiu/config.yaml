@@ -1,0 +1,16 @@
+# Charsiu -- wav2vec2 frame classifier, 10 ms grid, phone-level.
+name: charsiu
+adapter: charsiu
+enabled: true
+modes: [A]
+granularity: [word, phone]
+params:
+  model: charsiu/en_w2v2_fc_10ms
+  repo_path: repo/charsiu/src   # custom model classes must be importable
+  # Runs in its OWN interpreter (subprocess), not FA-Bench's shared .venv. It
+  # used to import in-process, so another tool's install could silently redefine
+  # its dependencies -- whisperx's install moved this tool's transformers
+  # 5.14.1 -> 4.57.6 and torch 2.13 -> 2.8 with nothing failing.
+  venv: repo/env
+  timeout_s: 14400
+  device: cuda

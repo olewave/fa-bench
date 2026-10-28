@@ -1,0 +1,53 @@
+cff-version: 1.2.0
+message: "If you publish results produced with this software, please cite the FA-Bench paper."
+title: "FA-Bench"
+type: software
+authors:
+  - name: "Olewave, LLC"
+    website: "https://olewave.com"
+version: "2.0.0"
+license: Apache-2.0
+repository-code: "https://github.com/olewave/fa-bench"
+url: "https://olewave.com/en/leaderboard/fa-bench"
+keywords:
+  - forced alignment
+  - speech recognition
+  - word timestamps
+  - phone boundaries
+  - benchmark
+preferred-citation:
+  type: article
+  title: "FA-Bench: A Benchmark for Phone- and Word-Level Timestamp Accuracy in Forced Alignment and ASR on Clean and Noisy Speech"
+  authors:
+    - given-names: Wei
+      family-names: Chu
+    - given-names: Yuanzhe
+      family-names: Dong
+    - given-names: Ke
+      family-names: Tan
+    - given-names: Dong
+      family-names: Han
+    - given-names: Yichao
+      family-names: Zhou
+    - given-names: Ruchao
+      family-names: Fan
+    - given-names: Bingshen
+      family-names: Mu
+    - given-names: Jingbei
+      family-names: Li
+    - given-names: Vishwas
+      family-names: Shetty
+    - given-names: Sarthak
+      family-names: Bisht
+    - given-names: Ziyue
+      family-names: Qiu
+    - given-names: Massa
+      family-names: Baali
+    - given-names: Rita
+      family-names: Singh
+    - given-names: Bhiksha
+      family-names: Raj
+  year: 2026
+  journal: "arXiv preprint arXiv:2609.32396"
+  doi: "10.48550/arXiv.2609.32396"
+  url: "https://arxiv.org/abs/2609.32396"

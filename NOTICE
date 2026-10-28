@@ -1,0 +1,26 @@
+FA-Bench
+Copyright 2026 Olewave, LLC
+
+This product includes software developed at Olewave, LLC (https://olewave.com).
+If you publish results produced with this software, please cite arXiv:2609.32396.
+
+
+Third-party material in this distribution
+
+fabench/dataprep/noisemix/kaldi/ holds data augmentation scripts from the
+Kaldi speech recognition toolkit (https://github.com/kaldi-asr/kaldi), under
+the Apache License 2.0. Kaldi's COPYING file is kept beside them, and
+PROVENANCE.md there records the one local patch.
+
+The TIMIT 61 to 39 phone folding in fabench/normalize/en/maps.py follows
+Lee and Hon (1989) and Kaldi's egs/timit/s5/conf/phones.60-48-39.map.
+
+datasets/languages/en/timit/split/dev.list is Kaldi's
+egs/timit/s5/conf/dev_spk.list. datasets/languages/en/timit/split/core_test.list
+and datasets/languages/en/buckeye/speakers.tsv restate speaker and utterance
+facts from the TIMIT and Buckeye corpus documentation. They carry no corpus
+audio and no corpus text.
+
+The noise conditions are built from MUSAN (OpenSLR 17, CC BY 4.0) and the
+simulated room impulse responses of RIRS_NOISES (OpenSLR 28, Apache 2.0).
+Neither is distributed with this software.

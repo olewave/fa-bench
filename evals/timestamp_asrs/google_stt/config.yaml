@@ -1,0 +1,41 @@
+# Google Cloud Speech-to-Text. TRACK 2, ONE STEP, WORD TIER, COMMERCIAL.
+#
+# CREDENTIAL, either of:
+#   GOOGLE_STT_API_KEY       -- simplest, and enough for the v1 endpoint below.
+#   GOOGLE_STT_ACCESS_TOKEN  -- an OAuth bearer token. Required for v2.
+# Both come from the environment or .fabench.env. With neither set, the adapter
+# runs params.access_token_cmd, so a machine already holding a gcloud login
+# needs no key at all.
+#
+# v1 OR v2. Leave project_id unset and the adapter uses v1 speech:recognize,
+# which takes an API key and needs no project plumbing. Set project_id (and a
+# location, and optionally model: chirp_2) and it uses v2, which needs a bearer
+# token. v1 synchronous recognize caps at 60 s of audio, which every utterance
+# in both corpora is well inside.
+#
+# The adapter sends the PCM frames and the rate READ FROM THE FILE, not the
+# RIFF container with a rate from this file: with a header in a LINEAR16
+# payload the header decodes as samples and every utterance starts with a click.
+#
+# See evals/timestamp_asrs/deepgram/config.yaml for why `access: commercial`.
+name: google_stt
+adapter: google_stt
+access: commercial
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  model: latest_long
+  language: en-US
+  punctuate: false          # raw words; see the deepgram recipe
+  access_token_cmd: gcloud auth print-access-token
+  concurrency: 8
+  timeout_s: 120
+  retries: 5
+  cache: true
+  # --- v2 only. Setting project_id switches endpoints. ---
+  # project_id: my-gcp-project
+  # location: us-central1
+  # model: chirp_2
+  # recognizer: _

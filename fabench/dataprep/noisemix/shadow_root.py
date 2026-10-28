@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+# Copyright 2026 Olewave, LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""Build a *shadow corpus root*: clean gold, noisy audio, all symlinks.
+
+WHY THIS AND NOT A NEW MANIFEST PATH. FA-Bench's ``conditions`` machinery
+mixes noise ON THE FLY (``fabench/noise/mixer.py`` -> ``build_manifest``
+writes its own wavs). That is a different noise from the Kaldi conditions
+built by ``make_noisy.py``, and there is no ``audio_root`` override to point
+an eval at pre-built audio.
+
+The cheapest correct route is to leave every code path alone and hand the
+existing processors a root that LOOKS like the corpus but whose audio is the
+noisy version:
+
+    <shadow>/TRAIN/DR1/FCJF0/SA1.PHN  -> symlink to the real TIMIT gold
+    <shadow>/TRAIN/DR1/FCJF0/SA1.wav  -> symlink to noisy/<type>/<utt>.wav
+
+Ingest, utterance slicing, split lists and gold all then work unmodified, and
+a config only changes ``root:``. This works because, once the recipe's pads
+are cut off (``_trim_audio``), the noisy audio is on the clean timeline sample
+for sample and exactly as long, so the clean gold stays valid.
+
+Two layout problems it solves, which is the whole reason it exists:
+
+* TIMIT noisy files are FLAT (``noisy/<type>/dr1_felc0_si1386.wav``) while the
+  processor wants ``TRAIN/DR1/FCJF0/SA1.WAV``. The utt-id encodes the path, so
+  the mapping is recoverable.
+* Buckeye noisy audio is per-RECORDING, but FA-Bench evaluates per-UTTERANCE
+  slices that its processor cuts from the recording. Pointing the shadow at
+  noisy recordings makes that slicing produce noisy utterances for free --
+  no re-slicing code, and the segment boundaries are by construction the same.
+
+Usage:
+    shadow_root.py --corpus timit   --type noise --out <dir>
+    shadow_root.py --corpus buckeye --type babble --out <dir>
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+# Machine-specific roots come from the environment (see evals/gen_config.py).
+NOISY_ROOT = os.environ.get("FABENCH_NOISY_ROOT", "data/noisy")
+CLEAN = {"timit": os.environ.get("FABENCH_TIMIT_ROOT", f"{NOISY_ROOT}/TIMIT"),
+         "buckeye": os.environ.get("FABENCH_BUCKEYE_ROOT", "data/buckeye")}
+TYPES = ("reverb", "noise", "music", "babble")
+
+
+def _link(src: Path, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.is_symlink() or dst.exists():
+        dst.unlink()
+    dst.symlink_to(src)
+
+
+#: seconds of silence the gold-prep recipe's wav.scp prepends (`-af "adelay=475,..."`).
+PAD_HEAD_S = 0.475
+
+
+def _clean_wav(gold: Path) -> Path | None:
+    """The clean recording beside a gold file, whatever the case of its suffix."""
+    for ext in (".WAV", ".wav"):
+        p = gold.with_suffix(ext)
+        if p.is_file():
+            return p
+    return None
+
+
+def _trim_audio(src: Path, dst: Path, clean: Path, head_s: float = PAD_HEAD_S) -> bool:
+    """Copy `src` to `dst` on the clean recording's timeline and at its length.
+
+    THE NOISY AUDIO IS ON A DIFFERENT TIMELINE FROM FA-Bench's GOLD, and a
+    symlink would silently score every boundary `head_s` late.
+
+    make_noisy.py reuses the gold-prep recipe's wav.scp, which applies
+    `-af "adelay=475,apad=pad_dur=0.475"`. That is correct for that recipe,
+    whose gold was annotated against the padded audio. FA-Bench's gold comes
+    from TIMIT `.PHN` / Buckeye `.phones`, which are on the UNPADDED timeline.
+    Measured: TIMIT source 5.523 s vs noisy 6.473 s (+0.950 = 475 head + 475
+    tail); a Buckeye noisy slice began with 450 ms of silence the aligner
+    dutifully labelled `[sil]`.
+
+    Cross-correlating the raw source against the trimmed noisy file gives a
+    best lag of 0 samples, so trimming the head restores sample-exact
+    alignment.
+
+    THE TAIL GOES TOO, so a noisy file is exactly as long as its clean source.
+    This used to cut only the head, on the view that the tail lies past the
+    last boundary and costs nothing. It costs. The noise is mixed over the
+    whole padded length, so the tail is 475 ms of noise with no speech in it,
+    and a TIMIT utterance is a whole file, so the tail follows the last word
+    directly. Any system that runs its last unit to the end of the audio was
+    charged about 475 ms at the utterance end: MAPS, Charsiu, FALCON and NeuFA
+    on nearly every noisy utterance, BFA, MFA, Olign and IBM on some. Clipping
+    the hypotheses at the clean duration alone took MAPS's TIMIT noisy word
+    MAE from 171 to 132 ms. Buckeye was spared only because its utterances are
+    sliced out of the recording at the clean segment bounds and never reach
+    the tail. Measured before cutting: every TIMIT file in all four conditions
+    is the clean length + 15200 samples at 16 kHz, 7600 at each end.
+    """
+    import soundfile as sf
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists() and dst.stat().st_size > 0:
+        return True
+    sr = sf.info(str(src)).samplerate
+    c = sf.info(str(clean))
+    start = round(head_s * sr)
+    keep = round(c.frames * sr / c.samplerate)      # clean length, in src samples
+    r = subprocess.run(
+        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(src),
+         "-af", (f"atrim=start_sample={start}:end_sample={start + keep},"
+                 "asetpts=PTS-STARTPTS"),
+         "-ar", "16000", "-ac", "1",
+         # No encoder tag in the header, so the bytes do not depend on the
+         # ffmpeg version. The samples are the same either way.
+         "-fflags", "+bitexact", "-flags:a", "+bitexact", str(dst)],
+        capture_output=True, text=True, check=False)
+    if r.returncode != 0 or not dst.exists() or dst.stat().st_size == 0:
+        return False
+    # A source shorter than head + clean would come out short, and nothing
+    # downstream would notice. Refuse it here, where the count is known.
+    want = round(c.frames * 16000 / c.samplerate)
+    if abs(sf.info(str(dst)).frames - want) > (0 if sr == 16000 else 1):
+        dst.unlink()
+        return False
+    return True
+
+
+def _run_trims(jobs: list[tuple[Path, Path, Path]], nj: int = 16) -> None:
+    """Trim every queued file. ffmpeg is the bottleneck, so run nj at a time."""
+    if not jobs:
+        return
+    bad = 0
+    with ThreadPoolExecutor(max_workers=nj) as ex:
+        for ok in ex.map(lambda j: _trim_audio(*j), jobs):
+            bad += 0 if ok else 1
+    print(f"   trimmed {len(jobs) - bad}/{len(jobs)} (head {PAD_HEAD_S}s removed,"
+          " cut to the clean length)"
+          + (f", {bad} FAILED" if bad else ""))
+
+
+def timit(clean: Path, noisy: Path, out: Path, only: set[str] | None = None,
+          nj: int = 16) -> tuple[int, int, int]:
+    """utt-id ``dr1_felc0_si1386`` <-> ``<split>/DR1/FELC0/SI1386.*``.
+
+    ``only`` restricts the tree to those utt-ids, for a build of some splits.
+    """
+    linked = missing = excluded = 0
+    jobs: list[tuple[Path, Path, Path]] = []
+    for phn in sorted(clean.rglob("*.PHN")) or sorted(clean.rglob("*.phn")):
+        rel = phn.relative_to(clean)              # TRAIN/DR1/FCJF0/SA1.PHN
+        parts = rel.parts
+        if len(parts) < 4:
+            continue
+        # from the end, so a root with TRAIN/ one level down maps the same
+        dr, spk, fname = parts[-3], parts[-2], parts[-1]
+        stem = Path(fname).stem
+        utt = f"{dr}_{spk}_{stem}".lower()
+        if only is not None and utt not in only:
+            continue
+        wav = noisy / f"{utt}.wav"
+        if not wav.is_file():
+            # SA sentences are EXPECTED to be absent, not a gap: TIMIT states
+            # the 2 SA prompts per speaker must not be used for training or
+            # test, FA-Bench's splits exclude them, so the noise build never
+            # saw them. 630 speakers x 2 = exactly 1260.
+            if stem.upper().startswith("SA"):
+                excluded += 1
+            else:
+                missing += 1
+            continue
+        # the clean recording sets the length the noisy one is cut to
+        cw = _clean_wav(phn)
+        if cw is None:
+            missing += 1
+            continue
+        # gold + transcript come from the REAL corpus (symlink, free); audio is
+        # TRIMMED, not symlinked -- see _trim_audio for why a symlink is wrong.
+        for ext in (".PHN", ".WRD", ".TXT", ".phn", ".wrd", ".txt"):
+            s = phn.with_suffix(ext)
+            if s.is_file():
+                _link(s, out / rel.with_suffix(ext))
+        jobs.append((wav, out / rel.with_suffix(".wav"), cw))
+        linked += 1
+    _run_trims(jobs, nj)
+    return linked, missing, excluded
+
+
+def buckeye(clean: Path, noisy: Path, out: Path, only: set[str] | None = None,
+            nj: int = 16) -> tuple[int, int, int]:
+    """Per-recording: link .phones/.words from clean, .wav from noisy.
+
+    ``only`` restricts the tree to those recordings, for a build of some splits.
+    """
+    linked = missing = 0
+    jobs: list[tuple[Path, Path, Path]] = []
+    for ph in sorted(clean.rglob("*.phones")):
+        rel = ph.relative_to(clean)
+        rec = ph.stem
+        if only is not None and rec not in only:
+            continue
+        wav = noisy / f"{rec}.wav"
+        cw = _clean_wav(ph)
+        if not wav.is_file() or cw is None:
+            missing += 1
+            continue
+        for ext in (".phones", ".words", ".txt", ".log"):
+            s = ph.with_suffix(ext)
+            if s.is_file():
+                _link(s, out / rel.with_suffix(ext))
+        jobs.append((wav, out / rel.with_suffix(".wav"), cw))
+        linked += 1
+    _run_trims(jobs, nj)
+    return linked, missing, 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--corpus", required=True, choices=("timit", "buckeye"))
+    ap.add_argument("--type", required=True, choices=TYPES)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--clean", default=None, help="override the clean root")
+    ap.add_argument("--noisy-root", default=NOISY_ROOT)
+    a = ap.parse_args(argv)
+
+    corp_dir = "TIMIT" if a.corpus == "timit" else "Buckeye"
+    clean = Path(a.clean or CLEAN[a.corpus])
+    noisy = Path(a.noisy_root) / corp_dir / "noisy" / a.type
+    out = Path(a.out)
+    for p, what in ((clean, "clean root"), (noisy, "noisy dir")):
+        if not p.is_dir():
+            print(f"  no {what} at {p}", file=sys.stderr)
+            return 1
+
+    fn = timit if a.corpus == "timit" else buckeye
+    linked, missing, excluded = fn(clean, noisy, out)
+    print(f"  {a.corpus}/{a.type}: {linked} linked"
+          + (f", {excluded} SA excluded (expected)" if excluded else "")
+          + (f", {missing} MISSING" if missing else ""))
+    return 0 if linked and not missing else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
