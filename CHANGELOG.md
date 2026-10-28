@@ -5,7 +5,7 @@ scoring does, so each release lists first the changes that move published
 numbers, and names the snapshot it was scored with. Two snapshots can
 be compared only when no such change lies between them.
 
-## [2.0.0] - unreleased
+## [2.0.0] - 2026-10-28
 
 FA-Bench is licensed under the Apache License 2.0 from this release. Releases
 1.0.0 to 1.1.3 were published under PolyForm Noncommercial 1.0.0 and are no
