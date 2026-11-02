@@ -145,6 +145,7 @@ DISPLAY = {
     "olign_v1_asr": "Olign 1.0",
     "parakeet_tdt": "Parakeet-TDT",
     "whisper3": "Whisper large-v3",
+    "granite_speech_plus": "Granite Speech 4.1 Plus",
     # The row IS a cascade: Qwen3-ASR decodes, Qwen3-ForcedAligner-0.6B times
     # the words it produced. Naming the pair says so on the page instead of
     # only in the recipe, and puts it in the same form as the other two-step
@@ -170,6 +171,7 @@ FAMILY = {
     "maps": "frame",            # neural phone segmentor + interpolation
     "parakeet_tdt": "transducer",   # Token-and-Duration Transducer
     "whisper3": "attention",    # Whisper large-v3, cross-attention DTW times
+    "granite_speech_plus": "attention",  # speech LLM, writes end-time tags as text
     "qwen3_asr": "attention",   # Qwen3-ASR, timed by Qwen3-ForcedAligner-0.6B
     "torchaudio_asr": "ctc",    # wav2vec2 CTC greedy decode; spans are CTC frames
     "whisperx_asr": "ctc",      # Whisper decodes, but wav2vec2 CTC sets the times
@@ -277,6 +279,7 @@ PIPELINE = {
     "parakeet_tdt": "one-step",     # TDT duration head, times fall out of decoding
     "crisperwhisper": "one-step",   # cross-attention
     "whisper3": "one-step",         # cross-attention DTW
+    "granite_speech_plus": "one-step",   # times are tokens in the same decode
     "whisper_ts": "one-step",       # cross-attention DTW, same decode
     "torchaudio_asr": "one-step",   # CTC frame spans from the same decode
     "whisperx_asr": "two-step",     # Whisper decodes, wav2vec2 re-aligns its words

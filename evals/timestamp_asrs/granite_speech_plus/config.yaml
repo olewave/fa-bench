@@ -1,0 +1,29 @@
+# IBM Granite Speech 4.1 2B-plus -- ASR WITH WORD TIMESTAMPS, not a forced
+# aligner.  https://huggingface.co/ibm-granite/granite-speech-4.1-2b-plus
+#
+# A speech LLM (Granite 4.0 1B base with a speech encoder) prompted to write an
+# end-time tag after each word. It writes no start times, so each word starts
+# where the token before it ended, and a pause the model does not mark as `_`
+# is counted inside the next word. Times and words come from one decode, so the
+# row is one-step.
+#
+# It IGNORES the reference transcript and decodes its own. Read B-F1 as the
+# primary metric here and MAE as secondary, and do NOT rank it head-to-head
+# against MFA/olign/qwen3_fa.
+#
+# Word-level only; absent from phone tables by construction.
+name: granite_speech_plus
+adapter: granite_speech_plus
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: false
+params:
+  venv: evals/timestamp_asrs/granite_speech_plus/venv
+  worker: worker.py
+  model: ibm-granite/granite-speech-4.1-2b-plus
+  # 4 is what IBM's reported numbers used; 1 is faster.
+  num_beams: 4
+  timeout_s: 14400
+  env:
+    LD_LIBRARY_PATH: null

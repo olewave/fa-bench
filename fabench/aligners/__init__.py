@@ -49,6 +49,9 @@ _REGISTRY = {
     "whisperx_asr": "fabench.timestamp_asrs.whisperx_asr:WhisperXASR",
     # whisper-timestamped: Whisper plus cross-attention DTW, one step only.
     "whisper_ts": "fabench.timestamp_asrs.whisper_ts:WhisperTS",
+    # Granite Speech 4.1 2B-plus: a speech LLM that writes each word's end
+    # time into its own transcript, one step.
+    "granite_speech_plus": "fabench.timestamp_asrs.granite_speech_plus:GraniteSpeechPlus",
     # COMMERCIAL timestamped ASRs, one step. HTTPS endpoints, no venv and no
     # SDK -- see fabench/timestamp_asrs/cloud/. Their rows are marked
     # `access: commercial` in the recipe because the model behind an endpoint
