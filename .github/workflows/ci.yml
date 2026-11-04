@@ -16,6 +16,11 @@ on:
     branches: [main]
   pull_request:
 
+# Read-only token for every job. A fork PR's code can then read the
+# repository and nothing more, whatever the repo-wide default is.
+permissions:
+  contents: read
+
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PIP_ROOT_USER_ACTION: "ignore"
