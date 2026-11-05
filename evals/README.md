@@ -72,7 +72,7 @@ mismatch, since a `.so` is loaded once per process.
 |---|---|
 | bfa, charsiu, maps | `<tool>/repo/env` |
 | mfa | `<tool>/repo/mamba` (micromamba) |
-| crisperwhisper, falcon, nemo_fa, neufa, parakeet_tdt, pocketsphinx, qwen3_asr, qwen3_fa, stable_ts, torchaudio_fa, unity2, whisper3, whisper_ts, whisperx | `<tool>/venv` |
+| crisperwhisper, falcon, granite_speech_plus, nemo_fa, neufa, parakeet_tdt, pocketsphinx, qwen3_asr, qwen3_fa, stable_ts, torchaudio_fa, unity2, whisper3, whisper_ts, whisperx | `<tool>/venv` |
 | crisperwhisper_fa | shares `timestamp_asrs/crisperwhisper/venv`, the same package |
 | mms_fa, torchaudio_asr | share `aligners/torchaudio_fa/venv`, the same package |
 | whisperx_asr | shares `aligners/whisperx/venv` |
@@ -306,6 +306,7 @@ pass on an environment you built.
 | `torchaudio_fa` | torchaudio, BSD-2-Clause | WAV2VEC2_ASR_BASE_960H, MIT | mode B uses phonemizer and espeak-ng, GPL-3.0 or later |
 | `unity2` | seamless_communication, MIT | unity2_aligner, MIT, with a tokenizer from facebook/seamless-streaming, CC BY-NC 4.0 | noncommercial tokenizer, and the unit extractor's licence is not stated |
 | `whisperx`, `whisperx_asr` | whisperx, BSD-2-Clause | wav2vec2 960h and faster-whisper large-v3, MIT | none |
+| `granite_speech_plus` | transformers, Apache-2.0 | ibm-granite/granite-speech-4.1-2b-plus, Apache-2.0 | none |
 | `parakeet_tdt` | NVIDIA NeMo, Apache-2.0 | nvidia/parakeet-tdt-0.6b-v3, CC BY 4.0 | attribution |
 | `qwen3_asr` | qwen-asr, Apache-2.0 | Qwen/Qwen3-ASR-1.7B, Apache-2.0 | none |
 | `torchaudio_asr` | torchaudio, BSD-2-Clause | WAV2VEC2_ASR_BASE_960H, MIT | none |

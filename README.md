@@ -38,7 +38,7 @@ transcript, so only its timing is tested. A timestamped ASR decodes its own
 words, so its timing error carries its recognition error too. Every run is
 seeded and reproducible from a single command.
 
-**31 systems scored**, 22 open models and 9 commercial APIs.
+**32 systems scored**, 23 open models and 9 commercial APIs.
 
 - **Forced aligners**, given the reference transcript.
   [BFA](https://github.com/tabahi/bournemouth-forced-aligner) ·
@@ -57,6 +57,7 @@ seeded and reproducible from a single command.
   [UnitY2](https://github.com/facebookresearch/seamless_communication) ·
   [WhisperX](https://github.com/m-bain/whisperx)
 - **Open ASR with timestamps**, decoding their own words.
+  [Granite Speech 4.1 Plus](https://huggingface.co/ibm-granite/granite-speech-4.1-2b-plus) ·
   [Parakeet-TDT](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) ·
   [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) ·
   [TorchAudio wav2vec2 ASR](https://docs.pytorch.org/audio/stable/generated/torchaudio.pipelines.WAV2VEC2_ASR_BASE_960H.html) ·
