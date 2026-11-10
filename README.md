@@ -383,3 +383,13 @@ recipe with its licence.
 The FA-Bench paper is on arXiv as
 [arXiv 2609.32396](https://arxiv.org/abs/2609.32396), and every link to the
 paper on this page opens it there.
+
+---
+
+## Related benchmarks
+
+The [nyra speech timing benchmark](https://github.com/nyrahealth/nyra_speech_timing_benchmark)
+from nyra labs also scores forced aligners and speech APIs on word timing. It
+adds FluencyBank for stuttered speech and it reports speed. It cuts Buckeye into
+chunks of up to 20 s and averages the error over each word's start and end, so
+its numbers differ from the ones on this page.
