@@ -73,7 +73,7 @@ mismatch, since a `.so` is loaded once per process.
 |---|---|
 | bfa, charsiu, maps | `<tool>/repo/env` |
 | mfa | `<tool>/repo/mamba` (micromamba) |
-| crisperwhisper, falcon, granite_speech_plus, nemo_fa, neufa, parakeet_tdt, pocketsphinx, qwen3_asr, qwen3_fa, stable_ts, torchaudio_fa, unity2, whisper3, whisper_ts, whisperx | `<tool>/venv` |
+| crisperwhisper, falcon, granite_speech_plus, nemo_fa, neufa, nyra_fa, parakeet_tdt, pocketsphinx, qwen3_asr, qwen3_fa, stable_ts, torchaudio_fa, unity2, whisper3, whisper_ts, whisperx | `<tool>/venv` |
 | crisperwhisper_fa | shares `timestamp_asrs/crisperwhisper/venv`, the same package |
 | mms_fa, torchaudio_asr | share `aligners/torchaudio_fa/venv`, the same package |
 | whisperx_asr | shares `aligners/whisperx/venv` |
@@ -301,6 +301,7 @@ pass on an environment you built.
 | `mms_fa` | torchaudio, BSD-2-Clause | torchaudio MMS_FA, CC BY-NC 4.0 | noncommercial weights |
 | `nemo_fa` | NVIDIA NeMo, Apache-2.0 | stt_en_conformer_ctc_large and stt_en_fastconformer_hybrid_large_pc, CC BY 4.0 | attribution |
 | `neufa` | thuhcsi/NeuFA, no licence | the authors' checkpoint, unreleased | no upstream licence, and its G2P uses sequitur-g2p, GPL-2.0-only |
+| `nyra_fa` | nyra-forced-aligner, MIT | nyralabs/nyra_forced_aligner_en, nyra health Non-Commercial Research License | noncommercial weights |
 | `pocketsphinx` | cmusphinx/pocketsphinx, BSD-style | the bundled en-us model and CMUdict, BSD-style | none |
 | `qwen3_fa` | qwen-asr, Apache-2.0 | Qwen/Qwen3-ForcedAligner-0.6B, Apache-2.0 | none |
 | `stable_ts` | jianfch/stable-ts, MIT | Whisper base, MIT | none |
