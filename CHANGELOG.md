@@ -8,8 +8,10 @@ be compared only when no such change lies between them.
 ## [2.1.0] - 2026-11-10
 
 No change moves a headline number of the October 2026 snapshot, and
-`tests/repro/` still rebuilds every one of them. This release adds one system
-and the options to run MFA with either of its English models.
+`tests/repro/` still rebuilds every one of them. The records snapshot is still
+October 2026, and the two new rows were measured in November 2026 and are on
+the leaderboard. This release adds two systems and the options to run MFA with
+either of its English models.
 
 ### Added
 
@@ -18,6 +20,11 @@ and the options to run MFA with either of its English models.
   transcript, so it is scored as shipped. Recipe
   `evals/timestamp_asrs/granite_speech_plus/`. FA-Bench ran all 20 cells again
   on its own hardware, and each came within 0.012 F1 of IBM's run.
+- The nyra forced aligner from nyra labs as a Track 1 row, on the word tier.
+  It puts WavLM features under a triphone GMM-HMM and reports a confidence per
+  word. Recipe `evals/aligners/nyra_fa/`. The package is MIT, and the model
+  `nyralabs/nyra_forced_aligner_en` is under the nyra health Non-Commercial
+  Research License, which the licence table in `evals/README.md` records.
 - The MFA adapter takes `beam` and `retry_beam` in a recipe and passes them to
   `mfa align`. With neither set MFA keeps its defaults of 10 and 40, so the
   `mfa` recipe and its numbers are unchanged.
@@ -36,8 +43,9 @@ and the options to run MFA with either of its English models.
 
 - Every CI job runs with a read-only token, so a pull request from a fork can
   read the repository and nothing more.
-- The README lists Granite Speech 4.1 Plus among the systems scored, which
-  now number 32, and `evals/README.md` carries its licence row.
+- The README lists Granite Speech 4.1 Plus and the nyra forced aligner among
+  the systems scored, which now number 33, and `evals/README.md` carries their
+  licence rows.
 - The README names the nyra speech timing benchmark under Related benchmarks
   and says how its Buckeye protocol differs.
 

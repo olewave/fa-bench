@@ -137,6 +137,7 @@ DISPLAY = {
     "mfa2": "MFA 2.0",
     "neufa": "NeuFA",
     "pocketsphinx": "PocketSphinx",
+    "nyra_fa": "nyra-FA",
     # Only the shipped configurations are named. Describing an internal variant
     # here would disclose the axes of a system whose design is not published.
     "olign": "Olign 0.9",
@@ -222,6 +223,7 @@ FAMILY = {
     "mfa": "hmm",               # Kaldi GMM-HMM + SAT/fMLLR/LDA
     "mfa2": "hmm",
     "pocketsphinx": "hmm",       # Sphinx PTM GMM-HMM, no speaker adaptation
+    "nyra_fa": "hmm",            # WavLM features under a triphone GMM-HMM
     "olign": "proprietary",
     "olign_v1": "proprietary",
     "olign_v1_asr": "proprietary",

@@ -38,7 +38,7 @@ transcript, so only its timing is tested. A timestamped ASR decodes its own
 words, so its timing error carries its recognition error too. Every run is
 seeded and reproducible from a single command.
 
-**32 systems scored**, 23 open models and 9 commercial APIs.
+**33 systems scored**, 24 open models and 9 commercial APIs.
 
 - **Forced aligners**, given the reference transcript.
   [BFA](https://github.com/tabahi/bournemouth-forced-aligner) ·
@@ -50,6 +50,7 @@ seeded and reproducible from a single command.
   [MMS-FA](https://docs.pytorch.org/audio/stable/generated/torchaudio.pipelines.MMS_FA.html) ·
   [NeMo Forced Aligner](https://github.com/NVIDIA-NeMo/Speech/tree/main/tools/nemo_forced_aligner), Conformer and FastConformer checkpoints ·
   [NeuFA](https://github.com/thuhcsi/NeuFA) ·
+  [nyra forced aligner](https://huggingface.co/nyralabs/nyra_forced_aligner_en) ·
   [PocketSphinx](https://github.com/cmusphinx/pocketsphinx) ·
   [Qwen3-ForcedAligner](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B) ·
   [stable-ts](https://github.com/jianfch/stable-ts) ·

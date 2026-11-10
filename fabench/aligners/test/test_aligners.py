@@ -117,6 +117,13 @@ def test_mfa_finds_the_micromamba_its_recipe_installs(tmp_path, monkeypatch):
     assert find_micromamba({"micromamba": str(tmp_path / "nope")}, str(root)) == str(env_mm)
 
 
+def test_nyra_fa_is_a_word_tier_batch_aligner():
+    """nyra's aligner scores the word tier only and reports a confidence per word."""
+    a = get_adapter(_spec("nyra_fa", "nyra_fa"))
+    assert a.batch is True and a.emits_confidence is True
+    assert a.supports("A", "word") and not a.supports("A", "phone")
+
+
 def test_charsiu_bfa_registered():
     for adapter, src in (("charsiu", "arpabet"), ("bfa", "ipa")):
         a = get_adapter(_spec(adapter, adapter))

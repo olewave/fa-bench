@@ -77,6 +77,7 @@ _REGISTRY = {
     "nemo_fa": "fabench.aligners.nemo_fa:NemoFA",
     # PocketSphinx in forced-alignment mode: an HMM aligner not built on Kaldi.
     "pocketsphinx": "fabench.aligners.pocketsphinx:PocketSphinx",
+    "nyra_fa": "fabench.aligners.nyra_fa:NyraFA",
 }
 
 

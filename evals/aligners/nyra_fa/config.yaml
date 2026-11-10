@@ -1,0 +1,19 @@
+# nyra forced aligner, from nyra labs. Word times with a confidence per word.
+# Word tier only, since FA-Bench has no mapping for its phone set yet. https://huggingface.co/nyralabs/nyra_forced_aligner_en
+#
+# LICENCE. The nyra-forced-aligner package is MIT. The model is under the nyra
+# health Non-Commercial Research License. Read it before you run this recipe
+# for anything but research.
+#
+# Runs in its own interpreter, built by ./download_and_install.sh.
+name: nyra_fa
+adapter: nyra_fa
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  venv: venv
+  model: nyralabs/nyra_forced_aligner_en
+  device: cuda
+  timeout_s: 21600
