@@ -5,6 +5,42 @@ scoring does, so each release lists first the changes that move published
 numbers, and names the snapshot it was scored with. Two snapshots can
 be compared only when no such change lies between them.
 
+## [2.1.0] - 2026-11-10
+
+No change moves a headline number of the October 2026 snapshot, and
+`tests/repro/` still rebuilds every one of them. This release adds one system
+and the options to run MFA with either of its English models.
+
+### Added
+
+- Granite Speech 4.1 Plus as a Track 2 row, contributed by IBM. The open model
+  `ibm-granite/granite-speech-4.1-2b-plus` returns word times with its
+  transcript, so it is scored as shipped. Recipe
+  `evals/timestamp_asrs/granite_speech_plus/`. FA-Bench ran all 20 cells again
+  on its own hardware, and each came within 0.012 F1 of IBM's run.
+- The MFA adapter takes `beam` and `retry_beam` in a recipe and passes them to
+  `mfa align`. With neither set MFA keeps its defaults of 10 and 40, so the
+  `mfa` recipe and its numbers are unchanged.
+- Three MFA variant recipes under `evals/aligners/mfa/exps/`. They run
+  `english_us_arpa` at a beam of 400 and 4000, and `english_mfa` at the
+  default beam and at the wide one. The leaderboard row stays the `mfa`
+  recipe, `english_us_arpa` at the default beam, which is the stronger model
+  on TIMIT and Buckeye. The `english_mfa` recipes score the word tier only,
+  since that model uses MFA's own phone set.
+- `evals/aligners/mfa/download_and_install.sh` also fetches `english_mfa`
+  v3.1.0.
+- `fabench/aligners/mfa/README.md` has a Models and beams section. It says
+  which model the leaderboard runs and what the other settings change.
+
+### Changed
+
+- Every CI job runs with a read-only token, so a pull request from a fork can
+  read the repository and nothing more.
+- The README lists Granite Speech 4.1 Plus among the systems scored, which
+  now number 32, and `evals/README.md` carries its licence row.
+- The README names the nyra speech timing benchmark under Related benchmarks
+  and says how its Buckeye protocol differs.
+
 ## [2.0.0] - 2026-10-28
 
 FA-Bench is licensed under the Apache License 2.0 from this release. Releases

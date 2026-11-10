@@ -8,4 +8,4 @@ phone boundaries to the hand-marked boundaries of TIMIT and Buckeye, on clean
 speech and under four degradations. Everything is seeded and config-driven.
 """
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
