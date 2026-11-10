@@ -33,4 +33,8 @@ fi
 # 3.4.1's own --help).
 "$BIN" run -n mfa mfa model download acoustic   english_us_arpa --version v3.0.0 || true
 "$BIN" run -n mfa mfa model download dictionary english_us_arpa || true
+# The second English model, for the exps/english_mfa recipes. It is MFA's
+# newer model, trained on more dialects, and its phone set is MFA's own.
+"$BIN" run -n mfa mfa model download acoustic   english_mfa --version v3.1.0 || true
+"$BIN" run -n mfa mfa model download dictionary english_mfa || true
 "$BIN" run -n mfa mfa version

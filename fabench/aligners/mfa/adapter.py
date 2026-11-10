@@ -54,6 +54,15 @@ def find_micromamba(params: dict, mamba_root: str) -> str:
 _VERSION_ENVS = {"3.4": "mfa", "3.0": "mfa30"}
 
 
+def beam_config(params: dict) -> str | None:
+    """The `mfa align` config text for params.beam and params.retry_beam.
+
+    None when neither is set, so MFA keeps its own defaults of 10 and 40.
+    """
+    lines = [f"{k}: {int(params[k])}\n" for k in ("beam", "retry_beam") if params.get(k) is not None]
+    return "".join(lines) or None
+
+
 class MFA(AlignerAdapter):
     source = "mfa"  # ARPABET
     emits_confidence = False
@@ -124,9 +133,16 @@ class MFA(AlignerAdapter):
             # positionals, e.g. ["--uses_speaker_adaptation", "false"] to run
             # speaker-blind (no per-speaker fMLLR) for an apples-to-apples
             # baseline against per-utterance aligners.
+            # params.beam and params.retry_beam widen MFA's search. MFA reads
+            # them from a config file, so one is written for the run.
+            extra = [str(a) for a in self.params.get("align_args", [])]
+            beams = beam_config(self.params)
+            if beams:
+                (td / "align.yaml").write_text(beams)
+                extra = ["--config_path", str(td / "align.yaml"), *extra]
             cmd = self._mfa_cmd(
                 "align", "--clean", "--quiet", "-j", str(self.num_jobs),
-                *[str(a) for a in self.params.get("align_args", [])],
+                *extra,
                 str(corpus), self.dictionary, self.acoustic, str(out),
             )
             try:

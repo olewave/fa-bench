@@ -1,0 +1,18 @@
+# MFA 3.4 with the english_us_arpa model and the wide beam. A variant of the mfa recipe
+# for comparing MFA's settings yourself. The leaderboard row is the mfa recipe.
+#
+# It uses the environment that ../../download_and_install.sh builds. MFA keeps
+# its working files in one folder per user, so run one MFA recipe at a time,
+# or give each recipe its own params.mfa_root with a copy of the models.
+name: mfa_arpa_wide
+adapter: mfa
+enabled: true
+modes: [A]
+granularity: [word, phone]
+params:
+  version: "3.4"
+  mamba_root: ../../repo/mamba
+  dictionary: english_us_arpa
+  acoustic_model: english_us_arpa
+  beam: 400            # MFA defaults to 10
+  retry_beam: 4000     # MFA defaults to 40

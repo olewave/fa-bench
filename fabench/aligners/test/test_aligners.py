@@ -81,6 +81,15 @@ def test_mfa_version_selects_env():
     assert env_of({"version": "3.0", "version_envs": {"3.0": "x"}}) == "x"  # remap
 
 
+def test_mfa_beam_params_become_a_config():
+    """beam and retry_beam reach `mfa align` as a config file; unset, MFA keeps its defaults."""
+    from fabench.aligners.mfa.adapter import beam_config
+
+    assert beam_config({}) is None
+    assert beam_config({"beam": 400, "retry_beam": 4000}) == "beam: 400\nretry_beam: 4000\n"
+    assert beam_config({"retry_beam": "100"}) == "retry_beam: 100\n"
+
+
 def test_mfa_finds_the_micromamba_its_recipe_installs(tmp_path, monkeypatch):
     """download_and_install.sh puts micromamba at <mamba_root>/bin/micromamba.
     That copy must be found with nothing else set; an explicit param or
