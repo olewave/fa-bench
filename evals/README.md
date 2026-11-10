@@ -43,6 +43,7 @@ siblings.
 ```
 evals/aligners/nemo_fa/                  the official, current recipe
 evals/aligners/nemo_fa/exps/conformer/   a variant of it, with its own parameters
+evals/aligners/mfa/exps/english_mfa/     MFA's other English model, for comparison
 evals/aligners/mfa/v2.0.6/               a historical version, kept runnable
 ```
 
@@ -296,7 +297,7 @@ pass on an environment you built.
 | `crisperwhisper`, `crisperwhisper_fa` | crisperwhisper, MIT | nyrahealth/CrisperWhisper, CC BY-NC 4.0 | noncommercial weights |
 | `falcon` | MLSpeech/FALCON, MIT | MLSpeech/FALCON-weights, MIT | trained on TIMIT and Buckeye |
 | `maps` | MasonPhonLab/MAPS, MIT | the ensemble in the MAPS repository, MIT | trained on TIMIT and Buckeye |
-| `mfa` (2.0 and 3.4) | Montreal Forced Aligner, MIT | english_us_arpa acoustic model and dictionary, CC BY 4.0 | attribution |
+| `mfa` (2.0 and 3.4) | Montreal Forced Aligner, MIT | english_us_arpa and english_mfa acoustic models and dictionaries, CC BY 4.0 | attribution |
 | `mms_fa` | torchaudio, BSD-2-Clause | torchaudio MMS_FA, CC BY-NC 4.0 | noncommercial weights |
 | `nemo_fa` | NVIDIA NeMo, Apache-2.0 | stt_en_conformer_ctc_large and stt_en_fastconformer_hybrid_large_pc, CC BY 4.0 | attribution |
 | `neufa` | thuhcsi/NeuFA, no licence | the authors' checkpoint, unreleased | no upstream licence, and its G2P uses sequitur-g2p, GPL-2.0-only |
