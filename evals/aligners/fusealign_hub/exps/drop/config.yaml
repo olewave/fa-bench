@@ -1,0 +1,17 @@
+# Same model, worker and venv as fusealign_hub. Words the model does not place are
+# dropped instead of keeping the fallback interval; `n_unplaced` in hyp meta counts them.
+name: fusealign_hub_drop
+adapter: fusealign_hub
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  venv: ../../venv
+  model: Zyphra/fusealign
+  revision: 59f266809e743bbc2ae25bff45e738406090bc50
+  checkpoint: fusealign-multilingual-cjkft-step2500.safetensors
+  device: cuda
+  batch_size: 64        # package default; bf16 batch rounding only (package README: Buckeye MAE 33.36 -> 33.38 ms)
+  unplaced: drop
+  timeout_s: null

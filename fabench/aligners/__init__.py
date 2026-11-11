@@ -78,6 +78,9 @@ _REGISTRY = {
     # PocketSphinx in forced-alignment mode: an HMM aligner not built on Kaldi.
     "pocketsphinx": "fabench.aligners.pocketsphinx:PocketSphinx",
     "nyra_fa": "fabench.aligners.nyra_fa:NyraFA",
+    # FuseAlign as Zyphra packages it (fusealign_hub): per-word start, end and
+    # presence from a joint audio/text transformer, word tier only.
+    "fusealign_hub": "fabench.aligners.fusealign_hub:FuseAlignHub",
 }
 
 
