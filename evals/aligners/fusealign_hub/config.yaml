@@ -1,0 +1,23 @@
+# FuseAlign, as Zyphra packages it in fusealign_hub: the multilingual model, fine-tuned 2,500 steps
+# on CJK labels. Word times with a presence probability per word, reported as its confidence.
+# Word tier only. https://github.com/Zyphra/fusealign-multilingual
+#
+# LICENCE. The fusealign-multilingual package and the Zyphra/fusealign weights are Apache-2.0.
+#
+# Runs in its own interpreter, built by ./download_and_install.sh. Words the model does not
+# place (presence < 0.1) keep the package's uniform fallback interval; exps/drop drops them.
+name: fusealign_hub
+adapter: fusealign_hub
+enabled: true
+modes: [A]
+granularity: [word]
+emits_confidence: true
+params:
+  venv: venv
+  model: Zyphra/fusealign
+  revision: 59f266809e743bbc2ae25bff45e738406090bc50
+  checkpoint: fusealign-multilingual-cjkft-step2500.safetensors
+  device: cuda
+  batch_size: 64        # package default; bf16 batch rounding only (package README: Buckeye MAE 33.36 -> 33.38 ms)
+  unplaced: fallback
+  timeout_s: null

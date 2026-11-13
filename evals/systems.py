@@ -138,6 +138,7 @@ DISPLAY = {
     "neufa": "NeuFA",
     "pocketsphinx": "PocketSphinx",
     "nyra_fa": "nyra-FA",
+    "fusealign_hub": "FuseAlign",
     # Only the shipped configurations are named. Describing an internal variant
     # here would disclose the axes of a system whose design is not published.
     "olign": "Olign 0.9",
@@ -224,6 +225,7 @@ FAMILY = {
     "mfa2": "hmm",
     "pocketsphinx": "hmm",       # Sphinx PTM GMM-HMM, no speaker adaptation
     "nyra_fa": "hmm",            # WavLM features under a triphone GMM-HMM
+    "fusealign_hub": "attention",  # joint audio/text transformer, start/end per word
     "olign": "proprietary",
     "olign_v1": "proprietary",
     "olign_v1_asr": "proprietary",

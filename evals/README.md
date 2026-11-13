@@ -73,7 +73,7 @@ mismatch, since a `.so` is loaded once per process.
 |---|---|
 | bfa, charsiu, maps | `<tool>/repo/env` |
 | mfa | `<tool>/repo/mamba` (micromamba) |
-| crisperwhisper, falcon, granite_speech_plus, nemo_fa, neufa, nyra_fa, parakeet_tdt, pocketsphinx, qwen3_asr, qwen3_fa, stable_ts, torchaudio_fa, unity2, whisper3, whisper_ts, whisperx | `<tool>/venv` |
+| crisperwhisper, falcon, fusealign_hub, granite_speech_plus, nemo_fa, neufa, nyra_fa, parakeet_tdt, pocketsphinx, qwen3_asr, qwen3_fa, stable_ts, torchaudio_fa, unity2, whisper3, whisper_ts, whisperx | `<tool>/venv` |
 | crisperwhisper_fa | shares `timestamp_asrs/crisperwhisper/venv`, the same package |
 | mms_fa, torchaudio_asr | share `aligners/torchaudio_fa/venv`, the same package |
 | whisperx_asr | shares `aligners/whisperx/venv` |
@@ -296,6 +296,7 @@ pass on an environment you built.
 | `charsiu` | lingjzhu/charsiu, MIT | charsiu/en_w2v2_fc_10ms | the model card states no licence |
 | `crisperwhisper`, `crisperwhisper_fa` | crisperwhisper, MIT | nyrahealth/CrisperWhisper, CC BY-NC 4.0 | noncommercial weights |
 | `falcon` | MLSpeech/FALCON, MIT | MLSpeech/FALCON-weights, MIT | trained on TIMIT and Buckeye |
+| `fusealign_hub` | fusealign-multilingual, Apache-2.0 | Zyphra/fusealign, Apache-2.0, including Dia's text encoder, Apache-2.0 | the package and model card do not state the training data |
 | `maps` | MasonPhonLab/MAPS, MIT | the ensemble in the MAPS repository, MIT | trained on TIMIT and Buckeye |
 | `mfa` (2.0 and 3.4) | Montreal Forced Aligner, MIT | english_us_arpa and english_mfa acoustic models and dictionaries, CC BY 4.0 | attribution |
 | `mms_fa` | torchaudio, BSD-2-Clause | torchaudio MMS_FA, CC BY-NC 4.0 | noncommercial weights |
