@@ -3,7 +3,7 @@ cffi==2.1.1
 charset-normalizer==3.5.2
 filelock==4.2.10
 fsspec==2026.9.0
-fusealign-hub @ git+https://github.com/Zyphra/fusealign-multilingual.git@1f141d60bd983c6af7cba25ea5dae8951ad65818
+fusealign-hub @ git+https://github.com/Zyphra/fusealign-multilingual.git@fc17172c1424c6f5e8a6a6efba411be126b7320d
 hf-xet==1.8.0
 huggingface-hub==0.36.0
 idna==3.20
