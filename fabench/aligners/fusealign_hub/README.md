@@ -2,7 +2,7 @@
 
 FuseAlign as Zyphra packages it in
 [`fusealign-multilingual`](https://github.com/Zyphra/fusealign-multilingual):
-the multilingual model, fine-tuned 2,500 steps on CJK labels. It is not a CTC
+the multilingual noisy student, step 60,000. It is not a CTC
 model. A joint audio/text transformer reads the waveform and the UTF-8 bytes of
 the transcript and predicts, per word, a start and an end on a 1 ms grid plus a
 presence probability.
@@ -15,8 +15,10 @@ presence probability.
 
 The `fusealign-multilingual` package is Apache-2.0. The checkpoint
 [`Zyphra/fusealign`](https://huggingface.co/Zyphra/fusealign) is Apache-2.0,
-including the frozen text encoder of Dia it carries. Neither the package nor
-the model card states the training data.
+including the frozen text encoder of Dia it carries. The model card describes
+the training data, about 25,000 h in 73 languages. None of it, nor the data of
+the checkpoints it was trained from, is TIMIT or Buckeye audio; TIMIT's prompt
+sentences appear only as read by other speakers in a TTS corpus.
 
 ## Requirements
 
@@ -36,8 +38,8 @@ into the Hugging Face cache. The worker then runs offline.
   params:
     venv: venv
     model: Zyphra/fusealign
-    revision: 59f266809e743bbc2ae25bff45e738406090bc50
-    checkpoint: fusealign-multilingual-cjkft-step2500.safetensors
+    revision: a4d58de4f0c6aff1e00f36e27bc58c901a39c359
+    checkpoint: fusealign-multilingual-ns4-step60000.safetensors
     device: cuda
     batch_size: 64
     unplaced: fallback

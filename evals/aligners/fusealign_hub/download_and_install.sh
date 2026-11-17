@@ -17,10 +17,10 @@
 # The import check loads the checkpoint on CPU.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-COMMIT=${COMMIT:-1f141d60bd983c6af7cba25ea5dae8951ad65818}
+COMMIT=${COMMIT:-fc17172c1424c6f5e8a6a6efba411be126b7320d}
 MODEL=${MODEL:-Zyphra/fusealign}
-REVISION=${REVISION:-59f266809e743bbc2ae25bff45e738406090bc50}
-CHECKPOINT=${CHECKPOINT:-fusealign-multilingual-cjkft-step2500.safetensors}
+REVISION=${REVISION:-a4d58de4f0c6aff1e00f36e27bc58c901a39c359}
+CHECKPOINT=${CHECKPOINT:-fusealign-multilingual-ns4-step60000.safetensors}
 
 uv venv --clear "$HERE/venv" --python 3.12
 uv pip install --python "$HERE/venv/bin/python" \

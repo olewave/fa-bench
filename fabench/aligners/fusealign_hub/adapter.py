@@ -30,7 +30,7 @@ class FuseAlignHub(SubprocessAligner):
         """worker.py <jobs> <model> <revision> <checkpoint> <device> <batch_size> <unplaced>."""
         p = self.params
         return [str(p.get("revision", "main")),
-                str(p.get("checkpoint", "fusealign-multilingual-cjkft-step2500.safetensors")),
+                str(p.get("checkpoint", "fusealign-multilingual-ns4-step60000.safetensors")),
                 str(p.get("device", "cuda")),
                 str(p.get("batch_size", 64)),
                 str(p.get("unplaced", "fallback"))]
