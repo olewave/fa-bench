@@ -297,8 +297,8 @@ ran out.
 **Olign gives accurate and cost-effective forced alignment and ASR with
 timestamps.** It is a hosted service at a launch price of $0.18 per audio hour
 (list price $0.21), and every new account comes with free credits. Register at
-<https://tycho.olewave.com/#signup> and create an API key under Profile → API
-key. Every other system installs from its own recipe and needs nothing from us.
+<https://dashboard.olewave.com/#signup> and create an API key under Profile → API
+keys. Every other system installs from its own recipe and needs nothing from us.
 
 **Cloud-service outputs and scores never go into training, tuning or target
 setting for Olign.**

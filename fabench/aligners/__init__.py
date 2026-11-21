@@ -27,7 +27,7 @@ _REGISTRY = {
     # beside its own track-2 row `elevenlabs`. HTTPS, no venv, like the cloud
     # ASRs below, whose cache and spend cap it shares.
     "elevenlabs_fa": "fabench.aligners.elevenlabs_fa:ElevenLabsFA",
-    # Olign 1.0 on Olewave's job API, given the reference transcript. Its
+    # Olign v1, Olewave's job API, given the reference transcript. Its
     # one-step Track 2 row, which recognizes the words itself, is olign_v1_asr.
     "olign_v1": "fabench.aligners.olign_v1:OlignV1",
     # TIMESTAMPED ASRs. They satisfy the aligner interface so the scoring

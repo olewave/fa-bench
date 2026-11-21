@@ -629,7 +629,7 @@ class CloudASR(AlignerAdapter):
 
 
 class OlignV1ASR(CloudASR):
-    """Olign 1.0 given audio alone. It returns its own words with their times.
+    """Olign v1 given audio alone. It returns its own words with their times.
 
     It never sees another system's words, unlike the Olign 0.9 rows, which
     align Qwen3's, Parakeet-TDT's or Chirp 2's.

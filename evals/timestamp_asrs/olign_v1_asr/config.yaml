@@ -1,4 +1,4 @@
-# Olign 1.0, given audio alone. TRACK 2, WORD AND PHONE TIERS, COMMERCIAL.
+# Olign v1, Olewave's job API, given audio alone. TRACK 2, WORD AND PHONE TIERS, COMMERCIAL.
 #
 # The same job API as evals/aligners/olign_v1 with the transcript left out.
 # Olign then returns its own words with their times, and the job reports

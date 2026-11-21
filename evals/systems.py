@@ -142,7 +142,10 @@ DISPLAY = {
     # Only the shipped configurations are named. Describing an internal variant
     # here would disclose the axes of a system whose design is not published.
     "olign": "Olign 0.9",
-    # Olign 1.0, the job API. Named apart from 0.9 in every table.
+    # Olign v1, the job API, named apart from 0.9 in every table. A row is named
+    # after the release that produced it. The published v1 rows are the October
+    # 2026 snapshot's, made by Olign 1.0.1, and tests/repro checks them under this
+    # name. A run on a later release takes that release's name when it is published.
     "olign_v1": "Olign 1.0",
     "olign_v1_asr": "Olign 1.0",
     "parakeet_tdt": "Parakeet-TDT",

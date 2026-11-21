@@ -5,6 +5,17 @@ scoring does, so each release lists first the changes that move published
 numbers, and names the snapshot it was scored with. Two snapshots can
 be compared only when no such change lies between them.
 
+## [Unreleased]
+
+### Changed
+
+- Olign's dashboard moved to dashboard.olewave.com, and the sign-up links in
+  the README and the Olign adapter's README point there. That README also
+  names Olewave's Python client, `pip install olign`. The `olign_v1` adapter's
+  docs and recipe comments now call it Olign v1, Olewave's job API, since it
+  runs Olewave's current release. Its published rows keep the name Olign 1.0,
+  the release that produced them. No number moves.
+
 ## [2.1.0] - 2026-11-10
 
 No change moves a headline number of the October 2026 snapshot, and
