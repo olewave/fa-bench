@@ -33,6 +33,26 @@ jobs:
         run: |
           v=$(python -c "import re,pathlib; print(re.search(r'__version__ = \"(.+?)\"', pathlib.Path('fabench/__init__.py').read_text())[1])")
           test "v$v" = "$TAG" || { echo "tag $TAG but fabench.__version__ is $v"; exit 1; }
+      # PyPI shows README.md with no repository to resolve relative paths against, and a
+      # release's description can't change after upload: pin every relative link to the tag.
+      - name: Point the README's relative links at GitHub, pinned to the tag
+        run: |
+          python - <<'EOF'
+          import os, re
+          from pathlib import Path
+          tag, repo = os.environ["TAG"], "olewave/fa-bench"
+          def fix(u, image):
+              if re.match(r"[a-z][a-z0-9+.-]*:|#|/", u):
+                  return u
+              u = u.removeprefix("./")
+              return f"https://raw.githubusercontent.com/{repo}/{tag}/{u}" if image else f"https://github.com/{repo}/blob/{tag}/{u}"
+          p = Path("README.md")
+          t = p.read_text().replace("tycho.olewave.com", "dashboard.olewave.com")
+          t = re.sub(r'(<img\b[^>]*\bsrc=")([^"]+)"', lambda m: m[1] + fix(m[2], True) + '"', t)
+          t = re.sub(r'(<a\b[^>]*\bhref=")([^"]+)"', lambda m: m[1] + fix(m[2], False) + '"', t)
+          t = re.sub(r'(!?)\[([^\]]*)\]\(([^)\s]+)\)', lambda m: f"{m[1]}[{m[2]}]({fix(m[3], m[1] == '!')})", t)
+          p.write_text(t)
+          EOF
       - name: Build
         run: |
           python -m pip install --upgrade build twine
