@@ -1,7 +1,7 @@
 # Copyright 2026 Olewave, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Olign 1.0 on its job API, with the network stubbed."""
+"""Olign v1, Olewave's job API, with the network stubbed."""
 from __future__ import annotations
 
 import wave

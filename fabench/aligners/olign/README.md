@@ -2,9 +2,11 @@
 
 > **This adapter calls Olign's 0.9 endpoint, which needs a service token from
 > Olewave.** Ask at <info@olewave.com>. For Olign's current API, register at
-> <https://tycho.olewave.com/#signup> and run the `olign_v1` recipes with the API
-> key from your account. Everything else in FA-Bench runs without Olign. It is
-> one row in the tables, and nothing else depends on it.
+> <https://dashboard.olewave.com/#signup> and run the `olign_v1` recipes with the
+> API key from your account. Olewave's Python client, `pip install olign` (source
+> at <https://github.com/olewave/olign-client>), calls the same API outside
+> FA-Bench. Everything else in FA-Bench runs without Olign. It is one row in the
+> tables, and nothing else depends on it.
 
 Adapter for **Olign**, a proprietary commercial service, exposed to FA-Bench
 as a forced aligner. It emits word and phone intervals, with a per-phone

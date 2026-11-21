@@ -1,7 +1,7 @@
 # Copyright 2026 Olewave, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Olign 1.0, given the reference transcript. A Track 1 forced aligner.
+"""Olign v1, given the reference transcript. A Track 1 forced aligner.
 
 Olewave's job API at https://api.olewave.com/olign/v1. The audio and the
 transcript go up together, the job is polled until it is done, and the

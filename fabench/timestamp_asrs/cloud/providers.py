@@ -300,7 +300,7 @@ def elevenlabs_fa_parse(r: dict, model: str, opts: dict) -> tuple[list[Word], di
 
 
 # --------------------------------------------------------------------------
-# Olign 1.0 -- Olewave's job API. Submit, then poll the job until it is done.
+# Olign v1, Olewave's job API. Submit, then poll the job until it is done.
 # --------------------------------------------------------------------------
 OLIGN_V1_URL = "https://api.olewave.com/olign/v1"
 #: api.olewave.com refuses urllib's default User-Agent with HTTP 403, as the
