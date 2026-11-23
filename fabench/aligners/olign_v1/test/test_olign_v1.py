@@ -67,6 +67,7 @@ def test_track1_sends_the_transcript_and_reads_words_and_phones(audio, tmp_path,
     assert post["headers"]["User-Agent"] == "fa-bench-olign/1"
     assert b'name="transcript"' in post["data"] and b"in wage" in post["data"]
     assert b'name="audio"' in post["data"]
+    assert b'name="timestamps"\r\n\r\nphone\r\n' in post["data"]
     assert poll["url"] == "https://api.olewave.com/olign/v1/j1"
     assert [(w.label, w.start, w.end) for w in out.words] == [("in", 0.14, 0.31), ("wage", 0.31, 0.75)]
     assert out.words[0].conf == pytest.approx(0.98)
@@ -88,6 +89,7 @@ def test_track2_sends_audio_alone(audio, tmp_path, monkeypatch, server):
     out = _make(OlignV1ASR, tmp_path, monkeypatch).align(audio, "the reference is never sent")
     assert b'name="transcript"' not in calls[0]["data"]
     assert b"the reference is never sent" not in calls[0]["data"]
+    assert b'name="timestamps"\r\n\r\nphone\r\n' in calls[0]["data"]
     assert out.meta["transcript_source"] == "asr"
     assert [w.label for w in out.words] == ["in", "wage"]
 
@@ -101,6 +103,21 @@ def test_no_speech_is_an_empty_answer_and_is_cached(audio, tmp_path, monkeypatch
     assert out.words == [] and out.phones == [] and out.meta["no_speech"] is True
     n = len(calls)
     assert a.align(audio, "").meta["cached"] is True and len(calls) == n
+
+
+def test_words_without_phones_fail_loudly(audio, tmp_path, monkeypatch, server):
+    _, state = server
+    state["final"] = {**DONE, "result": {"words": [{**w, "phones": []} for w in DONE["result"]["words"]]}}
+    with pytest.raises(Exception, match="2 words came back with no phones"):
+        _make(OlignV1, tmp_path, monkeypatch).align(audio, "in wage")
+
+
+def test_track2_words_without_phones_are_kept(audio, tmp_path, monkeypatch, server):
+    _, state = server
+    state["final"] = {**DONE, "transcript_source": "asr",
+                      "result": {"words": [{**w, "phones": []} for w in DONE["result"]["words"]]}}
+    out = _make(OlignV1ASR, tmp_path, monkeypatch).align(audio, "")
+    assert [w.label for w in out.words] == ["in", "wage"] and out.phones == []
 
 
 def test_any_other_failure_raises(audio, tmp_path, monkeypatch, server):
