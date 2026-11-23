@@ -15,6 +15,11 @@ be compared only when no such change lies between them.
   docs and recipe comments now call it Olign v1, Olewave's job API, since it
   runs Olewave's current release. Its published rows keep the name Olign 1.0,
   the release that produced them. No number moves.
+- Every Olign v1 upload, on both tracks, asks for phone times with the form
+  field `timestamps=phone`. Olign v1.2.1 returns word times alone unless a job
+  asks, and the phone tier is scored. A Track 1 answer whose words carry no
+  phones now stops the run instead of scoring an empty phone tier. Olign's
+  answers and every cached result are unchanged, so no number moves.
 
 ## [2.1.0] - 2026-11-10
 

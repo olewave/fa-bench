@@ -309,6 +309,10 @@ OLIGN_USER_AGENT = "fa-bench-olign/1"
 #: The job's own word for a recording with nothing in it. A real answer, so
 #: it is kept and cached as an empty result rather than retried on every run.
 OLIGN_NO_SPEECH = "no speech recognized"
+#: Olign answers with word times alone unless a job asks for phones, and the
+#: phone tier is scored, so every upload asks. Sent as a form field and kept
+#: out of the recipe options, so the cache key, and every cached answer, stays.
+OLIGN_TIMESTAMPS = "phone"
 
 
 def olign_v1_call(blob: bytes, path: str, model: str, opts: dict, key: str,
@@ -325,7 +329,7 @@ def olign_v1_call(blob: bytes, path: str, model: str, opts: dict, key: str,
     text = str(opts.get("text") or "").strip()
     if text:
         files["transcript"] = ("transcript.txt", "text/plain", text.encode("utf-8"))
-    ctype, body = multipart({}, files)
+    ctype, body = multipart({"timestamps": OLIGN_TIMESTAMPS}, files)
     _note("endpoint", base); _note("api_version", "v1")
     created = request_json(base, method="POST", data=body,
                            headers={**auth, "Content-Type": ctype},
@@ -374,6 +378,14 @@ def olign_v1_parse(r: dict, model: str, opts: dict) -> tuple[list[Word], dict, l
             ps = p.get("score")
             phones.append([str(p.get("ph") or ""), float(p["begin"]), float(p["end"]),
                            None if ps is None else float(ps) / 100.0])
+    # Aligned words with no phones at all mean the request for phones never
+    # reached the job. Scoring that would report an empty phone tier as Olign's,
+    # so stop. Only for the given transcript: Track 2 scores words alone, and a
+    # few of its genuine answers name words without phones.
+    spoken = [w for w in res.get("words") or [] if str(w.get("word") or "").strip()]
+    if r.get("transcript_source") == "client" and spoken and not any(w.get("phones") for w in spoken):
+        raise CloudASRError(f"olign_v1: {len(spoken)} words came back with no phones, "
+                            f"so timestamps={OLIGN_TIMESTAMPS} did not reach the job")
     meta = {"api_model": model, "transcript_source": r.get("transcript_source"),
             "job_state": r.get("state")}
     if r.get("state") == "failed":
