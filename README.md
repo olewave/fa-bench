@@ -53,6 +53,7 @@ seeded and reproducible from a single command.
   [nyra forced aligner](https://huggingface.co/nyralabs/nyra_forced_aligner_en) ·
   [PocketSphinx](https://github.com/cmusphinx/pocketsphinx) ·
   [Qwen3-ForcedAligner](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B) ·
+  [rumblex](https://github.com/EdwardGlockner/rumblex) ·
   [stable-ts](https://github.com/jianfch/stable-ts) ·
   [TorchAudio-FA](https://github.com/pytorch/audio) ·
   [UnitY2](https://github.com/facebookresearch/seamless_communication) ·
