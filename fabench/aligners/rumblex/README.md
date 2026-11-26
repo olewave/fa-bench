@@ -7,9 +7,11 @@ only**, with no phones, so it appears only in the word-level tables and never
 in the phone tables.
 
 The head shares the ASR decoder's subword vocabulary and the encoder emits 13
-frames a second, so the raw CTC path is on an 80 ms grid. rumblex moves word
-ends back to where the audio goes quiet and word starts to the nearest dip in
-loudness. The confidence is the lowest CTC probability among a word's tokens.
+frames a second, so the raw CTC path is on an 80 ms grid. rumblex then places
+each word's start and end inside its frame with a small linear map on the
+encoder states around it, fitted on LibriSpeech against Montreal Forced
+Aligner times (43 KB, shipped in the package). The confidence is the lowest
+CTC probability among a word's tokens.
 
 - **Modes.** A. **Granularity.** Word. **Confidence.** Yes.
 

@@ -8,7 +8,7 @@ Reson8/Rumble-2-Flash and force-aligns the reference transcript to the
 auxiliary CTC head that ships with the checkpoint (`rumblex.align`). There is
 no second alignment model. The head shares the decoder's subword vocabulary and
 the encoder emits 13 frames a second, so boundaries sit on an 80 ms grid that
-rumblex then refines on the audio's loudness.
+rumblex then refines with a small linear map on the encoder states.
 
 Runs in its OWN interpreter (fabench/aligners/subprocess_aligner.py).
 

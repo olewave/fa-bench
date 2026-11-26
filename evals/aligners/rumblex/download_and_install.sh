@@ -28,9 +28,10 @@ uv pip install --python "$HERE/venv/bin/python" \
     --index-url https://download.pytorch.org/whl/cu128 \
     --extra-index-url https://pypi.org/simple
 # rumblex VERSION PINNED. Not below 0.5.0: earlier releases put word ends too
-# early when the transcript has no punctuation, as Buckeye's has not. Bump
-# deliberately + re-run the sweep.
-uv pip install --python "$HERE/venv/bin/python" rumblex==0.5.0
+# early when the transcript has no punctuation, as Buckeye's has not. 0.6.0
+# adds the learned start and end correction, which moves every word time.
+# Bump deliberately + re-run the sweep.
+uv pip install --python "$HERE/venv/bin/python" rumblex==0.6.0
 
 # uv venvs have no pip of their own; ask uv, not the venv.
 uv pip freeze --python "$HERE/venv/bin/python" > "$HERE/requirements.lock"
