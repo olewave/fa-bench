@@ -1,0 +1,17 @@
+# rumblex -- WORD-LEVEL ONLY. It aligns the reference transcript to the CTC
+# head of an ASR checkpoint (Reson8/Rumble-2-Flash), which has no phone tier,
+# so it appears in the word tables and is absent from every phone table by
+# construction, not by omission.
+#
+# Installed in its OWN venv (evals/aligners/rumblex/venv), like every tool
+# here. rumblex needs transformers >= 5.21.
+name: rumblex
+adapter: rumblex
+enabled: true
+modes: [A]                 # from text; no gold-phone mode
+granularity: [word]
+emits_confidence: true
+params:
+  venv: venv
+  model: Reson8/Rumble-2-Flash
+  device: cuda

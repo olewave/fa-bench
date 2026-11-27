@@ -32,4 +32,5 @@ aligners:
   - { name: charsiu,       enabled: false }   # frame-classification, own venv
   - { name: bfa,           enabled: false }   # Bayesian FA, own venv
   - { name: whisperx,      enabled: false }   # wav2vec2 alignment head, own venv
+  - { name: rumblex,       enabled: false }   # Rumble-2-Flash CTC head, own venv
   - { name: olign,         enabled: false }   # hosted API, needs a service token from Olewave

@@ -12,6 +12,8 @@ _REGISTRY = {
     "torchaudio_fa": "fabench.aligners.torchaudio_fa:TorchaudioFA",
     "charsiu": "fabench.aligners.charsiu:Charsiu",
     "whisperx": "fabench.aligners.whisperx:WhisperX",
+    # An ASR checkpoint's own CTC head (Reson8/Rumble-2-Flash), word level only.
+    "rumblex": "fabench.aligners.rumblex:Rumblex",
     "mfa": "fabench.aligners.mfa:MFA",
     "bfa": "fabench.aligners.bfa:BFA",
     "maps": "fabench.aligners.maps:MAPS",

@@ -44,9 +44,12 @@ def test_supports_mode_granularity():
     wx = get_adapter(_spec("whisperx", "whisperx", granularity=["word"]))
     assert wx.supports("A", "word")
     assert not wx.supports("B", "phone")  # word-only
+    rx = get_adapter(_spec("rumblex", "rumblex", granularity=["word"]))
+    assert rx.name == "rumblex" and rx.supports("A", "word")
+    assert not rx.supports("A", "phone")  # word-only
 
 
-@pytest.mark.parametrize("adapter", ["whisperx"])
+@pytest.mark.parametrize("adapter", ["whisperx", "rumblex"])
 def test_gated_adapters_fail_with_actionable_error(adapter):
     # deps absent in a clean env -> actionable AlignerError on load.
     a = get_adapter(_spec(adapter, adapter))

@@ -165,6 +165,8 @@ DISPLAY = {
     "stable_ts": "stable-ts",
     "torchaudio_fa": "TorchAudio",
     "whisperx": "WhisperX",
+    # The package writes its name in lower case.
+    "rumblex": "rumblex",
 }
 
 
@@ -212,6 +214,9 @@ FAMILY = {
     "nemo_fa": "ctc",
     "nemo_fa_conformer": "ctc",
     "whisperx": "ctc",          # wav2vec2 phoneme CTC for the ALIGNMENT stage
+    # Viterbi over the auxiliary CTC head of Rumble-2-Flash. The ASR decoder
+    # never runs here; what places the boundary is the CTC path.
+    "rumblex": "ctc",
     # NOT attention, despite the upstream naming. The whole aligner is four
     # nn.Conv1d layers with ReLU and dropout over text and unit embeddings,
     # then a negative L2 distance between every frame and every token,
