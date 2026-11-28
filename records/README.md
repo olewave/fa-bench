@@ -51,6 +51,42 @@ turns, but **boundary times are used exactly as annotated**. Buckeye ships
 4,456 utterances)** and **test (8 speakers, 4,513 utterances)**, both held out,
 with the other 24 speakers reserved for training.
 
+## Use of TIMIT and Buckeye
+
+FA-Bench scores aligners on TIMIT and Buckeye, so it matters whether a system
+has heard those speakers before. In November 2026 FA-Bench checked what the
+authors of every Track 1 system published about the version on the leaderboard.
+These are the findings.
+
+- **Two systems trained on FA-Bench's Buckeye test speakers.** NeuFA and MAPS
+  each trained on 7 of the 8 and chose its final model or step count on the
+  eighth, so their Buckeye scores come from speakers they have heard. Neither
+  trained on TIMIT's test speakers, so their TIMIT scores are clean. Buckeye
+  ships no official split, and both chose their speakers years before FA-Bench
+  drew its own in August 2026.
+- **Half the board cannot be checked.** For 9 of the 18 ranked systems, the
+  sources do not say enough to rule out FA-Bench's test sets. Six do not itemize
+  their training data. Three used TIMIT or Buckeye to build or tune the system
+  without naming which part. These are nyra-FA, BFA and CrisperWhisper.
+- **Seven systems are clean on all three questions.** Montreal-FA, Charsiu,
+  WhisperX, TorchAudio and NVIDIA NeMo-FA publish the recipe that shows it.
+  Zyphra FuseAlign and Meta MMS-FA state it without a public recipe.
+- **Most answers rest on trust.** Only 7 of the 18 systems release the code and
+  configuration that trained them. For the rest, nobody outside can check what
+  went in.
+
+Olewave makes both FA-Bench and Olign. It does not disclose Olign's training
+data, and Olign is listed unranked.
+
+FA-Bench asks every system, and every new submission, to keep the test set
+clean. Train only on the training set, choose checkpoints and settings on the
+dev set, keep the test set for the final score, and publish the recipe.
+
+The answer for every system, with the source behind it, is in
+[timit_buckeye_use.md](timit_buckeye_use.md). Every quote, and the speaker
+overlaps FA-Bench measured, is in [info_research.md](info_research.md). The
+leaderboard shows the same answers beside each row.
+
 ## The four conditions
 
 All four reproduce Kaldi's
