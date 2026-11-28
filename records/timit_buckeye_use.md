@@ -188,6 +188,8 @@ and publish the recipe.
 
 ## Next steps
 
+- **[The findings](README.md#use-of-timit-and-buckeye)**  
+  What the table adds up to, in a few lines.
 - **[The research behind each answer](info_research.md)**  
   Every quote and source, the speaker overlaps FA-Bench measured, and the calls
   that needed judgement.
