@@ -63,6 +63,7 @@ gives the answers, and the four columns are explained under it.
 | Yes | dark yellow triangle | The authors say the system used that audio in that way |
 | Not disclosed | light yellow triangle | The authors do not list the data, or do not say which part of TIMIT or Buckeye they used |
 | No | green check mark | The authors list the data, or rule out both corpora, and show no such use |
+| Yes, for the training set | no mark | Training on the training set is what that set is for |
 
 | System | Training recipe released? | Used training set for training? | Used dev set for training? | Used test set for training or tuning? | Why |
 |---|---|---|---|---|---|
@@ -88,6 +89,10 @@ gives the answers, and the four columns are explained under it.
 
 \* Self-claimed. The training recipe is not released, so this No rests on the
 authors' own statement, and nobody outside can check it.
+
+Buckeye ships no official split. FA-Bench drew its own in August 2026, after
+NeuFA's published recipe (2022) and MAPS (2023) had chosen their Buckeye
+speakers, so those two overlaps come from history.
 
 | Column | What it asks |
 |---|---|

@@ -17,11 +17,11 @@ as checked in November 2026.
 | Charsiu | Yes | ✅ No | ✅ No | ✅ No |
 | CrisperWhisper | No | 🟨 Not disclosed | 🟨 Not disclosed | 🟨 Not disclosed |
 | ElevenLabs-FA | No | 🟨 Not disclosed | 🟨 Not disclosed | 🟨 Not disclosed |
-| MAPS | Yes | 🟧 Yes | 🟧 Yes | 🟧 Yes |
+| MAPS | Yes | Yes | 🟧 Yes | 🟧 Yes |
 | Meta MMS-FA | No | ✅ No\* | ✅ No\* | ✅ No\* |
 | Meta UnitY2 | No | 🟨 Not disclosed | 🟨 Not disclosed | 🟨 Not disclosed |
 | Montreal-FA | Yes | ✅ No | ✅ No | ✅ No |
-| NeuFA | Yes | 🟧 Yes | 🟧 Yes | 🟧 Yes |
+| NeuFA | Yes | Yes | 🟧 Yes | 🟧 Yes |
 | NVIDIA NeMo-FA | Yes | ✅ No | ✅ No | ✅ No |
 | nyra-FA | No | ✅ No\* | ✅ No\* | 🟨 Not disclosed |
 | PocketSphinx | No | 🟨 Not disclosed | 🟨 Not disclosed | 🟨 Not disclosed |
@@ -57,6 +57,7 @@ recognized-words boards give the same answers for the same systems.
 | 🟧 dark yellow ⚠ | Yes | The authors say the system used that audio in that way |
 | 🟨 light yellow ⚠ | Not disclosed | The authors do not list the data, or do not say which part of TIMIT or Buckeye they used |
 | ✅ green check | No | The authors list the data, or rule out both corpora, and show no such use |
+| no mark | Yes, for the training set | Training on the training set is what that set is for |
 
 **A No is only as strong as its source.** Where the recipe is public, you can
 rebuild the model and see the data for yourself. Where it is not, the No is the
@@ -66,6 +67,16 @@ so.
 
 **Not disclosed is a fact about the sources.** It does not say the system did
 anything wrong. Most of these systems simply never list what they trained on.
+
+**A Yes for the training set is the clean case.** Training on the training set
+is what that set is for, so the table shows it plain, with no warning. The dev
+and test columns are the ones to watch.
+
+**A test-set Yes can predate FA-Bench.** Buckeye ships no official split.
+FA-Bench drew its own in August 2026, and NeuFA's published recipe (2022) and
+MAPS (2023) chose their Buckeye speakers years before that. Their overlap with
+FA-Bench's test speakers tells you how far to trust those two scores. It says
+nothing about how carefully the systems were built.
 
 ## See FA-Bench's splits yourself
 
@@ -132,7 +143,7 @@ Each row quotes the source that decides its answers.
 | Montreal-FA | english_us_arpa v3.0.0 was trained on LibriSpeech, 982 h ([model page](https://mfa-models.readthedocs.io/en/latest/acoustic/English/English%20%28US%29%20ARPA%20acoustic%20model%20v3_0_0.html)) |
 | NeuFA | Trained on LibriSpeech and then on 36 Buckeye speakers, holding out s10 s20 s30 s40 ([paper](https://arxiv.org/abs/2203.16838), [recipe](https://github.com/thuhcsi/NeuFA)). That takes in 22 of FA-Bench's 24 train speakers, 7 of its 8 dev speakers and 7 of its 8 test speakers |
 | NVIDIA NeMo-FA | stt_en_fastconformer_hybrid_large_pc, trained on NeMo ASRSet En PC, nine named corpora ([card](https://huggingface.co/nvidia/stt_en_fastconformer_hybrid_large_pc)) |
-| nyra-FA | Its paper says "TIMIT, Buckeye, and FluencyBank are fully held out from training" and names seven other sources ([paper](https://arxiv.org/abs/2610.22583)). It also chose parts of its design by results on TIMIT and Buckeye, with no separate dev set, and does not say which parts of either corpus those were. Version 0.2.5 picked a setting on FA-Bench's TIMIT core test and Buckeye test, so moving the row to it would change the test answer to Yes |
+| nyra-FA | Its paper says "TIMIT, Buckeye, and FluencyBank are fully held out from training" and names seven other sources ([paper](https://arxiv.org/abs/2610.22583)). It also chose parts of its design by results on TIMIT and Buckeye, with no separate dev set, and does not say which parts of either corpus those were |
 | PocketSphinx | The bundled en-us model's README names no corpus ([README](https://github.com/cmusphinx/pocketsphinx/blob/f20ff1b7a5db/model/en-us/en-us/README)) |
 | Qwen3-FA | Trained on MFA pseudo-labels, corpora not named ([Qwen3-ASR report](https://arxiv.org/abs/2601.21337)) |
 | rumblex | Reson8/Rumble-2-Flash states no training data ([card](https://huggingface.co/Reson8/Rumble-2-Flash)). rumblex's own boundary head was trained on LibriSpeech only ([docs](https://github.com/EdwardGlockner/rumblex/blob/v0.6.0/docs/boundary_head.md)) |
@@ -142,7 +153,8 @@ Each row quotes the source that decides its answers.
 
 ## Where the released recipes are
 
-Six systems publish the code that trained their released model.
+Seven systems publish the code that trained their released model. TorchAudio
+and WhisperX share one recipe.
 
 | System | Training code |
 |---|---|
@@ -169,6 +181,10 @@ are self-claimed.
 FA-Bench checks a system again whenever its version on the board changes. A pull
 request that adds a system should state its training data, whether its recipe
 is public, and which TIMIT or Buckeye audio it used, split by split.
+
+The cleanest row is one anyone can check. Train only on the training set, choose
+checkpoints and settings on the dev set, keep the test set for the final score,
+and publish the recipe.
 
 ## Next steps
 

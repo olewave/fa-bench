@@ -21,6 +21,9 @@ corpus used without naming the part, and data the owner keeps private.
 because nobody outside can check it. A Yes is never starred, since a system
 that says it used the test speakers is believed as it stands.
 
+**A Yes for the training set** is shown plain, with no warning, because training
+on the training set is what that set is for.
+
 **Tuning** means choosing a checkpoint, a design or a default setting by its
 score. Only the test question counts it, because the dev set exists for tuning.
 
@@ -33,6 +36,11 @@ score. Only the test question counts it, because the dev set exists for tuning.
 | Test set | the 24 core test speakers, from `TEST/` | s04 s05 s10 s23 s25 s28 s31 s34 |
 
 ## The systems that used the test speakers
+
+Buckeye ships no official split, and FA-Bench drew its own in August 2026. Both
+systems below chose their Buckeye speakers before that, NeuFA in its 2022 recipe
+and MAPS in 2023, so their overlap with FA-Bench's test speakers comes from
+history.
 
 ### MAPS (timbuck_eng)
 
@@ -98,10 +106,6 @@ score. Only the test question counts it, because the dev set exists for tuning.
   ([CHANGELOG](https://github.com/tabahi/bournemouth-forced-aligner/blob/main/CHANGELOG.md)).
   FA-Bench runs 1.1.5 with that default. The entry does not say which part of
   either corpus.
-- **Next version.** The 2.x documentation says a TIMIT "400-clip probe" "picked
-  the checkpoint"
-  ([about the models](https://speech-industry.github.io/bournemouth-forced-aligner/about-models/)),
-  which matters on an upgrade.
 - **Recipe.** Not public. Neither the aligner's repository nor CUPE's holds
   training code.
 - **Answers.** Recipe No. Training set No\*, dev set No\*, test set Not
@@ -124,8 +128,8 @@ score. Only the test question counts it, because the dev set exists for tuning.
   attention loss "was not included in the original paper". The rest of its
   roughly 10,000 hours is not itemized, so Buckeye cannot be ruled out either.
 - **Recipe.** Not public.
-- **Answers.** Recipe No. Not disclosed in all three. If the TIMIT part was
-  `TEST/`, the test answer would be Yes.
+- **Answers.** Recipe No. Not disclosed in all three. The test answer turns on
+  which TIMIT files were used, and the card does not say.
 
 ### nyra-FA (nyra_forced_aligner_en, nyra-forced-aligner 0.2.4)
 
@@ -158,18 +162,12 @@ score. Only the test question counts it, because the dev set exists for tuning.
 - **The released model.** Its `meta.json` on Hugging Face names the variant
   `pub_wavlm_ldadirect_clean` and WavLM layer 23, which is a different variant
   from the paper's noise-robust final system. How it was chosen is not stated.
-- **Next version.** The package README says "Since 0.2.5 the aligner puts 0.24 s
-  of silence in front of the audio", compares the pad on FA-Bench's TIMIT core
-  test and Buckeye test, and adds "Longer pads, and a pad at the end as well,
-  were measured and did worse"
-  ([nyra-forced-aligner](https://github.com/nyrahealth/nyra-forced-aligner)).
-  That is a setting chosen on FA-Bench's test cells, so moving the row to 0.2.5
-  would make its test answer Yes.
 - **Recipe.** Not public. The package repository holds inference code only, 31
   files.
 - **Answers.** Recipe No. Training set No\*, dev set No\*, test set Not
-  disclosed. Linking the paper to the benchmark manifests would make the test
-  answer Yes, but the paper itself does not make that link.
+  disclosed. The benchmark names TIMIT and Buckeye parts and the paper names
+  none. The paper does not cite the benchmark, so this page does not join the
+  two.
 
 ## The systems whose data is not itemized
 
@@ -220,9 +218,7 @@ be described, and Olign is listed unranked.
 
 ## What changes an answer
 
-- A new version is checked again before its row changes. Two upgrades are
-  known to move answers. nyra-FA 0.2.5 tuned a setting on FA-Bench's test cells,
-  and BFA 2.x picked its checkpoint on a TIMIT probe.
+- A new version is checked again before its row changes.
 - A source that names a dev set, or a split that excludes FA-Bench's test
   speakers, can move a Not disclosed to a No. A released recipe removes the
   asterisk from a No.
