@@ -191,8 +191,7 @@ and publish the recipe.
 - **[The findings](README.md#use-of-timit-and-buckeye)**  
   What the table adds up to, in a few lines.
 - **[The research behind each answer](info_research.md)**  
-  Every quote and source, the speaker overlaps FA-Bench measured, and the calls
-  that needed judgement.
+  The quotes that decide each answer, and the speaker overlaps FA-Bench measured.
 - **[The leaderboard](https://olewave.com/en/leaderboard/fa-bench)**  
   The same answers, shown beside each system's scores.
 - **[Add your own system](../CONTRIBUTING.md)**  

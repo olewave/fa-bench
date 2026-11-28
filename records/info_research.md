@@ -1,10 +1,10 @@
 # Research behind the TIMIT and Buckeye use table
 
 This page holds the evidence for every answer in
-[timit_buckeye_use.md](timit_buckeye_use.md). It records which sources were read for
-each system, the exact sentences that decide each answer, the overlaps FA-Bench
-measured itself, and the calls that needed judgement. Everything was checked on
-2026-11-27, for the version the leaderboard runs.
+[timit_buckeye_use.md](timit_buckeye_use.md). For each system you get the
+sentences that decide its answers, each linked to its source. Where FA-Bench
+measured an overlap itself or had to make a judgement call, the page says so.
+Everything was checked on 2026-11-27, for the version the leaderboard runs.
 
 ## How the answers are decided
 
@@ -64,6 +64,22 @@ history.
   | Dev set | s07 s08 s14 s22 s32 s35 s37 | | s40 |
   | Test set | s05 s10 s23 s25 s28 s31 s34 | s04 | none |
 
+- **Check it yourself.** Take the speakers the model card holds out and
+  subtract them from FA-Bench's test set.
+
+  ```python
+  test = {"s04", "s05", "s10", "s23", "s25", "s28", "s31", "s34"}
+  held_out = {"s04", "s27", "s38", "s39", "s40"}
+  print(sorted(test - held_out))
+  ```
+
+  It prints the seven FA-Bench test speakers in MAPS's training data. The
+  eighth, s04, is the speaker MAPS used to pick its model.
+
+  ```text
+  ['s05', 's10', 's23', 's25', 's28', 's31', 's34']
+  ```
+
 - **Recipe.** Public, in
   [MAPS_Paper_Code](https://github.com/MasonPhonLab/MAPS_Paper_Code)
   (`py_scripts/01-crisp_models.py` and `02-sparse_models.py`), with the timbuck
@@ -102,8 +118,8 @@ history.
 
 ### BFA (bournemouth-forced-aligner 1.1.5, CUPE-2i en_libri1000)
 
-- **Training.** The CUPE model card lists "LibriSpeech ASR corpus (SR12): 960
-  hours", using "train-100, train-360, and train-500 splits"
+- **Training.** The CUPE model card lists LibriSpeech's 960 hours, from its
+  "train-100, train-360, and train-500 splits"
   ([card](https://huggingface.co/Tabahi/CUPE-2i)).
 - **Tuning.** The 1.1.5 CHANGELOG entry says "Default `boundary_softness=3` is
   changed from 7 to 3 because at 3 it performs the best on TIMIT and buckeye
@@ -139,15 +155,15 @@ history.
 ### nyra-FA (nyra_forced_aligner_en, nyra-forced-aligner 0.2.4)
 
 - **Training.** "TIMIT, Buckeye, and FluencyBank are fully held out from
-  training" (paper, p. 3). Table 2 lists seven training sources, 149 h in total:
+  training" (paper, p. 3). Table 2 lists seven training sources, 149 h in total. They are
   ICSI, NSC part 6, LibriSpeech with sound events, Common Voice 14, AMI, VCTK and
   DisfluencySpeech ([paper](https://arxiv.org/abs/2610.22583)).
 - **Design choices made by results.**
   - "Unlike MFA, we apply no speaker adaptation and no maximum-likelihood linear
     transform (MLLT) of the features, since neither improved boundary accuracy
     in our ablations" (p. 2).
-  - "We adopt the noise-robust arm as the final system: it matches the clean
-    flagship on Buckeye while adding the robustness of Sec. 5.3" (p. 3).
+  - "We adopt the noise-robust arm as the final system", because it "matches the
+    clean flagship on Buckeye while adding the robustness of Sec. 5.3" (p. 3).
 - **Where those results were measured.** "We evaluate on TIMIT, Buckeye, and
   FluencyBank" (p. 3). The paper names no dev or validation set, and no TIMIT
   or Buckeye part, speaker or count.
@@ -197,7 +213,7 @@ three questions.
 | Montreal-FA (english_us_arpa v3.0.0) | LibriSpeech, 982 h | Yes, `scripts/training_models/train_acoustic_models.py` in mfa-models | [model page](https://mfa-models.readthedocs.io/en/latest/acoustic/English/English%20%28US%29%20ARPA%20acoustic%20model%20v3_0_0.html) |
 | NVIDIA NeMo-FA (stt_en_fastconformer_hybrid_large_pc) | NeMo ASRSet En PC, nine named corpora | Yes, the example script and base config on its card | [card](https://huggingface.co/nvidia/stt_en_fastconformer_hybrid_large_pc) |
 | TorchAudio, WhisperX (WAV2VEC2_ASR_BASE_960H) | "pre-trained on 960 hours of unlabeled audio from LibriSpeech … and fine-tuned for ASR on the same audio" | Yes, fairseq `base_960h.yaml` | [torchaudio](https://docs.pytorch.org/audio/2.8.0/generated/torchaudio.pipelines.WAV2VEC2_ASR_BASE_960H.html) |
-| Zyphra FuseAlign (ns4-step60000) | "none of it, nor the data of the checkpoints it was trained from, is TIMIT or Buckeye audio; TIMIT's prompt sentences appear only as read by other speakers in a TTS corpus" | No, the package repository has inference code only | [PR #30](https://github.com/olewave/fa-bench/pull/30) |
+| Zyphra FuseAlign (ns4-step60000) | "none of it, nor the data of the checkpoints it was trained from, is TIMIT or Buckeye audio" | No, the package repository has inference code only | [PR #30](https://github.com/olewave/fa-bench/pull/30) |
 
 The first four read Recipe Yes and No in all three. MMS-FA and FuseAlign read
 Recipe No and No\* in all three.
@@ -208,11 +224,11 @@ Two notes on these rows.
   LibriSpeech model rests on its config, which names `facebook/wav2vec2-base`
   and frame classification, and on the training script, which trains on
   LibriSpeech alignments.
-- **FuseAlign.** The no-TIMIT statement is in Zyphra's PR only, not on the model
-  card. The Descript paper that FuseAlign reproduces makes a similar statement
-  about its own model, which does not carry over. TIMIT's sentence texts reach
-  the training data only as read by other speakers, which is text and not
-  TIMIT audio. PR #30 reports the dev cells and leaves the test cells to
+- **FuseAlign.** Only Zyphra's PR makes the no-TIMIT statement. The model card
+  says nothing about it. The Descript paper that FuseAlign reproduces makes a
+  similar statement about its own model, which does not carry over. TIMIT's
+  sentence texts reach the training data only as read by other speakers in a TTS
+  corpus, so the model never hears TIMIT's own recordings. PR #30 reports the dev cells and leaves the test cells to
   FA-Bench, and how the checkpoint was chosen is not stated.
 
 ## Olewave Olign v1
@@ -229,3 +245,12 @@ be described, and Olign is listed unranked.
   asterisk from a No.
 - A pull request that adds a system should state its training data, whether its
   recipe is public, and any use of TIMIT or Buckeye, split by split.
+
+## Next steps
+
+- **[The findings](README.md#use-of-timit-and-buckeye)**  
+  What the answers add up to, in a few lines.
+- **[The table](timit_buckeye_use.md)**  
+  Every system's four answers, with the marks explained.
+- **[The leaderboard](https://olewave.com/en/leaderboard/fa-bench)**  
+  The same answers, shown beside each system's scores.
