@@ -87,9 +87,14 @@ history.
   | Dev set | s07 s08 s14 s22 s32 s35 s37 | s40 |
   | Test set | s04 s05 s23 s25 s28 s31 s34 | s10 |
 
-- **Caveat.** The leaderboard row runs the authors' own checkpoint, which they
-  shared with FA-Bench but have not released. That it followed the public
-  recipe is assumed.
+- **The checkpoint on the board.** The leaderboard row runs the authors' own
+  checkpoint, which they shared with FA-Bench but have not released. NeuFA's
+  first author confirmed on 2026-11-28 that it follows the public recipe. It
+  trained on every Buckeye speaker except s10, s20, s30 and s40, used no TIMIT
+  audio, and is the one saved at 220k steps, with no selection of its own. By
+  the author's account, 220k steps was the best point on s10, s20, s30 and s40
+  in the paper's original run, so FA-Bench's test speaker s10 helped set that
+  step count.
 - **Answers.** Recipe Yes (`train.py`). Training set Yes, dev set Yes, test set
   Yes.
 
