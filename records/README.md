@@ -51,6 +51,60 @@ turns, but **boundary times are used exactly as annotated**. Buckeye ships
 4,456 utterances)** and **test (8 speakers, 4,513 utterances)**, both held out,
 with the other 24 speakers reserved for training.
 
+## Use of TIMIT and Buckeye
+
+FA-Bench scores aligners on TIMIT and Buckeye, so it matters whether a system
+has heard those speakers before. The leaderboard answers four questions for
+every Track 1 row, from what each system's authors published. The table below
+gives the answers, and the four columns are explained under it.
+
+| Answer | Mark | What it tells you |
+|---|---|---|
+| Yes | dark yellow triangle | The authors say the system used that audio in that way |
+| Not disclosed | light yellow triangle | The authors do not list the data, or do not say which part of TIMIT or Buckeye they used |
+| No | green check mark | The authors list the data, or rule out both corpora, and show no such use |
+
+| System | Training recipe released? | Used training set for training? | Used dev set for training? | Used test set for training or tuning? | Why |
+|---|---|---|---|---|---|
+| BFA | No | No* | No* | Not disclosed | A LibriSpeech model whose default setting was chosen on TIMIT and Buckeye, part not named |
+| Charsiu | Yes | No | No | No | LibriSpeech only |
+| CrisperWhisper | No | Not disclosed | Not disclosed | Not disclosed | Used TIMIT for its word timing and to choose its alignment heads, without naming the part |
+| ElevenLabs-FA | No | Not disclosed | Not disclosed | Not disclosed | Not stated |
+| MAPS | Yes | Yes | Yes | Yes | Trained on TIMIT's training set and on most Buckeye speakers, 7 of the 8 test speakers included, and picked its model on the eighth |
+| Meta MMS-FA | No | No* | No* | No* | Itemized, and neither corpus is in it |
+| Meta UnitY2 | No | Not disclosed | Not disclosed | Not disclosed | Internet speech, not itemized |
+| Montreal-FA | Yes | No | No | No | LibriSpeech only |
+| NeuFA | Yes | Yes | Yes | Yes | Trained on 22 of the 24 Buckeye train speakers, 7 of the 8 dev speakers and 7 of the 8 test speakers |
+| NVIDIA NeMo-FA | Yes | No | No | No | Itemized, and neither corpus is in it |
+| nyra-FA | No | No* | No* | Not disclosed | Not trained on either corpus. Its paper chose parts of its design by results on TIMIT and Buckeye, with no separate dev set, and does not name the parts |
+| PocketSphinx | No | Not disclosed | Not disclosed | Not disclosed | Its en-us model names no corpus |
+| Qwen3-FA | No | Not disclosed | Not disclosed | Not disclosed | Not itemized |
+| rumblex | No | Not disclosed | Not disclosed | Not disclosed | Its speech model states no data. Its own boundary head saw LibriSpeech only |
+| stable-ts | No | Not disclosed | Not disclosed | Not disclosed | Whisper's web audio, not itemized |
+| TorchAudio | Yes | No | No | No | LibriSpeech only |
+| WhisperX | Yes | No | No | No | LibriSpeech only |
+| Zyphra FuseAlign | No | No* | No* | No* | Zyphra states that no TIMIT or Buckeye audio is in it |
+| Olewave Olign v1 (unranked) | No | Not disclosed | Not disclosed | Not disclosed | Olewave does not disclose Olign's training data. The row is unranked |
+
+\* Self-claimed. The training recipe is not released, so this No rests on the
+authors' own statement, and nobody outside can check it.
+
+| Column | What it asks |
+|---|---|
+| Training recipe released? | Are the code and configuration that trained the released model public, so anyone can check what data it used? |
+| Used training set for training? | Was the system trained on TIMIT's training set, or on FA-Bench's 24 Buckeye train speakers? |
+| Used dev set for training? | Was the system trained on TIMIT's 50 dev speakers, or on FA-Bench's 8 Buckeye dev speakers? |
+| Used test set for training or tuning? | Was the system trained or tuned on TIMIT's core test, or on FA-Bench's 8 Buckeye test speakers? |
+
+Tuning means choosing a checkpoint, a design or a default setting by its score.
+The dev set exists for tuning, so only the last column counts it.
+
+Every answer is for the version on the leaderboard, as checked in November
+2026. FA-Bench checks a system again whenever that version changes.
+The quotes and links behind every answer are in
+[timit_buckeye_use.md](timit_buckeye_use.md), and the full research is in
+[info_research.md](info_research.md).
+
 ## The four conditions
 
 All four reproduce Kaldi's
